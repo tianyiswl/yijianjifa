@@ -1,0 +1,62 @@
+{
+  "schema_version": 1,
+  "collected_on": "2026-10-23",
+  "release_ready": false,
+  "files": [
+    {
+      "file": "windows-0.1.41/node/LICENSE",
+      "component": "Node.js bundled driver",
+      "version": "bundled-with-playwright-1.58.0",
+      "source": "Existing Windows 0.1.41 ZIP member: 一剪即发/_internal/playwright/driver/LICENSE",
+      "upstream_url": "https://github.com/nodejs/node/blob/main/LICENSE",
+      "sha256": "b4c7840e841ab8f14543646bd941d01a459fb0f8ce1249244341b2a63272ca79",
+      "size_bytes": 145976,
+      "scope": "Target ZIP original Node.js license and bundled third-party texts; exact Node.js version and native closure remain unverified."
+    },
+    {
+      "file": "windows-0.1.41/playwright-1.58.0/LICENSE",
+      "component": "Playwright",
+      "version": "1.58.0",
+      "source": "Existing Windows 0.1.41 ZIP member: 一剪即发/_internal/playwright/driver/package/LICENSE",
+      "upstream_url": "https://github.com/microsoft/playwright/blob/v1.58.0/LICENSE",
+      "sha256": "45873d00a0dd243596deb4aa23b2493b3d1f0671921bf2538ea431d7380220eb",
+      "size_bytes": 11601,
+      "scope": "Target ZIP original Playwright license; does not cover its browsers."
+    },
+    {
+      "file": "windows-0.1.41/playwright-1.58.0/NOTICE",
+      "component": "Playwright",
+      "version": "1.58.0",
+      "source": "Existing Windows 0.1.41 ZIP member: 一剪即发/_internal/playwright/driver/package/NOTICE",
+      "upstream_url": "https://github.com/microsoft/playwright/blob/v1.58.0/NOTICE",
+      "sha256": "6d602191187b35b9b01d2cffa01c8469c2c8d9de8a96f1bf868e0f264f51c81d",
+      "size_bytes": 254,
+      "scope": "Target ZIP original Playwright attribution notice."
+    },
+    {
+      "file": "windows-0.1.41/playwright-ffmpeg-1011/COPYING.LGPLv2.1",
+      "component": "Playwright browser FFmpeg",
+      "version": "revision-1011",
+      "source": "Existing Windows 0.1.41 ZIP member: 一剪即发/_internal/playwright-browsers/ffmpeg-1011/COPYING.LGPLv2.1",
+      "upstream_url": "https://ffmpeg.org/legal.html",
+      "sha256": "b634ab5640e258563c536e658cad87080553df6f34f62269a21d554844e58bfe",
+      "size_bytes": 26526,
+      "scope": "Separate browser helper FFmpeg; not the product bin/ffmpeg.exe 7.1.1 and not corresponding-source closure. The upstream URL is general license guidance, not a verified revision-1011 source archive."
+    },
+    {
+      "file": "chromium-145.0.7632.6/LICENSE",
+      "component": "Chromium source root license",
+      "version": "145.0.7632.6",
+      "source": "Official Chromium source tag (base64 decoded without text editing)",
+      "upstream_url": "https://chromium.googlesource.com/chromium/src/+/145.0.7632.6/LICENSE?format=TEXT",
+      "sha256": "368cca1106be99d39ecd32a38d8305585d802a475effb66380b91ffc9bcf709b",
+      "size_bytes": 1536,
+      "scope": "Root license only. Chrome for Testing terms, bundled third-party credits and complete source/native closure are not supplied by this file."
+    }
+  ],
+  "limitations": [
+    "This is a small supplemental text collection, not a full target-binary inventory.",
+    "The root manifest remains an older Mac/recognition collection; it must not be promoted by this supplement.",
+    "Qt/PySide/QtWebEngine, Chromium/Chrome for Testing credits and terms, exact FFmpeg source/build correspondence, Windows runtime terms and media redistribution remain open."
+  ]
+}

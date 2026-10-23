@@ -1,0 +1,30 @@
+[build-system]
+requires = ["setuptools>=69", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "yijianjifa-cloud-voice"
+version = "0.1.0"
+description = "Independent operator-hosted voice quota and synthesis service"
+requires-python = ">=3.12,<3.14"
+dependencies = []
+
+[project.optional-dependencies]
+operator = ["cryptography>=44,<51"]
+
+[project.scripts]
+yjjf-cloud-voice = "yijianjifa_cloud_voice.__main__:main"
+yjjf-cloud-voice-admin = "yijianjifa_cloud_voice.admin:main"
+yjjf-cloud-voice-operator = "yijianjifa_cloud_voice.operator:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["yijianjifa_cloud_voice*"]
+
+[tool.setuptools.package-data]
+"yijianjifa_cloud_voice" = ["operator_assets/*.html", "operator_assets/*.css", "operator_assets/*.js"]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
+addopts = "-ra"

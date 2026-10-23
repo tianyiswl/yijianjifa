@@ -1,0 +1,47 @@
+一剪即发 Mac 开发版 — Third-Party Notices
+
+The project-root MIT LICENSE applies only to project-owned code. Third-party
+software, codecs, runtimes, model weights, fonts, trademarks, official voice
+samples and user content retain their upstream terms and are not relicensed
+as MIT. Free software use does not remove third-party distribution duties.
+
+This development bundle includes collected license texts under licenses/.
+licenses/manifest.json identifies components, versions, origins and file hashes.
+The collection covers the Python distributions and Homebrew native components
+identified in the 2026-09-26 build inventory, with upstream supplements.
+
+The selected FFmpeg 7.1 binary reports GPL version 2 or later; the selected
+ffprobe 8.1.1 binary reports GPL version 3 or later. These are not generic
+LGPL-only builds. See https://ffmpeg.org/legal.html .
+
+RELEASE REQUIREMENTS REMAIN INCOMPLETE:
+- Exact materials for FFmpeg 7.1 static linked components and corresponding
+  source/build information still need review and preparation.
+- Homebrew FFmpeg 8.1.1 texts do not substitute for that FFmpeg 7.1 build.
+- Inclusion of these texts is not a declaration of full distribution compliance.
+This is a local development artifact, not the approved V1 release.
+
+Download/extraction recognition additions (2026-10-05):
+- whisper.cpp v1.9.2 CPU CLI: MIT; pinned-source/local arm64 candidate.
+- Original OpenAI Whisper code/weights: MIT. Weights are not bundled.
+- RapidOCR 3.9.2 code: Apache-2.0. The three explicitly imported/downloaded
+  PaddleOCR-derived models retain upstream copyright and Apache-2.0 terms;
+  the later official model conversion notice is included separately.
+- ONNX Runtime 1.22.1 CPU: MIT plus the wheel's ThirdPartyNotices.
+Recognition licenses and actual build-environment texts are under
+licenses/recognition/ with file digests in licenses/manifest.json.
+recognition-lock.json records admitted upstream/source artifacts;
+recognition-inventory.json records staged/frozen engine file identities.
+No default ONNX/Whisper weights are included; models require explicit action.
+These additions do not close the existing distribution/release requirements.
+
+2026-10-23 supplemental release preparation:
+licenses/release-supplements/ contains small Playwright/Node/browser-helper
+FFmpeg texts copied from the existing Windows 0.1.41 ZIP, plus a Chromium
+145.0.7632.6 source-root license. Its manifest records exact origins and hashes.
+Those Windows-derived texts do not establish the Mac build's component versions
+or native closure. Qt/PySide/WebEngine/Chromium materials must be collected for
+each actual target. Official voice-sample redistribution remains unconfirmed.
+The manifests remain release_ready=false. Public source or binary publication
+requires the owner's explicit approval after candidate review. See
+docs/release/THIRD_PARTY_RELEASE_READINESS.md in the source tree.

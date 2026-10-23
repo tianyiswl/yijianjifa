@@ -1,0 +1,43 @@
+[build-system]
+requires = ["setuptools>=69", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "yijianjifa-desktop"
+version = "0.1.42"
+license = {file = "LICENSE"}
+description = "一剪即发 desktop video mixing and publishing application"
+requires-python = ">=3.12,<3.14"
+dependencies = [
+  "PySide6>=6.8,<7",
+  "Pillow>=12.1,<13",
+  "SQLAlchemy>=2.0,<3",
+  "alembic>=1.13,<2",
+  "pydantic>=2.8,<3",
+  "platformdirs>=4.2,<5",
+  "openpyxl>=3.1,<4",
+  "keyring>=25,<26",
+]
+
+[project.optional-dependencies]
+dev = ["tzdata>=2024.1", "pytest>=8,<10", "pytest-qt>=4.4,<5", "imageio-ffmpeg==0.6.0"]
+build = ["pyinstaller>=6.10,<7"]
+recognition = ["rapidocr==3.9.2", "onnxruntime==1.22.1"]
+mac-webui = ["pywebview==6.2.1; sys_platform == 'darwin'", "pyobjc==12.2.2; sys_platform == 'darwin'"]
+publish = ["playwright==1.58.0", "keyring>=25,<26"]
+
+[project.scripts]
+yijianjifa = "yijianjifa.app.bootstrap:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]
+addopts = "-ra"
+
+[tool.setuptools.package-data]
+"yijianjifa.features.mixing.tts" = ["voice_manifest.json"]
+"yijianjifa.features.downloads" = ["model_manifest.json"]
+"yijianjifa.webui" = ["assets/*.html", "assets/*.js", "assets/*.mp4", "assets/*.css", "assets/voice_samples/*.mp3", "assets/voice_samples/official/*.mp3"]

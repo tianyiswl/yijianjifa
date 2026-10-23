@@ -1,0 +1,34 @@
+{
+  "schema_version": 1,
+  "source": {
+    "url": "https://p66-plat.wskwai.com/kos/nlav11104/onvideo-cp/static/js/index-ih4TlJ04.js",
+    "entry_url": "https://cp.kuaishou.com/onvideo-application/index.html",
+    "collected_on": "2026-10-09",
+    "sha256": "31700ae668ae3ecb4d2204f108ac4b0bee2c4045b33a07b6947b02d422743b7a",
+    "entry_build_id": "104915291"
+  },
+  "extraction": {
+    "extracted_on": "2026-10-23",
+    "scope": "legacy author-declaration label/value facts only; no upstream executable code",
+    "selector": "first rd=[...] array; original offline test regex",
+    "unicode_offset": 205114
+  },
+  "declarations": [
+    {
+      "label": "内容为AI生成",
+      "value": 1
+    },
+    {
+      "label": "演绎情节，仅供娱乐",
+      "value": 2
+    },
+    {
+      "label": "个人观点，仅供参考",
+      "value": 3
+    },
+    {
+      "label": "素材来源于网络",
+      "value": 4
+    }
+  ]
+}

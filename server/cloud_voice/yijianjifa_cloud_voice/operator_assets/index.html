@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="referrer" content="no-referrer">
+  <title>一剪即发 · 兑换码管理</title>
+  <link rel="stylesheet" href="/operator/operator.css">
+  <script src="/operator/operator.js" defer></script>
+</head>
+<body>
+<main class="page">
+  <header class="page-header">
+    <div><p class="eyebrow">一剪即发 · 经营者专用</p><h1>兑换码管理</h1></div>
+    <button id="logoutButton" class="secondary" type="button" hidden>退出管理</button>
+  </header>
+  <aside id="testNotice" class="test-notice" hidden><strong>本地测试环境 · 不用于销售</strong><p>这里生成的码仅用于测试充值，无需付款，请勿发给真实买家。正式服务的账号和额度不受影响。</p></aside>
+  <p id="globalMessage" class="message" role="status" aria-live="polite"></p>
+  <button id="retrySession" class="secondary" type="button" hidden>重新连接</button>
+  <section id="loginSection" class="card login-card" hidden>
+    <h2>登录管理</h2><p class="muted">此浏览器保持登录30天；退出管理后立即失效。仅供经营者使用。</p>
+    <form id="loginForm">
+      <label for="operatorPassword">管理密码</label>
+      <input id="operatorPassword" type="password" autocomplete="current-password" required maxlength="256">
+      <button id="loginButton" class="primary" type="submit">登录</button>
+    </form>
+  </section>
+  <div id="workspace" hidden>
+    <aside class="overview-column" aria-label="经营概览">
+    <section class="card" aria-labelledby="downloadTitle">
+      <div class="section-heading"><div><h2 id="downloadTitle">访问与下载</h2><p class="muted">统一入口累计统计</p></div><button id="downloadRefresh" class="secondary" type="button">刷新统计</button></div>
+      <div class="supplier-funds"><div><span class="label">教程访问（次数）</span><strong id="guideVisitors">—</strong></div><div><span class="label">软件下载（点击）</span><strong id="downloadClicks">—</strong></div></div>
+      <p class="muted">重复打开也计数；仅统计通过统一入口的访问。</p>
+      <p class="muted"><a href="/operator/guide" target="_blank" rel="noopener">打开教程入口</a></p>
+      <p id="guideMessage" class="muted" role="status"></p>
+      <p id="downloadMessage" class="muted" role="status"></p>
+    </section>
+    <section class="card" aria-labelledby="supplierTitle">
+      <div class="section-heading"><div><h2 id="supplierTitle">供应商账户余额</h2><p class="muted">火山引擎资金余额，非配音字数。</p></div><button id="balanceRefresh" class="secondary" type="button">刷新余额</button></div>
+      <div class="supplier-funds"><div><span class="label">可用余额</span><strong id="supplierAvailable">—</strong></div><div><span class="label">现金余额</span><strong id="supplierCash">—</strong></div><div><span class="label">欠费金额</span><strong id="supplierArrears">—</strong></div></div>
+      <p id="balanceMessage" class="message" role="status" aria-live="polite">正在查询…</p><p id="balanceUpdated" class="muted"></p>
+    </section>
+    </aside>
+    <section class="card issue-card" aria-labelledby="issueTitle">
+      <div class="section-heading"><div><h2 id="issueTitle">生成兑换码</h2><p class="muted">备注可重复，每笔购买单独发码。</p></div><div class="pack">19.9 元 <span>／ 1 万字</span></div></div>
+      <form id="issueForm" novalidate>
+        <fieldset id="issueFields">
+          <div class="issue-fields">
+            <div class="order-field"><label for="orderRef">购买备注</label><input id="orderRef" autocomplete="off" placeholder="微信昵称、店铺订单号等" maxlength="128" required></div>
+            <div class="count-field"><label for="issueCount">兑换码数量</label><input id="issueCount" type="number" min="1" max="500" step="1" value="1" inputmode="numeric" required></div>
+            <div class="total-field"><span class="label">本次合计</span><strong id="issueTotal">19.9 元 · 1 万字</strong></div>
+          </div>
+          <button id="issueButton" type="submit" class="primary">生成兑换码</button>
+        </fieldset>
+        <button id="newPurchase" type="button" class="secondary" hidden>下一笔购买</button>
+      </form>
+      <p id="issueMessage" class="message" role="status" aria-live="polite"></p>
+      <section id="issuedSection" class="issued-section" hidden aria-labelledby="issuedTitle">
+        <h3 id="issuedTitle">兑换码</h3>
+        <p class="muted">复制后通过原购买渠道发给买家，再到记录中手动标记“已交付”。复制不会自动标记交付。</p>
+        <textarea id="issuedCodes" aria-label="完整兑换码" readonly rows="4" spellcheck="false" autocomplete="off"></textarea>
+        <div class="button-row"><button id="copyIssued" class="primary" type="button">复制兑换码</button><button id="clearIssued" class="secondary" type="button">清除显示</button></div>
+      </section>
+    </section>
+    <section class="card list-card" aria-labelledby="listTitle">
+      <div class="section-heading"><div><h2 id="listTitle">兑换码记录</h2><p class="muted">页面停留时每15秒自动更新状态。每枚码仅可兑换一次，已兑换的码不再显示完整内容。</p></div></div>
+      <form id="searchForm" class="search-form">
+        <div class="search-field"><label for="searchInput">查找购买记录</label><input id="searchInput" type="search" placeholder="购买备注、兑换码末5位或兑换账号" maxlength="128" autocomplete="off"></div>
+        <div class="filter-field"><label for="statusFilter">状态</label><select id="statusFilter"><option value="all">全部状态</option><option value="unused">未交付</option><option value="delivered">已交付，待兑换</option><option value="redeemed">已兑换</option><option value="revoked">已作废</option></select></div>
+        <button id="searchButton" class="secondary" type="submit">查询</button>
+      </form>
+      <p id="listUpdated" class="muted" role="status"></p>
+      <p id="listMessage" class="message" role="status" aria-live="polite"></p>
+      <div class="table-wrap"><table><thead><tr><th scope="col">购买备注 / 添加时间</th><th scope="col">兑换码末5位</th><th scope="col">状态</th><th scope="col">兑换账号</th><th scope="col">操作</th></tr></thead><tbody id="codeRows"></tbody></table></div>
+      <p id="emptyList" class="empty" hidden>暂无兑换码记录。</p>
+      <nav class="pagination" aria-label="兑换码翻页"><span id="pageSummary">共 0 枚 · 1/1 页</span><button id="previousPage" class="secondary" type="button" disabled>上一页</button><button id="nextPage" class="secondary" type="button" disabled>下一页</button></nav>
+    </section>
+  </div>
+  <footer>兑换码管理与普通配音账号分开，请勿将管理密码提供给买家。</footer>
+</main>
+<dialog id="confirmDialog" aria-labelledby="confirmTitle" aria-describedby="confirmBody">
+  <h2 id="confirmTitle">作废这枚兑换码？</h2><p id="confirmBody"></p><p id="confirmError" class="message" role="alert"></p>
+  <div class="button-row"><button id="cancelRevoke" class="secondary" type="button">取消</button><button id="confirmRevoke" class="danger" type="button">确认作废</button></div>
+</dialog>
+</body>
+</html>

@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>一剪即发 · 常用方案与设置 V1</title>
+<style>
+:root{--bg:#f5f7fb;--panel:#fff;--line:#e6eaf0;--text:#18212f;--sub:#6b7280;--blue:#2563eb;--blue2:#eff6ff;--green:#16a34a;--amber:#d97706;--red:#dc2626;--shadow:0 10px 28px rgba(15,23,42,.06)}
+*{box-sizing:border-box}body{margin:0;font:14px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;background:var(--bg);color:var(--text)}
+.shell{display:grid;grid-template-columns:210px 1fr;min-height:100vh}.side{background:#fff;border-right:1px solid var(--line);padding:18px 12px}.brand{font-size:20px;font-weight:800;padding:8px 10px 18px}.brand small{display:block;color:var(--sub);font-size:12px;font-weight:500;margin-top:3px}
+.nav{display:grid;gap:4px}.nav div,.nav button{padding:11px 12px;border-radius:9px;color:#334155}.nav button{border:0;background:transparent;text-align:left;font:inherit;cursor:pointer}.nav button:disabled:not(.on){opacity:.45;cursor:default}.nav .on{background:var(--blue);color:#fff;font-weight:700}
+main{padding:22px}.top{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:16px}h1{margin:0;font-size:26px}.sub,.muted{color:var(--sub)}
+.btn{border:1px solid #d7deea;background:#fff;border-radius:9px;padding:9px 13px;cursor:pointer;font-weight:650}.btn:hover{background:#f8fafc}.btn.primary{background:var(--blue);border-color:var(--blue);color:#fff}.btn.soft{background:var(--blue2);border-color:#bfdbfe;color:#1d4ed8}.btn.danger{color:#b91c1c}
+.tabs{display:flex;gap:7px;margin-bottom:13px}.tab{padding:9px 14px;border:1px solid var(--line);border-radius:9px;background:#fff;cursor:pointer}.tab.on{background:var(--blue2);color:#1d4ed8;border-color:#bfdbfe;font-weight:700}
+.toolbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;background:#fff;border:1px solid var(--line);border-radius:13px;padding:11px;margin-bottom:14px;box-shadow:var(--shadow)}
+input,select{border:1px solid #d8dee9;border-radius:8px;padding:8px 10px;background:#fff}.search{min-width:260px}.grow{flex:1}.check{width:16px;height:16px}
+.layout{display:grid;grid-template-columns:minmax(640px,1.18fr) minmax(370px,.82fr);gap:14px}.panel{background:#fff;border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);overflow:hidden}.ph{padding:14px 16px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center}.ph b{font-size:16px}
+table{width:100%;border-collapse:collapse}th,td{padding:10px 12px;border-bottom:1px solid #edf1f5;text-align:left;vertical-align:middle}th{font-size:12px;color:#64748b;background:#fafbfc}.row{cursor:pointer}.row:hover{background:#fafcff}.row.active{background:#eff6ff}
+.tag{display:inline-block;border-radius:999px;padding:3px 7px;font-size:12px;margin-right:4px;background:#f1f5f9}.blue{background:#eff6ff;color:#1d4ed8}.green{background:#ecfdf5;color:#15803d}.amber{background:#fff7ed;color:#b45309}.red{background:#fef2f2;color:#b91c1c}.purple{background:#f5f3ff;color:#6d28d9}
+.detail{padding:16px}.card{border:1px solid var(--line);border-radius:12px;padding:13px;margin-bottom:12px}.card h3{font-size:15px;margin:0 0 9px}.kv{display:grid;grid-template-columns:110px 1fr;gap:8px 10px}.k{color:#64748b}.line{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:11px}
+.notice{padding:10px 11px;border-radius:9px;background:#eff6ff;color:#1e40af;margin-bottom:12px}.notice.warn{background:#fff7ed;color:#9a3412}.notice.red{background:#fef2f2;color:#b91c1c}
+.setting-wrap{display:none}.setting-wrap.on{display:block}.preset-wrap.hidden{display:none}
+.setting-card{background:#fff;border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);padding:16px;margin-bottom:13px}.setting-card h2{font-size:16px;margin:0 0 4px}.setting-row{display:grid;grid-template-columns:230px 1fr auto;gap:14px;align-items:center;padding:14px 0;border-top:1px solid #edf1f5}.setting-row:first-of-type{border-top:0}.setting-title{font-weight:700}.path{background:#f8fafc;border:1px solid #e5e7eb;border-radius:8px;padding:9px 10px;word-break:break-all}
+.switch{position:relative;width:42px;height:24px;border-radius:999px;background:#cbd5e1;cursor:pointer}.switch:after{content:"";position:absolute;width:18px;height:18px;border-radius:50%;background:#fff;left:3px;top:3px;transition:.15s}.switch.on{background:#2563eb}.switch.on:after{left:21px}
+.ctx{position:fixed;display:none;background:#fff;border:1px solid #d9e0ea;border-radius:9px;box-shadow:0 16px 40px rgba(15,23,42,.16);padding:5px;z-index:30;min-width:170px}.ctx button{display:block;width:100%;text-align:left;padding:8px 10px;border:0;background:#fff;border-radius:6px;cursor:pointer}.ctx button:hover{background:#f1f5f9}
+.toast{position:fixed;right:20px;bottom:20px;background:#111827;color:#fff;padding:10px 13px;border-radius:8px;display:none;z-index:50}
+.modal{position:fixed;inset:0;background:rgba(15,23,42,.36);display:none;place-items:center;z-index:40}.dialog{width:min(560px,92vw);max-height:86vh;overflow:auto;background:#fff;border-radius:14px;padding:18px;box-shadow:0 25px 70px rgba(15,23,42,.25)}.dialog h3{margin:0 0 10px}.field{margin:11px 0}.field label{display:block;font-weight:700;margin-bottom:5px}.field input,.field select{width:100%}.foot{display:flex;justify-content:flex-end;gap:8px;margin-top:17px}
+
+.preset-editor-shell{position:fixed;inset:0;background:rgba(15,23,42,.42);display:none;place-items:center;z-index:60;padding:24px}
+.preset-editor-shell.on{display:grid}.preset-editor{width:min(1080px,96vw);height:min(760px,92vh);background:#fff;border-radius:16px;box-shadow:0 28px 90px rgba(15,23,42,.28);display:grid;grid-template-rows:auto 1fr auto;overflow:hidden}
+.editor-head{padding:16px 20px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;gap:12px}.editor-head h2{margin:0;font-size:20px}.editor-body{display:grid;grid-template-columns:210px 1fr;min-height:0}.editor-nav{background:#f8fafc;border-right:1px solid var(--line);padding:14px 10px;overflow:auto}.editor-nav button{width:100%;border:0;background:transparent;text-align:left;padding:10px 11px;border-radius:8px;cursor:pointer;margin:2px 0;color:#334155}.editor-nav button.on{background:#e8f0ff;color:#1d4ed8;font-weight:750}.editor-main{padding:18px 20px;overflow:auto}.editor-foot{border-top:1px solid var(--line);padding:12px 18px;display:flex;align-items:center;justify-content:space-between;gap:10px;background:#fff}.editor-section{display:none}.editor-section.on{display:block}.editor-section h3{margin:0 0 5px;font-size:17px}.editor-section .desc{color:var(--sub);margin-bottom:15px}.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}.form-group{min-width:0}.form-group.full{grid-column:1/-1}.form-group label{display:block;font-weight:700;margin-bottom:6px}.form-group input,.form-group select{width:100%}.check-row{display:flex;gap:9px;align-items:center;min-height:38px}.check-row input{width:auto}.mini-note{font-size:12px;color:#64748b;margin-top:5px}.editor-warning{padding:10px 12px;border-radius:9px;background:#fff7ed;color:#9a3412;margin-bottom:14px}.editor-info{padding:10px 12px;border-radius:9px;background:#eff6ff;color:#1e40af;margin-bottom:14px}
+@media(max-width:760px){.preset-editor-shell{padding:0}.preset-editor{width:100vw;height:100vh;border-radius:0}.editor-body{grid-template-columns:1fr}.editor-nav{display:flex;gap:5px;border-right:0;border-bottom:1px solid var(--line);overflow:auto}.editor-nav button{width:auto;white-space:nowrap}.form-grid{grid-template-columns:1fr}}
+@media(max-width:980px){.shell{grid-template-columns:1fr}.side{display:none}.layout{grid-template-columns:1fr}.search{min-width:0;flex:1}.setting-row{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="shell">
+<aside class="side"><div class="brand p011-brand"><div class="mark" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M8.5 7.5 21 20M8.5 16.5 21 4M14 12l7-8"/></svg></div><div><b>一剪即发</b><small>一键剪辑 · 一键发布</small></div></div>
+<div class="nav"><div>资料库</div><div>混剪制作</div><div>成品库</div><div>普通发布</div><div>团购带货</div><div>账号管理</div><div>任务记录</div><div class="on">常用方案与设置</div></div></aside>
+
+<main>
+<div class="top">
+ <div><h1>常用方案与设置</h1><div class="sub">常用方案只保存可复用设置；每次执行前仍以本次选择和确认内容为准。</div></div>
+ <button class="btn primary" id="newPreset">+ 新建方案</button>
+</div>
+
+<div class="tabs"><button class="tab on" data-tab="preset">常用方案</button><button class="tab" data-tab="setting">基础设置</button></div>
+
+<div class="preset-wrap" id="presetWrap">
+<div class="toolbar">
+ <input class="check" type="checkbox" id="selectAll">
+ <button class="btn" id="selectAllBtn">全选</button><button class="btn" id="clearBtn">取消全选</button>
+ <input class="search" id="q" placeholder="搜索方案名称">
+ <select id="typeFilter"><option value="">全部类型</option><option value="make">制作方案</option><option value="normal">普通发布方案</option><option value="commerce">团购带货方案</option><option value="combo">制作后发布方案</option></select>
+ <span class="grow"></span><span class="muted" id="selectedCount">已选 0</span>
+ <button class="btn danger" id="bulkDelete">删除已选</button>
+</div>
+
+<div class="layout">
+<section class="panel"><div class="ph"><b>方案列表</b><span class="muted">双击使用 · 右键快捷操作</span></div>
+<div class="p011-list-scroll"><table><thead><tr><th style="width:44px">选</th><th>方案名称</th><th>类型</th><th>主要设置</th><th>状态</th></tr></thead><tbody id="rows"></tbody></table></div></section>
+<section class="panel"><div class="ph"><b>方案详情</b><span class="muted" id="detailTitle">请选择方案</span></div><div class="detail" id="detail"></div></section>
+</div>
+</div>
+
+<div class="setting-wrap" id="settingWrap">
+<div class="setting-card">
+ <h2>文件与输出</h2><div class="sub">这里只放全局设置；素材和音乐“另外保存一份”的开关仍保留在各自资料库顶部。</div>
+ <div class="setting-row"><div><div class="setting-title">默认成品保存位置</div><div class="muted">修改后只影响以后新生成的成品，不搬动以前文件。</div></div><div class="path" id="outputPath">正在读取…</div><button class="btn" id="changePath">更改位置</button></div>
+</div>
+<div class="setting-card">
+ <h2>通知</h2><div class="sub">完成、失败、需要登录或需要人工处理时仍会进入通知记录；声音可以关闭。</div>
+ <div class="setting-row"><div><div class="setting-title">通知提示音</div><div class="muted">关闭后仍保留页面通知和通知历史。</div></div><div><div class="switch on" id="soundSwitch"></div></div><button class="btn" id="testSound">试听</button></div>
+</div>
+<div class="setting-card">
+ <h2>这些设置不放在这里</h2>
+ <div class="notice">默认账号在“账号管理”中按平台设置；“另外保存一份素材 / 音乐”分别在资料库列表顶部设置。这样常用操作不会被藏进设置页。</div>
+</div>
+</div>
+</main>
+</div>
+
+
+<div class="preset-editor-shell" id="presetEditorShell">
+ <div class="preset-editor">
+  <div class="editor-head"><div><h2 id="editorTitle">编辑方案</h2><div class="muted" id="editorSubtitle"></div></div><button class="btn">关闭</button></div>
+  <div class="editor-body">
+   <div class="editor-nav" id="editorNav"></div>
+   <div class="editor-main" id="editorMain"></div>
+  </div>
+  <div class="editor-foot"><div class="muted">保存后只影响以后使用；已确认或正在执行的任务不改变。</div><div class="line" style="margin:0"><button class="btn">取消</button><button class="btn primary" id="saveFullPreset">保存方案</button></div></div>
+ </div>
+</div>
+<div class="ctx" id="ctx"></div><div class="toast" id="toast"></div>
+<div class="modal" id="modal"><div class="dialog" id="dialog"></div></div>
+
+
+</body></html>

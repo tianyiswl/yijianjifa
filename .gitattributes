@@ -1,0 +1,2 @@
+# License manifest hashes cover exact upstream bytes on every build platform.
+packaging/resources/licenses/** -text

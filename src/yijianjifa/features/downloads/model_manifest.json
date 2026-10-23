@@ -1,0 +1,96 @@
+{
+  "schema_version": 1,
+  "models": [
+    {
+      "id": "whisper-small-multilingual",
+      "name": "语音识别 small（多语种）",
+      "kind": "asr",
+      "filename": "ggml-small.bin",
+      "version": "whisper-small@5359861c739e955e79d9a303bcbc70fb988958b1",
+      "size_bytes": 487601967,
+      "sha256": "1be3a9b2063867b937e64e2ec7483364a79917e157fa98c5d94b5c1fffea987b",
+      "url": "https://huggingface.co/ggerganov/whisper.cpp/resolve/5359861c739e955e79d9a303bcbc70fb988958b1/ggml-small.bin",
+      "license": {
+        "spdx": "MIT",
+        "copyright": [
+          "OpenAI",
+          "Georgi Gerganov and whisper.cpp contributors"
+        ],
+        "sources": [
+          "https://github.com/openai/whisper/blob/86098128c0b4f24f0e2aa2994de830614b474227/LICENSE",
+          "https://github.com/openai/whisper/blob/86098128c0b4f24f0e2aa2994de830614b474227/README.md#license",
+          "https://github.com/ggml-org/whisper.cpp/blob/306c88f4d1286aec1bf96e544632897886af5501/LICENSE"
+        ]
+      }
+    },
+    {
+      "id": "rapidocr-cls-mobile-v2",
+      "name": "字幕方向识别",
+      "kind": "ocr_cls",
+      "filename": "ch_ppocr_mobile_v2.0_cls_mobile.onnx",
+      "version": "RapidOCR-v3.9.2/ch-ppocr-mobile-v2.0-cls",
+      "size_bytes": 585532,
+      "sha256": "e47acedf663230f8863ff1ab0e64dd2d82b838fceb5957146dab185a89d6215c",
+      "url": "https://www.modelscope.cn/models/RapidAI/RapidOCR/resolve/v3.9.2/onnx/PP-OCRv4/cls/ch_ppocr_mobile_v2.0_cls_mobile.onnx",
+      "license": {
+        "spdx": "Apache-2.0",
+        "copyright": [
+          "Baidu and/or applicable PaddleOCR rights holders",
+          "RapidOCR Authors (conversion and packaging)"
+        ],
+        "sources": [
+          "https://github.com/RapidAI/RapidOCR/blob/095232a4c94f7f0e6600ba5bba1177010ad696d4/LICENSE",
+          "https://github.com/RapidAI/RapidOCR/blob/f65c7da00e72c19c258245e8e0e5f33af14488be/python/MODEL_LICENSES.md"
+        ],
+        "conversion_notice": "Converted from an official PaddleOCR model for RapidOCR; upstream weights remain copyright Baidu and/or applicable PaddleOCR rights holders, licensed Apache-2.0.",
+        "notice_scope": "Later official model notice enumerates this exact SHA256; v3.9.2 wheel itself does not contain the notice."
+      }
+    },
+    {
+      "id": "rapidocr-det-ppocrv6-small",
+      "name": "字幕区域检测（中英）",
+      "kind": "ocr_det",
+      "filename": "PP-OCRv6_det_small.onnx",
+      "version": "RapidOCR-v3.9.2/PP-OCRv6-small",
+      "size_bytes": 9929594,
+      "sha256": "090f04abcd9d9a7498bc4ebf677e4cb9bdce1fe4197ddb7e529f1ef44e1ff94f",
+      "url": "https://www.modelscope.cn/models/RapidAI/RapidOCR/resolve/v3.9.2/onnx/PP-OCRv6/det/PP-OCRv6_det_small.onnx",
+      "license": {
+        "spdx": "Apache-2.0",
+        "copyright": [
+          "Baidu and/or applicable PaddleOCR rights holders",
+          "RapidOCR Authors (conversion and packaging)"
+        ],
+        "sources": [
+          "https://github.com/RapidAI/RapidOCR/blob/095232a4c94f7f0e6600ba5bba1177010ad696d4/LICENSE",
+          "https://github.com/RapidAI/RapidOCR/blob/f65c7da00e72c19c258245e8e0e5f33af14488be/python/MODEL_LICENSES.md"
+        ],
+        "conversion_notice": "Converted from an official PaddleOCR model for RapidOCR; upstream weights remain copyright Baidu and/or applicable PaddleOCR rights holders, licensed Apache-2.0.",
+        "notice_scope": "Later official model notice enumerates this exact SHA256; v3.9.2 wheel itself does not contain the notice."
+      }
+    },
+    {
+      "id": "rapidocr-rec-ppocrv6-small",
+      "name": "字幕文字识别（中英）",
+      "kind": "ocr_rec",
+      "filename": "PP-OCRv6_rec_small.onnx",
+      "version": "RapidOCR-v3.9.2/PP-OCRv6-small",
+      "size_bytes": 21234383,
+      "sha256": "6f327246b50388f3c176ae304bd95767ea6dc0c9ae92153ef8cbe210b3c14884",
+      "url": "https://www.modelscope.cn/models/RapidAI/RapidOCR/resolve/v3.9.2/onnx/PP-OCRv6/rec/PP-OCRv6_rec_small.onnx",
+      "license": {
+        "spdx": "Apache-2.0",
+        "copyright": [
+          "Baidu and/or applicable PaddleOCR rights holders",
+          "RapidOCR Authors (conversion and packaging)"
+        ],
+        "sources": [
+          "https://github.com/RapidAI/RapidOCR/blob/095232a4c94f7f0e6600ba5bba1177010ad696d4/LICENSE",
+          "https://github.com/RapidAI/RapidOCR/blob/f65c7da00e72c19c258245e8e0e5f33af14488be/python/MODEL_LICENSES.md"
+        ],
+        "conversion_notice": "Converted from an official PaddleOCR model for RapidOCR; upstream weights remain copyright Baidu and/or applicable PaddleOCR rights holders, licensed Apache-2.0.",
+        "notice_scope": "Later official model notice enumerates this exact SHA256; v3.9.2 wheel itself does not contain the notice."
+      }
+    }
+  ]
+}

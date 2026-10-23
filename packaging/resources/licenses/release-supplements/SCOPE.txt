@@ -1,0 +1,26 @@
+One-click video mixing and publishing / supplemental third-party materials
+Collected: 2026-10-23
+
+The project-root MIT LICENSE applies only to project-owned code for which the
+project has the right to grant that license. It does not relicense third-party
+software, bundled runtimes, browsers, codecs, model weights, fonts, trademarks,
+official voice samples, user content or other third-party assets.
+
+Third-party files retain their upstream copyright notices and license terms.
+The unmodified texts collected here are indexed with origins and SHA-256 in
+manifest.json. Four files were copied from the existing Windows 0.1.41 ZIP;
+the Chromium source-root license was obtained from its official version tag.
+The Node.js text contains its upstream third-party notices as bundled by
+Playwright; the exact Node.js runtime version remains to be tied to a build.
+
+This supplement supplies small missing notices only. It is not a complete
+Windows or macOS inventory and does not establish distribution readiness.
+In particular, the Chromium source-root license does not replace Chrome for
+Testing terms or its complete credits, and the browser-helper FFmpeg license
+does not describe the separate product bin/ffmpeg.exe 7.1.1 binary.
+
+The existing root manifest remains release_ready=false. See
+docs/release/THIRD_PARTY_RELEASE_READINESS.md in the source tree for the
+outstanding target-build requirements. Before any public source or binary
+publication, obtain the project owner's explicit publication approval after
+the required materials and the exact candidate have been reviewed.

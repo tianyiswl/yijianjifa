@@ -1,0 +1,1379 @@
+{
+  "schema_version": 1,
+  "checked_at": "2026-10-05",
+  "status": "source-and-local-load-verified; frozen-and-Windows-runtime-unverified",
+  "python_target": "CPython 3.12",
+  "packages": {
+    "rapidocr": "3.9.2",
+    "onnxruntime": "1.22.1"
+  },
+  "runtime_policy": {
+    "model_download": "explicit-only",
+    "missing_model": "model_required; never default-download",
+    "onnx_provider": "CPUExecutionProvider",
+    "model_root": "user-data/models",
+    "network_slots": "same cancellable semaphore as media; acquired only by leaf operation"
+  },
+  "platforms": {
+    "macos_arm64": {
+      "validation": {
+        "host_os": "macOS 27.0.1",
+        "python": "3.12.13",
+        "installed": true,
+        "rapidocr_cpu_loaded": true,
+        "onnxruntime_cpu_loaded": true,
+        "synthetic_zh_en_ocr": true,
+        "network_attempt_count": 0,
+        "frozen_package": false,
+        "oldest_os": false,
+        "other_architectures": false
+      },
+      "artifacts": [
+        {
+          "name": "rapidocr",
+          "version": "3.9.2",
+          "url": "https://files.pythonhosted.org/packages/55/ed/0ee9b9281986974be9d2406ae0134c8d7c91d2fc613f16ffda9701eeda6f/rapidocr-3.9.2-py3-none-any.whl",
+          "filename": "rapidocr-3.9.2-py3-none-any.whl",
+          "size_bytes": 27275208,
+          "sha256": "04d6b8d151f823d930bd91910555f57bea897c0c44fa6794267b94cf9c1ef9a0",
+          "locally_verified": true,
+          "requires_python": "<4,>=3.8",
+          "requires_dist": [
+            "pyclipper>=1.2.0",
+            "opencv_python>=4.5.1.48",
+            "numpy<3.0.0,>=1.19.5",
+            "six>=1.15.0",
+            "Shapely!=2.0.4,>=1.7.1",
+            "PyYAML",
+            "Pillow",
+            "tqdm",
+            "omegaconf!=2.2.1",
+            "requests",
+            "colorlog"
+          ],
+          "license_expression": "Apache-2.0",
+          "license_metadata": null
+        },
+        {
+          "name": "onnxruntime",
+          "version": "1.22.1",
+          "url": "https://files.pythonhosted.org/packages/48/70/ca2a4d38a5deccd98caa145581becb20c53684f451e89eb3a39915620066/onnxruntime-1.22.1-cp312-cp312-macosx_13_0_universal2.whl",
+          "filename": "onnxruntime-1.22.1-cp312-cp312-macosx_13_0_universal2.whl",
+          "size_bytes": 34342883,
+          "sha256": "a938d11c0dc811badf78e435daa3899d9af38abee950d87f3ab7430eb5b3cf5a",
+          "locally_verified": true,
+          "requires_python": ">=3.10",
+          "requires_dist": [
+            "coloredlogs",
+            "flatbuffers",
+            "numpy >=1.21.6",
+            "packaging",
+            "protobuf",
+            "sympy"
+          ],
+          "license_expression": null,
+          "license_metadata": "MIT License"
+        },
+        {
+          "name": "numpy",
+          "version": "2.5.3",
+          "url": "https://files.pythonhosted.org/packages/9c/59/a312e95696e5f601914dd8b6dd844692ba61670807417e24b68e337b5c70/numpy-2.5.3-cp312-cp312-macosx_14_0_arm64.whl",
+          "filename": "numpy-2.5.3-cp312-cp312-macosx_14_0_arm64.whl",
+          "size_bytes": 5445405,
+          "sha256": "a72f874bc9e10e4b8f80426fb49716d5141f64442a0c8418065093ec8017fbb0",
+          "locally_verified": true,
+          "requires_python": ">=3.12",
+          "requires_dist": [],
+          "license_expression": "BSD-3-Clause AND 0BSD AND MIT AND Zlib AND CC0-1.0",
+          "license_metadata": null
+        },
+        {
+          "name": "omegaconf",
+          "version": "2.3.1",
+          "url": "https://files.pythonhosted.org/packages/a4/0e/152509871bf30df6fc38569f52a2db9b55dd41aae957adae50a053ac7778/omegaconf-2.3.1-py3-none-any.whl",
+          "filename": "omegaconf-2.3.1-py3-none-any.whl",
+          "size_bytes": 79502,
+          "sha256": "3d701d14e9a8828f1edd28bb70b725908b34277cdd72cf7d6a83f94dadc6b6a0",
+          "locally_verified": true,
+          "requires_python": ">=3.6",
+          "requires_dist": [
+            "antlr4-python3-runtime==4.9.*",
+            "PyYAML>=5.1.0",
+            "dataclasses; python_version == \"3.6\""
+          ],
+          "license_expression": null,
+          "license_metadata": null
+        },
+        {
+          "name": "antlr4-python3-runtime",
+          "version": "4.9.3",
+          "url": "https://files.pythonhosted.org/packages/3e/38/7859ff46355f76f8d19459005ca000b6e7012f2f1ca597746cbcd1fbfe5e/antlr4-python3-runtime-4.9.3.tar.gz",
+          "filename": "antlr4-python3-runtime-4.9.3.tar.gz",
+          "size_bytes": 117034,
+          "sha256": "f224469b4168294902bb1efa80a8bf7855f24c99aef99cbefc1bcd3cce77881b",
+          "locally_verified": true,
+          "requires_python": null,
+          "requires_dist": [
+            "typing; python_version < \"3.5\""
+          ],
+          "license_expression": null,
+          "license_metadata": "BSD"
+        },
+        {
+          "name": "opencv-python",
+          "version": "5.0.0.93",
+          "url": "https://files.pythonhosted.org/packages/9c/75/76f6ade78f6102c61034f828e2a22616708df2c9504bc8d6af9dd8f73dc5/opencv_python-5.0.0.93-cp37-abi3-macosx_13_0_arm64.whl",
+          "filename": "opencv_python-5.0.0.93-cp37-abi3-macosx_13_0_arm64.whl",
+          "size_bytes": 48322443,
+          "sha256": "198a75138241810206a17c829dbcc40a7cb1841cda538ca86cbbfc6c7d95f898",
+          "locally_verified": true,
+          "requires_python": ">=3.6",
+          "requires_dist": [
+            "numpy<2.0; python_version < \"3.9\"",
+            "numpy>=2; python_version >= \"3.9\""
+          ],
+          "license_expression": null,
+          "license_metadata": "Apache 2.0"
+        },
+        {
+          "name": "pyclipper",
+          "version": "1.4.0",
+          "url": "https://files.pythonhosted.org/packages/90/1b/7a07b68e0842324d46c03e512d8eefa9cb92ba2a792b3b4ebf939dafcac3/pyclipper-1.4.0-cp312-cp312-macosx_10_13_universal2.whl",
+          "filename": "pyclipper-1.4.0-cp312-cp312-macosx_10_13_universal2.whl",
+          "size_bytes": 265676,
+          "sha256": "222ac96c8b8281b53d695b9c4fedc674f56d6d4320ad23f1bdbd168f4e316140",
+          "locally_verified": true,
+          "requires_python": ">=3.10",
+          "requires_dist": [],
+          "license_expression": null,
+          "license_metadata": "MIT"
+        },
+        {
+          "name": "PyYAML",
+          "version": "6.0.3",
+          "url": "https://files.pythonhosted.org/packages/89/a0/6cf41a19a1f2f3feab0e9c0b74134aa2ce6849093d5517a0c550fe37a648/pyyaml-6.0.3-cp312-cp312-macosx_11_0_arm64.whl",
+          "filename": "pyyaml-6.0.3-cp312-cp312-macosx_11_0_arm64.whl",
+          "size_bytes": 173973,
+          "sha256": "fc09d0aa354569bc501d4e787133afc08552722d3ab34836a80547331bb5d4a0",
+          "locally_verified": true,
+          "requires_python": ">=3.8",
+          "requires_dist": [],
+          "license_expression": null,
+          "license_metadata": "MIT"
+        },
+        {
+          "name": "shapely",
+          "version": "2.1.2",
+          "url": "https://files.pythonhosted.org/packages/86/07/59dee0bc4b913b7ab59ab1086225baca5b8f19865e6101db9ebb7243e132/shapely-2.1.2-cp312-cp312-macosx_11_0_arm64.whl",
+          "filename": "shapely-2.1.2-cp312-cp312-macosx_11_0_arm64.whl",
+          "size_bytes": 1643556,
+          "sha256": "ba4d1333cc0bc94381d6d4308d2e4e008e0bd128bdcff5573199742ee3634359",
+          "locally_verified": true,
+          "requires_python": ">=3.10",
+          "requires_dist": [
+            "numpy>=1.21",
+            "pytest; extra == \"test\"",
+            "pytest-cov; extra == \"test\"",
+            "scipy-doctest; extra == \"test\"",
+            "numpydoc==1.1.*; extra == \"docs\"",
+            "matplotlib; extra == \"docs\"",
+            "sphinx; extra == \"docs\"",
+            "sphinx-book-theme; extra == \"docs\"",
+            "sphinx-remove-toctrees; extra == \"docs\""
+          ],
+          "license_expression": null,
+          "license_metadata": "BSD 3-Clause"
+        },
+        {
+          "name": "six",
+          "version": "1.17.0",
+          "url": "https://files.pythonhosted.org/packages/b7/ce/149a00dd41f10bc29e5921b496af8b574d8413afcd5e30dfa0ed46c2cc5e/six-1.17.0-py2.py3-none-any.whl",
+          "filename": "six-1.17.0-py2.py3-none-any.whl",
+          "size_bytes": 11050,
+          "sha256": "4721f391ed90541fddacab5acf947aa0d3dc7d27b2e1e8eda2be8970586c3274",
+          "locally_verified": true,
+          "requires_python": ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*",
+          "requires_dist": [],
+          "license_expression": null,
+          "license_metadata": "MIT"
+        },
+        {
+          "name": "coloredlogs",
+          "version": "15.0.1",
+          "url": "https://files.pythonhosted.org/packages/a7/06/3d6badcf13db419e25b07041d9c7b4a2c331d3f4e7134445ec5df57714cd/coloredlogs-15.0.1-py2.py3-none-any.whl",
+          "filename": "coloredlogs-15.0.1-py2.py3-none-any.whl",
+          "size_bytes": 46018,
+          "sha256": "612ee75c546f53e92e70049c9dbfcc18c935a2b9a53b66085ce9ef6a6e5c0934",
+          "locally_verified": true,
+          "requires_python": ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*, !=3.4.*",
+          "requires_dist": [
+            "humanfriendly (>=9.1)",
+            "capturer (>=2.4) ; extra == 'cron'"
+          ],
+          "license_expression": null,
+          "license_metadata": "MIT"
+        },
+        {
+          "name": "humanfriendly",
+          "version": "10.0",
+          "url": "https://files.pythonhosted.org/packages/f0/0f/310fb31e39e2d734ccaa2c0fb981ee41f7bd5056ce9bc29b2248bd569169/humanfriendly-10.0-py2.py3-none-any.whl",
+          "filename": "humanfriendly-10.0-py2.py3-none-any.whl",
+          "size_bytes": 86794,
+          "sha256": "1697e1a8a8f550fd43c2865cd84542fc175a61dcb779b6fee18cf6b6ccba1477",
+          "locally_verified": true,
+          "requires_python": ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*, !=3.4.*",
+          "requires_dist": [
+            "monotonic ; python_version == \"2.7\"",
+            "pyreadline ; sys_platform == \"win32\" and python_version<\"3.8\"",
+            "pyreadline3 ; sys_platform == \"win32\" and python_version>=\"3.8\""
+          ],
+          "license_expression": null,
+          "license_metadata": "MIT"
+        },
+        {
+          "name": "colorlog",
+          "version": "6.12.0",
+          "url": "https://files.pythonhosted.org/packages/d4/19/0b6647bf5e331521e55d2b63bfbdc210bd9cd605189273f03614a05f702d/colorlog-6.12.0-py3-none-any.whl",
+          "filename": "colorlog-6.12.0-py3-none-any.whl",
+          "size_bytes": 12239,
+          "sha256": "30d392604e9110045a2c2aeefc27d7a017abbab63f3a8aee594eac0801df784e",
+          "locally_verified": true,
+          "requires_python": ">=3.6",
+          "requires_dist": [
+            "colorama; sys_platform == \"win32\"",
+            "black; extra == \"development\"",
+            "flake8; extra == \"development\"",
+            "mypy; extra == \"development\"",
+            "pytest; extra == \"development\"",
+            "types-colorama; extra == \"development\""
+          ],
+          "license_expression": null,
+          "license_metadata": "MIT License"
+        },
+        {
+          "name": "flatbuffers",
+          "version": "25.12.19",
+          "url": "https://files.pythonhosted.org/packages/e8/2d/d2a548598be01649e2d46231d151a6c56d10b964d94043a335ae56ea2d92/flatbuffers-25.12.19-py2.py3-none-any.whl",
+          "filename": "flatbuffers-25.12.19-py2.py3-none-any.whl",
+          "size_bytes": 26661,
+          "sha256": "7634f50c427838bb021c2d66a3d1168e9d199b0607e6329399f04846d42e20b4",
+          "locally_verified": true,
+          "requires_python": null,
+          "requires_dist": [],
+          "license_expression": null,
+          "license_metadata": "Apache 2.0"
+        },
+        {
+          "name": "packaging",
+          "version": "26.3",
+          "url": "https://files.pythonhosted.org/packages/63/34/ba1c580383c9eada3711951fef0795c80b829a078d72188184bcab9dd527/packaging-26.3-py3-none-any.whl",
+          "filename": "packaging-26.3-py3-none-any.whl",
+          "size_bytes": 129956,
+          "sha256": "d7193f7c8e4e93f444fde0262bf90af30e16fa0ad0ad44cb553c87339b23cd1c",
+          "locally_verified": true,
+          "requires_python": ">=3.9",
+          "requires_dist": [],
+          "license_expression": "Apache-2.0 OR BSD-2-Clause",
+          "license_metadata": null
+        },
+        {
+          "name": "pillow",
+          "version": "12.3.0",
+          "url": "https://files.pythonhosted.org/packages/d8/66/9a386a92561f402389a4fc70c18838bf6d35eb5eb5c6850b4b2dc64f5048/pillow-12.3.0-cp312-cp312-macosx_11_0_arm64.whl",
+          "filename": "pillow-12.3.0-cp312-cp312-macosx_11_0_arm64.whl",
+          "size_bytes": 4780323,
+          "sha256": "ffd0c5368496f41b0944be820fcb7a838aa6e623d250b01acf2643939c3f99d7",
+          "locally_verified": true,
+          "requires_python": ">=3.10",
+          "requires_dist": [
+            "furo; extra == \"docs\"",
+            "olefile; extra == \"docs\"",
+            "sphinx>=8.2; extra == \"docs\"",
+            "sphinx-autobuild; extra == \"docs\"",
+            "sphinx-copybutton; extra == \"docs\"",
+            "sphinx-inline-tabs; extra == \"docs\"",
+            "sphinxext-opengraph; extra == \"docs\"",
+            "olefile; extra == \"fpx\"",
+            "olefile; extra == \"mic\"",
+            "arro3-compute; extra == \"test-arrow\"",
+            "arro3-core; extra == \"test-arrow\"",
+            "nanoarrow; extra == \"test-arrow\"",
+            "pyarrow; extra == \"test-arrow\"",
+            "coverage>=7.4.2; extra == \"tests\"",
+            "defusedxml; extra == \"tests\"",
+            "markdown2; extra == \"tests\"",
+            "olefile; extra == \"tests\"",
+            "packaging; extra == \"tests\"",
+            "pytest; extra == \"tests\"",
+            "pytest-cov; extra == \"tests\"",
+            "pytest-timeout; extra == \"tests\"",
+            "pytest-xdist; extra == \"tests\"",
+            "setuptools; extra == \"tests\"",
+            "trove-classifiers>=2024.10.12; extra == \"tests\"",
+            "defusedxml; extra == \"xmp\""
+          ],
+          "license_expression": "MIT-CMU",
+          "license_metadata": null
+        },
+        {
+          "name": "protobuf",
+          "version": "7.36.2",
+          "url": "https://files.pythonhosted.org/packages/32/72/98342feb672507c8f3a69e34b4fa8961f608edba5c1a48a6f47156d92cb5/protobuf-7.36.2-cp310-abi3-macosx_10_9_universal2.whl",
+          "filename": "protobuf-7.36.2-cp310-abi3-macosx_10_9_universal2.whl",
+          "size_bytes": 456039,
+          "sha256": "cbc70b17ee27e28894c7fee8bb04be1abead49e936bc70eb60052531eee2079e",
+          "locally_verified": true,
+          "requires_python": ">=3.10",
+          "requires_dist": [],
+          "license_expression": null,
+          "license_metadata": "3-Clause BSD License"
+        },
+        {
+          "name": "requests",
+          "version": "2.34.2",
+          "url": "https://files.pythonhosted.org/packages/a0/f4/c67b0b3f1b9245e8d266f0f112c500d50e5b4e83cb6f3b71b6528104182a/requests-2.34.2-py3-none-any.whl",
+          "filename": "requests-2.34.2-py3-none-any.whl",
+          "size_bytes": 73075,
+          "sha256": "2a0d60c172f83ac6ab31e4554906c0f3b3588d37b5cb939b1c061f4907e278e0",
+          "locally_verified": true,
+          "requires_python": ">=3.10",
+          "requires_dist": [
+            "charset_normalizer<4,>=2",
+            "idna<4,>=2.5",
+            "urllib3<3,>=1.26",
+            "certifi>=2023.5.7",
+            "PySocks!=1.5.7,>=1.5.6; extra == \"socks\"",
+            "chardet<8,>=3.0.2; extra == \"use-chardet-on-py3\""
+          ],
+          "license_expression": null,
+          "license_metadata": "Apache-2.0"
+        },
+        {
+          "name": "charset-normalizer",
+          "version": "3.5.2",
+          "url": "https://files.pythonhosted.org/packages/e7/c8/693809898870237d82785a03f3b2b58fe4c9f14669f84a7d4e623c92a59e/charset_normalizer-3.5.2-cp312-cp312-macosx_10_13_universal2.whl",
+          "filename": "charset_normalizer-3.5.2-cp312-cp312-macosx_10_13_universal2.whl",
+          "size_bytes": 367780,
+          "sha256": "ed2a239c0ea213acc1908150a3037257083c7c083128f1a4cec2ec4b97dca491",
+          "locally_verified": true,
+          "requires_python": ">=3.7",
+          "requires_dist": [],
+          "license_expression": null,
+          "license_metadata": "MIT"
+        },
+        {
+          "name": "idna",
+          "version": "3.20",
+          "url": "https://files.pythonhosted.org/packages/58/a2/bb081bab032533a855d44de1d56f8e8426114ff1ba5d1f07a438a0a654f8/idna-3.20-py3-none-any.whl",
+          "filename": "idna-3.20-py3-none-any.whl",
+          "size_bytes": 69583,
+          "sha256": "ab7ae7122974553370f0bdb919e1a960b2cd1bc1ef0276416d896db81c14582c",
+          "locally_verified": true,
+          "requires_python": ">=3.9",
+          "requires_dist": [
+            "ruff >= 0.16.0 ; extra == \"all\"",
+            "mypy >= 1.11.2 ; extra == \"all\"",
+            "ty >= 0.0.37 ; extra == \"all\"",
+            "pytest >= 8.3.2 ; extra == \"all\"",
+            "hypothesis >= 6.141.1 ; extra == \"all\"",
+            "coverage >= 7.10.0 ; extra == \"all\""
+          ],
+          "license_expression": "BSD-3-Clause",
+          "license_metadata": null
+        },
+        {
+          "name": "urllib3",
+          "version": "2.8.0",
+          "url": "https://files.pythonhosted.org/packages/92/9d/c4e665119135114480843e7ab388fa94d8480650450e6f8e26b70d323a4c/urllib3-2.8.0-py3-none-any.whl",
+          "filename": "urllib3-2.8.0-py3-none-any.whl",
+          "size_bytes": 135717,
+          "sha256": "0cf3cae568d36aa9576b28dfb35f11328f1cb974ca7647d9475ebb86c75ac6e3",
+          "locally_verified": true,
+          "requires_python": ">=3.10",
+          "requires_dist": [
+            "brotli>=1.2.0; (platform_python_implementation == 'CPython') and extra == 'brotli'",
+            "brotlicffi>=1.2.0.0; (platform_python_implementation != 'CPython') and extra == 'brotli'",
+            "h2<5,>=4; extra == 'h2'",
+            "pysocks!=1.5.7,<2.0,>=1.5.6; extra == 'socks'",
+            "backports-zstd>=1.0.0; (python_version < '3.14') and extra == 'zstd'"
+          ],
+          "license_expression": "MIT",
+          "license_metadata": null
+        },
+        {
+          "name": "certifi",
+          "version": "2026.7.22",
+          "url": "https://files.pythonhosted.org/packages/0b/a7/71ac2cff56fec219ed242bb11b8efb69fcc4bec75db06fb7bfe35de520e6/certifi-2026.7.22-py3-none-any.whl",
+          "filename": "certifi-2026.7.22-py3-none-any.whl",
+          "size_bytes": 136983,
+          "sha256": "62f22742b58a1a33014a2b6b706588a8d7e2a88ae7bd1a6ebe8c992928483775",
+          "locally_verified": true,
+          "requires_python": ">=3.7",
+          "requires_dist": [],
+          "license_expression": null,
+          "license_metadata": "MPL-2.0"
+        },
+        {
+          "name": "sympy",
+          "version": "1.14.0",
+          "url": "https://files.pythonhosted.org/packages/a2/09/77d55d46fd61b4a135c444fc97158ef34a095e5681d0a6c10b75bf356191/sympy-1.14.0-py3-none-any.whl",
+          "filename": "sympy-1.14.0-py3-none-any.whl",
+          "size_bytes": 6299353,
+          "sha256": "e091cc3e99d2141a0ba2847328f5479b05d94a6635cb96148ccb3f34671bd8f5",
+          "locally_verified": true,
+          "requires_python": ">=3.9",
+          "requires_dist": [
+            "mpmath<1.4,>=1.1.0",
+            "pytest>=7.1.0; extra == \"dev\"",
+            "hypothesis>=6.70.0; extra == \"dev\""
+          ],
+          "license_expression": null,
+          "license_metadata": "BSD"
+        },
+        {
+          "name": "mpmath",
+          "version": "1.3.0",
+          "url": "https://files.pythonhosted.org/packages/43/e3/7d92a15f894aa0c9c4b49b8ee9ac9850d6e63b03c9c32c0367a13ae62209/mpmath-1.3.0-py3-none-any.whl",
+          "filename": "mpmath-1.3.0-py3-none-any.whl",
+          "size_bytes": 536198,
+          "sha256": "a0b2b9fe80bbcd81a6647ff13108738cfb482d481d826cc0e02f5b35e5c88d2c",
+          "locally_verified": true,
+          "requires_python": null,
+          "requires_dist": [
+            "pytest (>=4.6) ; extra == 'develop'",
+            "pycodestyle ; extra == 'develop'",
+            "pytest-cov ; extra == 'develop'",
+            "codecov ; extra == 'develop'",
+            "wheel ; extra == 'develop'",
+            "sphinx ; extra == 'docs'",
+            "gmpy2 (>=2.1.0a4) ; (platform_python_implementation != \"PyPy\") and extra == 'gmpy'",
+            "pytest (>=4.6) ; extra == 'tests'"
+          ],
+          "license_expression": null,
+          "license_metadata": "BSD"
+        },
+        {
+          "name": "tqdm",
+          "version": "4.70.1",
+          "url": "https://files.pythonhosted.org/packages/a7/03/921a3d3c75785aca9ebfbfcabfbc3a1be12e2ab5265deb026d55a5a3f83e/tqdm-4.70.1-py3-none-any.whl",
+          "filename": "tqdm-4.70.1-py3-none-any.whl",
+          "size_bytes": 80199,
+          "sha256": "c293e525e6fef9c20e8728fd4612df02a0aa31bb5fe91ecd93e123b1b7bffa73",
+          "locally_verified": true,
+          "requires_python": ">=3.8",
+          "requires_dist": [
+            "colorama; platform_system == \"Windows\"",
+            "requests; extra == \"discord\"",
+            "envwrap; extra == \"discord\"",
+            "slack-sdk; extra == \"slack\"",
+            "envwrap; extra == \"slack\"",
+            "requests; extra == \"telegram\"",
+            "envwrap; extra == \"telegram\"",
+            "ipywidgets>=6; extra == \"notebook\""
+          ],
+          "license_expression": null,
+          "license_metadata": "MPL-2.0 AND MIT"
+        },
+        {
+          "name": "antlr4-python3-runtime-built-wheel",
+          "version": "4.9.3",
+          "artifact_origin": "locally-built-universal-wheel",
+          "filename": "antlr4_python3_runtime-4.9.3-py3-none-any.whl",
+          "prepared_path": "build/recognition-preparation/pip-cache/wheels/1f/be/48/13754633f1d08d1fbfc60d5e80ae1e5d7329500477685286cd/antlr4_python3_runtime-4.9.3-py3-none-any.whl",
+          "size_bytes": 144590,
+          "sha256": "35497262d63d9d968626206cc7e36dd85d77ab08c877249835cd147f1bb2f1b4",
+          "validation": "locally generated universal wheel from PyPI sdist; not an upstream wheel digest"
+        }
+      ]
+    },
+    "windows_x64": {
+      "validation": {
+        "wheel_archives_locally_hash_verified": true,
+        "installed": false,
+        "imported": false,
+        "recognition_run": false,
+        "frozen_package": false,
+        "clean_machine": false
+      },
+      "artifacts": [
+        {
+          "name": "omegaconf",
+          "version": "2.3.1",
+          "filename": "omegaconf-2.3.1-py3-none-any.whl",
+          "size_bytes": 79502,
+          "sha256": "3d701d14e9a8828f1edd28bb70b725908b34277cdd72cf7d6a83f94dadc6b6a0",
+          "url": "https://files.pythonhosted.org/packages/a4/0e/152509871bf30df6fc38569f52a2db9b55dd41aae957adae50a053ac7778/omegaconf-2.3.1-py3-none-any.whl",
+          "requires_dist": [
+            "antlr4-python3-runtime==4.9.*",
+            "PyYAML>=5.1.0",
+            "dataclasses; python_version == \"3.6\""
+          ],
+          "requires_python": ">=3.6",
+          "license_expression": null,
+          "license_metadata": null,
+          "validation": "Windows wheel acquired and locally hash-verified; no Windows install/import/execution"
+        },
+        {
+          "name": "mpmath",
+          "version": "1.3.0",
+          "filename": "mpmath-1.3.0-py3-none-any.whl",
+          "size_bytes": 536198,
+          "sha256": "a0b2b9fe80bbcd81a6647ff13108738cfb482d481d826cc0e02f5b35e5c88d2c",
+          "url": "https://files.pythonhosted.org/packages/43/e3/7d92a15f894aa0c9c4b49b8ee9ac9850d6e63b03c9c32c0367a13ae62209/mpmath-1.3.0-py3-none-any.whl",
+          "requires_dist": [
+            "pytest (>=4.6) ; extra == 'develop'",
+            "pycodestyle ; extra == 'develop'",
+            "pytest-cov ; extra == 'develop'",
+            "codecov ; extra == 'develop'",
+            "wheel ; extra == 'develop'",
+            "sphinx ; extra == 'docs'",
+            "gmpy2 (>=2.1.0a4) ; (platform_python_implementation != \"PyPy\") and extra == 'gmpy'",
+            "pytest (>=4.6) ; extra == 'tests'"
+          ],
+          "requires_python": null,
+          "license_expression": null,
+          "license_metadata": "BSD",
+          "validation": "Windows wheel acquired and locally hash-verified; no Windows install/import/execution"
+        },
+        {
+          "name": "shapely",
+          "version": "2.1.2",
+          "filename": "shapely-2.1.2-cp312-cp312-win_amd64.whl",
+          "size_bytes": 1722861,
+          "sha256": "743044b4cfb34f9a67205cee9279feaf60ba7d02e69febc2afc609047cb49179",
+          "url": "https://files.pythonhosted.org/packages/ec/bf/cb6c1c505cb31e818e900b9312d514f381fbfa5c4363edfce0fcc4f8c1a4/shapely-2.1.2-cp312-cp312-win_amd64.whl",
+          "requires_dist": [
+            "numpy>=1.21",
+            "pytest; extra == \"test\"",
+            "pytest-cov; extra == \"test\"",
+            "scipy-doctest; extra == \"test\"",
+            "numpydoc==1.1.*; extra == \"docs\"",
+            "matplotlib; extra == \"docs\"",
+            "sphinx; extra == \"docs\"",
+            "sphinx-book-theme; extra == \"docs\"",
+            "sphinx-remove-toctrees; extra == \"docs\""
+          ],
+          "requires_python": ">=3.10",
+          "license_expression": null,
+          "license_metadata": "BSD 3-Clause",
+          "validation": "Windows wheel acquired and locally hash-verified; no Windows install/import/execution"
+        },
+        {
+          "name": "colorlog",
+          "version": "6.12.0",
+          "filename": "colorlog-6.12.0-py3-none-any.whl",
+          "size_bytes": 12239,
+          "sha256": "30d392604e9110045a2c2aeefc27d7a017abbab63f3a8aee594eac0801df784e",
+          "url": "https://files.pythonhosted.org/packages/d4/19/0b6647bf5e331521e55d2b63bfbdc210bd9cd605189273f03614a05f702d/colorlog-6.12.0-py3-none-any.whl",
+          "requires_dist": [
+            "colorama; sys_platform == \"win32\"",
+            "black; extra == \"development\"",
+            "flake8; extra == \"development\"",
+            "mypy; extra == \"development\"",
+            "pytest; extra == \"development\"",
+            "types-colorama; extra == \"development\""
+          ],
+          "requires_python": ">=3.6",
+          "license_expression": null,
+          "license_metadata": "MIT License",
+          "validation": "Windows wheel acquired and locally hash-verified; no Windows install/import/execution"
+        },
+        {
+          "name": "rapidocr",
+          "version": "3.9.2",
+          "filename": "rapidocr-3.9.2-py3-none-any.whl",
+          "size_bytes": 27275208,
+          "sha256": "04d6b8d151f823d930bd91910555f57bea897c0c44fa6794267b94cf9c1ef9a0",
+          "url": "https://files.pythonhosted.org/packages/55/ed/0ee9b9281986974be9d2406ae0134c8d7c91d2fc613f16ffda9701eeda6f/rapidocr-3.9.2-py3-none-any.whl",
+          "requires_dist": [
+            "pyclipper>=1.2.0",
+            "opencv_python>=4.5.1.48",
+            "numpy<3.0.0,>=1.19.5",
+            "six>=1.15.0",
+            "Shapely!=2.0.4,>=1.7.1",
+            "PyYAML",
+            "Pillow",
+            "tqdm",
+            "omegaconf!=2.2.1",
+            "requests",
+            "colorlog"
+          ],
+          "requires_python": "<4,>=3.8",
+          "license_expression": "Apache-2.0",
+          "license_metadata": null,
+          "validation": "Windows wheel acquired and locally hash-verified; no Windows install/import/execution"
+        },
+        {
+          "name": "onnxruntime",
+          "version": "1.22.1",
+          "filename": "onnxruntime-1.22.1-cp312-cp312-win_amd64.whl",
+          "size_bytes": 12690910,
+          "sha256": "6a64291d57ea966a245f749eb970f4fa05a64d26672e05a83fdb5db6b7d62f87",
+          "url": "https://files.pythonhosted.org/packages/5d/54/7139d463bb0a312890c9a5db87d7815d4a8cce9e6f5f28d04f0b55fcb160/onnxruntime-1.22.1-cp312-cp312-win_amd64.whl",
+          "requires_dist": [
+            "coloredlogs",
+            "flatbuffers",
+            "numpy>=1.21.6",
+            "packaging",
+            "protobuf",
+            "sympy"
+          ],
+          "requires_python": ">=3.10",
+          "license_expression": null,
+          "license_metadata": "MIT License",
+          "validation": "Windows wheel acquired and locally hash-verified; no Windows install/import/execution"
+        },
+        {
+          "name": "flatbuffers",
+          "version": "25.12.19",
+          "filename": "flatbuffers-25.12.19-py2.py3-none-any.whl",
+          "size_bytes": 26661,
+          "sha256": "7634f50c427838bb021c2d66a3d1168e9d199b0607e6329399f04846d42e20b4",
+          "url": "https://files.pythonhosted.org/packages/e8/2d/d2a548598be01649e2d46231d151a6c56d10b964d94043a335ae56ea2d92/flatbuffers-25.12.19-py2.py3-none-any.whl",
+          "requires_dist": [],
+          "requires_python": null,
+          "license_expression": null,
+          "license_metadata": "Apache 2.0",
+          "validation": "Windows wheel acquired and locally hash-verified; no Windows install/import/execution"
+        },
+        {
+          "name": "tqdm",
+          "version": "4.70.1",
+          "filename": "tqdm-4.70.1-py3-none-any.whl",
+          "size_bytes": 80199,
+          "sha256": "c293e525e6fef9c20e8728fd4612df02a0aa31bb5fe91ecd93e123b1b7bffa73",
+          "url": "https://files.pythonhosted.org/packages/a7/03/921a3d3c75785aca9ebfbfcabfbc3a1be12e2ab5265deb026d55a5a3f83e/tqdm-4.70.1-py3-none-any.whl",
+          "requires_dist": [
+            "colorama; platform_system == \"Windows\"",
+            "requests; extra == \"discord\"",
+            "envwrap; extra == \"discord\"",
+            "slack-sdk; extra == \"slack\"",
+            "envwrap; extra == \"slack\"",
+            "requests; extra == \"telegram\"",
+            "envwrap; extra == \"telegram\"",
+            "ipywidgets>=6; extra == \"notebook\""
+          ],
+          "requires_python": ">=3.8",
+          "license_expression": null,
+          "license_metadata": "MPL-2.0 AND MIT",
+          "validation": "Windows wheel acquired and locally hash-verified; no Windows install/import/execution"
+        },
+        {
+          "name": "sympy",
+          "version": "1.14.0",
+          "filename": "sympy-1.14.0-py3-none-any.whl",
+          "size_bytes": 6299353,
+          "sha256": "e091cc3e99d2141a0ba2847328f5479b05d94a6635cb96148ccb3f34671bd8f5",
+          "url": "https://files.pythonhosted.org/packages/a2/09/77d55d46fd61b4a135c444fc97158ef34a095e5681d0a6c10b75bf356191/sympy-1.14.0-py3-none-any.whl",
+          "requires_dist": [
+            "mpmath<1.4,>=1.1.0",
+            "pytest>=7.1.0; extra == \"dev\"",
+            "hypothesis>=6.70.0; extra == \"dev\""
+          ],
+          "requires_python": ">=3.9",
+          "license_expression": null,
+          "license_metadata": "BSD",
+          "validation": "Windows wheel acquired and locally hash-verified; no Windows install/import/execution"
+        },
+        {
+          "name": "charset-normalizer",
+          "version": "3.5.2",
+          "filename": "charset_normalizer-3.5.2-cp312-cp312-win_amd64.whl",
+          "size_bytes": 207486,
+          "sha256": "780fbe7cab297b81dad9fb8dc5eb003c0468ffb0d9e5f65068c53a34661a96bc",
+          "url": "https://files.pythonhosted.org/packages/eb/e6/e6e083884cbcfd49c64865af05027fe7011be7b2d9179524f099a1b611f3/charset_normalizer-3.5.2-cp312-cp312-win_amd64.whl",
+          "requires_dist": [],
+          "requires_python": ">=3.7",
+          "license_expression": null,
+          "license_metadata": "MIT",
+          "validation": "Windows wheel acquired and locally hash-verified; no Windows install/import/execution"
+        },
+        {
+          "name": "protobuf",
+          "version": "7.36.2",
+          "filename": "protobuf-7.36.2-cp310-abi3-win_amd64.whl",
+          "size_bytes": 456514,
+          "sha256": "a300819d441e078a5608c0d3c709796bb548136058fda017ae51d425b44fd353",
+          "url": "https://files.pythonhosted.org/packages/8a/55/b77bda4e5e5f5971fb51b07663694690e9afdb9402136c16a522bd621cad/protobuf-7.36.2-cp310-abi3-win_amd64.whl",
+          "requires_dist": [],
+          "requires_python": ">=3.10",
+          "license_expression": null,
+          "license_metadata": "3-Clause BSD License",
+          "validation": "Windows wheel acquired and locally hash-verified; no Windows install/import/execution"
+        },
+        {
+          "name": "humanfriendly",
+          "version": "10.0",
+          "filename": "humanfriendly-10.0-py2.py3-none-any.whl",
+          "size_bytes": 86794,
+          "sha256": "1697e1a8a8f550fd43c2865cd84542fc175a61dcb779b6fee18cf6b6ccba1477",
+          "url": "https://files.pythonhosted.org/packages/f0/0f/310fb31e39e2d734ccaa2c0fb981ee41f7bd5056ce9bc29b2248bd569169/humanfriendly-10.0-py2.py3-none-any.whl",
+          "requires_dist": [
+            "monotonic ; python_version == \"2.7\"",
+            "pyreadline ; sys_platform == \"win32\" and python_version<\"3.8\"",
+            "pyreadline3 ; sys_platform == \"win32\" and python_version>=\"3.8\""
+          ],
+          "requires_python": ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*, !=3.4.*",
+          "license_expression": null,
+          "license_metadata": "MIT",
+          "validation": "Windows wheel acquired and locally hash-verified; no Windows install/import/execution"
+        },
+        {
+          "name": "pillow",
+          "version": "12.3.0",
+          "filename": "pillow-12.3.0-cp312-cp312-win_amd64.whl",
+          "size_bytes": 7227137,
+          "sha256": "a2b55dd6b2a4c4b7d87ffa56bdb33fdc5fdb9a462173861a7bc097f17d91cb09",
+          "url": "https://files.pythonhosted.org/packages/45/89/da2f7971a317f83d807fdd4065c0af40208e59e692cc43d315a71a0e96d1/pillow-12.3.0-cp312-cp312-win_amd64.whl",
+          "requires_dist": [
+            "furo; extra == \"docs\"",
+            "olefile; extra == \"docs\"",
+            "sphinx>=8.2; extra == \"docs\"",
+            "sphinx-autobuild; extra == \"docs\"",
+            "sphinx-copybutton; extra == \"docs\"",
+            "sphinx-inline-tabs; extra == \"docs\"",
+            "sphinxext-opengraph; extra == \"docs\"",
+            "olefile; extra == \"fpx\"",
+            "olefile; extra == \"mic\"",
+            "arro3-compute; extra == \"test-arrow\"",
+            "arro3-core; extra == \"test-arrow\"",
+            "nanoarrow; extra == \"test-arrow\"",
+            "pyarrow; extra == \"test-arrow\"",
+            "coverage>=7.4.2; extra == \"tests\"",
+            "defusedxml; extra == \"tests\"",
+            "markdown2; extra == \"tests\"",
+            "olefile; extra == \"tests\"",
+            "packaging; extra == \"tests\"",
+            "pytest; extra == \"tests\"",
+            "pytest-cov; extra == \"tests\"",
+            "pytest-timeout; extra == \"tests\"",
+            "pytest-xdist; extra == \"tests\"",
+            "setuptools; extra == \"tests\"",
+            "trove-classifiers>=2024.10.12; extra == \"tests\"",
+            "defusedxml; extra == \"xmp\""
+          ],
+          "requires_python": ">=3.10",
+          "license_expression": "MIT-CMU",
+          "license_metadata": null,
+          "validation": "Windows wheel acquired and locally hash-verified; no Windows install/import/execution"
+        },
+        {
+          "name": "PyYAML",
+          "version": "6.0.3",
+          "filename": "pyyaml-6.0.3-cp312-cp312-win_amd64.whl",
+          "size_bytes": 154003,
+          "sha256": "5fcd34e47f6e0b794d17de1b4ff496c00986e1c83f7ab2fb8fcfe9616ff7477b",
+          "url": "https://files.pythonhosted.org/packages/86/bf/899e81e4cce32febab4fb42bb97dcdf66bc135272882d1987881a4b519e9/pyyaml-6.0.3-cp312-cp312-win_amd64.whl",
+          "requires_dist": [],
+          "requires_python": ">=3.8",
+          "license_expression": null,
+          "license_metadata": "MIT",
+          "validation": "Windows wheel acquired and locally hash-verified; no Windows install/import/execution"
+        },
+        {
+          "name": "packaging",
+          "version": "26.3",
+          "filename": "packaging-26.3-py3-none-any.whl",
+          "size_bytes": 129956,
+          "sha256": "d7193f7c8e4e93f444fde0262bf90af30e16fa0ad0ad44cb553c87339b23cd1c",
+          "url": "https://files.pythonhosted.org/packages/63/34/ba1c580383c9eada3711951fef0795c80b829a078d72188184bcab9dd527/packaging-26.3-py3-none-any.whl",
+          "requires_dist": [],
+          "requires_python": ">=3.9",
+          "license_expression": "Apache-2.0 OR BSD-2-Clause",
+          "license_metadata": null,
+          "validation": "Windows wheel acquired and locally hash-verified; no Windows install/import/execution"
+        },
+        {
+          "name": "six",
+          "version": "1.17.0",
+          "filename": "six-1.17.0-py2.py3-none-any.whl",
+          "size_bytes": 11050,
+          "sha256": "4721f391ed90541fddacab5acf947aa0d3dc7d27b2e1e8eda2be8970586c3274",
+          "url": "https://files.pythonhosted.org/packages/b7/ce/149a00dd41f10bc29e5921b496af8b574d8413afcd5e30dfa0ed46c2cc5e/six-1.17.0-py2.py3-none-any.whl",
+          "requires_dist": [],
+          "requires_python": ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*",
+          "license_expression": null,
+          "license_metadata": "MIT",
+          "validation": "Windows wheel acquired and locally hash-verified; no Windows install/import/execution"
+        },
+        {
+          "name": "coloredlogs",
+          "version": "15.0.1",
+          "filename": "coloredlogs-15.0.1-py2.py3-none-any.whl",
+          "size_bytes": 46018,
+          "sha256": "612ee75c546f53e92e70049c9dbfcc18c935a2b9a53b66085ce9ef6a6e5c0934",
+          "url": "https://files.pythonhosted.org/packages/a7/06/3d6badcf13db419e25b07041d9c7b4a2c331d3f4e7134445ec5df57714cd/coloredlogs-15.0.1-py2.py3-none-any.whl",
+          "requires_dist": [
+            "humanfriendly (>=9.1)",
+            "capturer (>=2.4) ; extra == 'cron'"
+          ],
+          "requires_python": ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*, !=3.4.*",
+          "license_expression": null,
+          "license_metadata": "MIT",
+          "validation": "Windows wheel acquired and locally hash-verified; no Windows install/import/execution"
+        },
+        {
+          "name": "pyclipper",
+          "version": "1.4.0",
+          "filename": "pyclipper-1.4.0-cp312-cp312-win_amd64.whl",
+          "size_bytes": 104619,
+          "sha256": "d1e5498d883b706a4ce636247f0d830c6eb34a25b843a1b78e2c969754ca9037",
+          "url": "https://files.pythonhosted.org/packages/97/77/dfea08e3b230b82ee22543c30c35d33d42f846a77f96caf7c504dd54fab1/pyclipper-1.4.0-cp312-cp312-win_amd64.whl",
+          "requires_dist": [],
+          "requires_python": ">=3.10",
+          "license_expression": null,
+          "license_metadata": "MIT",
+          "validation": "Windows wheel acquired and locally hash-verified; no Windows install/import/execution"
+        },
+        {
+          "name": "idna",
+          "version": "3.20",
+          "filename": "idna-3.20-py3-none-any.whl",
+          "size_bytes": 69583,
+          "sha256": "ab7ae7122974553370f0bdb919e1a960b2cd1bc1ef0276416d896db81c14582c",
+          "url": "https://files.pythonhosted.org/packages/58/a2/bb081bab032533a855d44de1d56f8e8426114ff1ba5d1f07a438a0a654f8/idna-3.20-py3-none-any.whl",
+          "requires_dist": [
+            "ruff >= 0.16.0 ; extra == \"all\"",
+            "mypy >= 1.11.2 ; extra == \"all\"",
+            "ty >= 0.0.37 ; extra == \"all\"",
+            "pytest >= 8.3.2 ; extra == \"all\"",
+            "hypothesis >= 6.141.1 ; extra == \"all\"",
+            "coverage >= 7.10.0 ; extra == \"all\""
+          ],
+          "requires_python": ">=3.9",
+          "license_expression": "BSD-3-Clause",
+          "license_metadata": null,
+          "validation": "Windows wheel acquired and locally hash-verified; no Windows install/import/execution"
+        },
+        {
+          "name": "requests",
+          "version": "2.34.2",
+          "filename": "requests-2.34.2-py3-none-any.whl",
+          "size_bytes": 73075,
+          "sha256": "2a0d60c172f83ac6ab31e4554906c0f3b3588d37b5cb939b1c061f4907e278e0",
+          "url": "https://files.pythonhosted.org/packages/a0/f4/c67b0b3f1b9245e8d266f0f112c500d50e5b4e83cb6f3b71b6528104182a/requests-2.34.2-py3-none-any.whl",
+          "requires_dist": [
+            "charset_normalizer<4,>=2",
+            "idna<4,>=2.5",
+            "urllib3<3,>=1.26",
+            "certifi>=2023.5.7",
+            "PySocks!=1.5.7,>=1.5.6; extra == \"socks\"",
+            "chardet<8,>=3.0.2; extra == \"use-chardet-on-py3\""
+          ],
+          "requires_python": ">=3.10",
+          "license_expression": null,
+          "license_metadata": "Apache-2.0",
+          "validation": "Windows wheel acquired and locally hash-verified; no Windows install/import/execution"
+        },
+        {
+          "name": "urllib3",
+          "version": "2.8.0",
+          "filename": "urllib3-2.8.0-py3-none-any.whl",
+          "size_bytes": 135717,
+          "sha256": "0cf3cae568d36aa9576b28dfb35f11328f1cb974ca7647d9475ebb86c75ac6e3",
+          "url": "https://files.pythonhosted.org/packages/92/9d/c4e665119135114480843e7ab388fa94d8480650450e6f8e26b70d323a4c/urllib3-2.8.0-py3-none-any.whl",
+          "requires_dist": [
+            "brotli>=1.2.0; (platform_python_implementation == 'CPython') and extra == 'brotli'",
+            "brotlicffi>=1.2.0.0; (platform_python_implementation != 'CPython') and extra == 'brotli'",
+            "h2<5,>=4; extra == 'h2'",
+            "pysocks!=1.5.7,<2.0,>=1.5.6; extra == 'socks'",
+            "backports-zstd>=1.0.0; (python_version < '3.14') and extra == 'zstd'"
+          ],
+          "requires_python": ">=3.10",
+          "license_expression": "MIT",
+          "license_metadata": null,
+          "validation": "Windows wheel acquired and locally hash-verified; no Windows install/import/execution"
+        },
+        {
+          "name": "opencv-python",
+          "version": "5.0.0.93",
+          "filename": "opencv_python-5.0.0.93-cp37-abi3-win_amd64.whl",
+          "size_bytes": 44000345,
+          "sha256": "f90ba04b8f73bc5c3814037699739f0156f597338a98f05956c684e7c3ca10d2",
+          "url": "https://files.pythonhosted.org/packages/21/f0/9fa6e85cb10c8eb36a0222d27e50fe381b86ce49a55446bf39f491727564/opencv_python-5.0.0.93-cp37-abi3-win_amd64.whl",
+          "requires_dist": [
+            "numpy<2.0; python_version < \"3.9\"",
+            "numpy>=2; python_version >= \"3.9\""
+          ],
+          "requires_python": ">=3.6",
+          "license_expression": null,
+          "license_metadata": "Apache 2.0",
+          "validation": "Windows wheel acquired and locally hash-verified; no Windows install/import/execution"
+        },
+        {
+          "name": "certifi",
+          "version": "2026.7.22",
+          "filename": "certifi-2026.7.22-py3-none-any.whl",
+          "size_bytes": 136983,
+          "sha256": "62f22742b58a1a33014a2b6b706588a8d7e2a88ae7bd1a6ebe8c992928483775",
+          "url": "https://files.pythonhosted.org/packages/0b/a7/71ac2cff56fec219ed242bb11b8efb69fcc4bec75db06fb7bfe35de520e6/certifi-2026.7.22-py3-none-any.whl",
+          "requires_dist": [],
+          "requires_python": ">=3.7",
+          "license_expression": null,
+          "license_metadata": "MPL-2.0",
+          "validation": "Windows wheel acquired and locally hash-verified; no Windows install/import/execution"
+        },
+        {
+          "name": "numpy",
+          "version": "2.5.3",
+          "filename": "numpy-2.5.3-cp312-cp312-win_amd64.whl",
+          "size_bytes": 12567828,
+          "sha256": "0a59a421a32580a009e8a1751345bf829631b990dc1794b80514ab722b435def",
+          "url": "https://files.pythonhosted.org/packages/3c/a1/accf6d4f0c80c5d9ba9735d6b1550e444180599f34dec69ca01360f717ad/numpy-2.5.3-cp312-cp312-win_amd64.whl",
+          "requires_dist": [],
+          "requires_python": ">=3.12",
+          "license_expression": "BSD-3-Clause AND 0BSD AND MIT AND Zlib AND CC0-1.0",
+          "license_metadata": null,
+          "validation": "Windows wheel acquired and locally hash-verified; no Windows install/import/execution"
+        },
+        {
+          "name": "colorama",
+          "version": "0.4.6",
+          "filename": "colorama-0.4.6-py2.py3-none-any.whl",
+          "size_bytes": 25335,
+          "sha256": "4f1d9991f5acc0ca119f9d443620b77f9d6b33703e51011c16baf57afb285fc6",
+          "url": "https://files.pythonhosted.org/packages/d1/d6/3965ed04c63042e047cb6a3e6ed1a63a35087b6a609aa3a15ed8ac56c221/colorama-0.4.6-py2.py3-none-any.whl",
+          "requires_dist": [],
+          "requires_python": "!=3.0.*,!=3.1.*,!=3.2.*,!=3.3.*,!=3.4.*,!=3.5.*,!=3.6.*,>=2.7",
+          "license_expression": null,
+          "license_metadata": null,
+          "validation": "Windows wheel acquired and locally hash-verified; no Windows install/import/execution"
+        },
+        {
+          "name": "pyreadline3",
+          "version": "3.5.6",
+          "filename": "pyreadline3-3.5.6-py3-none-any.whl",
+          "size_bytes": 85243,
+          "sha256": "8449b734232e42a5dcd74048e39b60db2839a4c38cf3ae2bf7707d58b5389c0d",
+          "url": "https://files.pythonhosted.org/packages/f7/5e/35c856e186b74678c24927847ad9895a51f1bc02a0c6126477a6c6040064/pyreadline3-3.5.6-py3-none-any.whl",
+          "requires_dist": [
+            "build; extra == \"dev\"",
+            "flake8; extra == \"dev\"",
+            "mypy; extra == \"dev\"",
+            "pytest; extra == \"dev\"",
+            "twine; extra == \"dev\""
+          ],
+          "requires_python": ">=3.8",
+          "license_expression": null,
+          "license_metadata": "BSD",
+          "validation": "Windows wheel acquired and locally hash-verified; no Windows install/import/execution"
+        }
+      ],
+      "source_only_dependency": {
+        "name": "antlr4-python3-runtime",
+        "version": "4.9.3",
+        "url": "https://files.pythonhosted.org/packages/3e/38/7859ff46355f76f8d19459005ca000b6e7012f2f1ca597746cbcd1fbfe5e/antlr4-python3-runtime-4.9.3.tar.gz",
+        "filename": "antlr4-python3-runtime-4.9.3.tar.gz",
+        "size_bytes": 117034,
+        "sha256": "f224469b4168294902bb1efa80a8bf7855f24c99aef99cbefc1bcd3cce77881b",
+        "locally_verified": true,
+        "requires_python": null,
+        "requires_dist": [
+          "typing; python_version < \"3.5\""
+        ],
+        "license_expression": null,
+        "license_metadata": "BSD"
+      },
+      "prepared_universal_dependency": {
+        "name": "antlr4-python3-runtime-built-wheel",
+        "version": "4.9.3",
+        "artifact_origin": "locally-built-universal-wheel",
+        "filename": "antlr4_python3_runtime-4.9.3-py3-none-any.whl",
+        "prepared_path": "build/recognition-preparation/pip-cache/wheels/1f/be/48/13754633f1d08d1fbfc60d5e80ae1e5d7329500477685286cd/antlr4_python3_runtime-4.9.3-py3-none-any.whl",
+        "size_bytes": 144590,
+        "sha256": "35497262d63d9d968626206cc7e36dd85d77ab08c877249835cd147f1bb2f1b4",
+        "validation": "locally generated universal wheel from PyPI sdist; not an upstream wheel digest"
+      },
+      "conditional_dependencies": [
+        "colorama==0.4.6",
+        "pyreadline3==3.5.6"
+      ],
+      "closure_note": "Candidates selected from Mac-resolved versions plus Windows environment markers. Requires Windows resolver/import verification. ANTLR wheel is locally generated from pinned PyPI sdist; wheel-build toolchain closure remains Task14."
+    }
+  },
+  "whisper": {
+    "version": "v1.9.2",
+    "source_commit": "306c88f4d1286aec1bf96e544632897886af5501",
+    "source_archive": {
+      "url": "https://codeload.github.com/ggml-org/whisper.cpp/tar.gz/306c88f4d1286aec1bf96e544632897886af5501",
+      "size_bytes": 9627120,
+      "sha256": "f3585ebf64df3e41b26c45d93bdb38b423ca1de0bf40cc4b6d320254867a75df"
+    },
+    "license": "MIT",
+    "license_url": "https://github.com/ggml-org/whisper.cpp/blob/306c88f4d1286aec1bf96e544632897886af5501/LICENSE",
+    "macos_arm64": {
+      "artifact_origin": "local-candidate-source-build",
+      "filename": "whisper-cli",
+      "size_bytes": 2452504,
+      "sha256": "b70da59007e883abcc50fad27907aeb67c14a2129cfef53fe95709da831dd9ed",
+      "prepared_path": "build/recognition-preparation/macos-whisper-cpu-build/bin/whisper-cli",
+      "build_flags": [
+        "-DCMAKE_BUILD_TYPE=Release",
+        "-DCMAKE_OSX_ARCHITECTURES=arm64",
+        "-DCMAKE_OSX_DEPLOYMENT_TARGET=13.0",
+        "-DBUILD_SHARED_LIBS=OFF",
+        "-DGGML_NATIVE=OFF",
+        "-DGGML_CPU_ARM_ARCH=armv8-a",
+        "-DGGML_METAL=OFF",
+        "-DGGML_ACCELERATE=OFF",
+        "-DGGML_BLAS=OFF",
+        "-DWHISPER_COREML=OFF",
+        "-DWHISPER_OPENVINO=OFF",
+        "-DWHISPER_BUILD_TESTS=OFF",
+        "-DWHISPER_BUILD_SERVER=OFF",
+        "-DWHISPER_BUILD_EXAMPLES=ON"
+      ],
+      "compiler": "Apple clang 21.0.0",
+      "sdk_version": "27.0",
+      "cmake": "4.4.3",
+      "git_archive_stamp": "unknown; provenance via pinned source archive",
+      "validation": {
+        "help_exit_code": 0,
+        "official_jfk_small_cpu_exit_code": 0,
+        "signed": false,
+        "notarized": false,
+        "frozen_package": false,
+        "macos_13_runtime": false
+      }
+    },
+    "windows_x64": {
+      "release_archive": {
+        "url": "https://github.com/ggml-org/whisper.cpp/releases/download/v1.9.2/whisper-bin-x64.zip",
+        "size_bytes": 8194445,
+        "sha256": "49dcc16de826f20bd53d44f947a1ae49dfa81f86cad67a64d80820cb192d674a"
+      },
+      "candidate_engine_files": [
+        {
+          "name": "ggml.dll",
+          "size_bytes": 67584,
+          "sha256": "894c6237ee7849843213906a2b6a0b371aaa6234048d465f206d910ae846fafb",
+          "imported_dlls": [
+            "ggml-base.dll",
+            "KERNEL32.dll",
+            "MSVCP140.dll",
+            "VCRUNTIME140.dll",
+            "VCRUNTIME140_1.dll",
+            "api-ms-win-crt-heap-l1-1-0.dll",
+            "api-ms-win-crt-string-l1-1-0.dll",
+            "api-ms-win-crt-environment-l1-1-0.dll",
+            "api-ms-win-crt-locale-l1-1-0.dll",
+            "api-ms-win-crt-runtime-l1-1-0.dll"
+          ],
+          "architecture": "coff-x86-64"
+        },
+        {
+          "name": "ggml-cpu-cannonlake.dll",
+          "size_bytes": 853504,
+          "sha256": "2ef36f05fa252ff4fdcb8d42ebce1ceba4f3d3de12b93bed15bdee6237dccd63",
+          "imported_dlls": [
+            "ggml-base.dll",
+            "KERNEL32.dll",
+            "ADVAPI32.dll",
+            "VCOMP140.DLL",
+            "MSVCP140.dll",
+            "VCRUNTIME140.dll",
+            "VCRUNTIME140_1.dll",
+            "api-ms-win-crt-stdio-l1-1-0.dll",
+            "api-ms-win-crt-math-l1-1-0.dll",
+            "api-ms-win-crt-convert-l1-1-0.dll",
+            "api-ms-win-crt-environment-l1-1-0.dll",
+            "api-ms-win-crt-string-l1-1-0.dll",
+            "api-ms-win-crt-heap-l1-1-0.dll",
+            "api-ms-win-crt-runtime-l1-1-0.dll"
+          ],
+          "architecture": "coff-x86-64"
+        },
+        {
+          "name": "whisper-cli.exe",
+          "size_bytes": 479232,
+          "sha256": "95e3c0b0e778ad9499eb0125f97c1dcf437dd9eb4ea77050b043574f93c2631d",
+          "imported_dlls": [
+            "whisper.dll",
+            "ggml.dll",
+            "KERNEL32.dll",
+            "MSVCP140.dll",
+            "VCRUNTIME140.dll",
+            "VCRUNTIME140_1.dll",
+            "api-ms-win-crt-stdio-l1-1-0.dll",
+            "api-ms-win-crt-filesystem-l1-1-0.dll",
+            "api-ms-win-crt-runtime-l1-1-0.dll",
+            "api-ms-win-crt-heap-l1-1-0.dll",
+            "api-ms-win-crt-convert-l1-1-0.dll",
+            "api-ms-win-crt-environment-l1-1-0.dll",
+            "api-ms-win-crt-string-l1-1-0.dll",
+            "api-ms-win-crt-math-l1-1-0.dll",
+            "api-ms-win-crt-utility-l1-1-0.dll",
+            "api-ms-win-crt-locale-l1-1-0.dll"
+          ],
+          "architecture": "coff-x86-64"
+        },
+        {
+          "name": "ggml-cpu-x64.dll",
+          "size_bytes": 794112,
+          "sha256": "af0f1c2f28ff9e3f472481dd969907bda85fa39d4fde17617d4bb0b389301b60",
+          "imported_dlls": [
+            "ggml-base.dll",
+            "KERNEL32.dll",
+            "ADVAPI32.dll",
+            "VCOMP140.DLL",
+            "MSVCP140.dll",
+            "VCRUNTIME140.dll",
+            "VCRUNTIME140_1.dll",
+            "api-ms-win-crt-stdio-l1-1-0.dll",
+            "api-ms-win-crt-math-l1-1-0.dll",
+            "api-ms-win-crt-convert-l1-1-0.dll",
+            "api-ms-win-crt-environment-l1-1-0.dll",
+            "api-ms-win-crt-string-l1-1-0.dll",
+            "api-ms-win-crt-heap-l1-1-0.dll",
+            "api-ms-win-crt-runtime-l1-1-0.dll"
+          ],
+          "architecture": "coff-x86-64"
+        },
+        {
+          "name": "ggml-cpu-sandybridge.dll",
+          "size_bytes": 803328,
+          "sha256": "ee47db7dc40fb30eca73e62a05306059c2c3c42aecddf2e8d6ad7e530069b815",
+          "imported_dlls": [
+            "ggml-base.dll",
+            "KERNEL32.dll",
+            "ADVAPI32.dll",
+            "VCOMP140.DLL",
+            "MSVCP140.dll",
+            "VCRUNTIME140.dll",
+            "VCRUNTIME140_1.dll",
+            "api-ms-win-crt-stdio-l1-1-0.dll",
+            "api-ms-win-crt-math-l1-1-0.dll",
+            "api-ms-win-crt-convert-l1-1-0.dll",
+            "api-ms-win-crt-environment-l1-1-0.dll",
+            "api-ms-win-crt-string-l1-1-0.dll",
+            "api-ms-win-crt-heap-l1-1-0.dll",
+            "api-ms-win-crt-runtime-l1-1-0.dll"
+          ],
+          "architecture": "coff-x86-64"
+        },
+        {
+          "name": "whisper.dll",
+          "size_bytes": 1368064,
+          "sha256": "792fc523c7ad16e6b9c348e30ad5e5f591165cbcf6a80ca8d0db02a38ce3eea2",
+          "imported_dlls": [
+            "ggml.dll",
+            "ggml-base.dll",
+            "MSVCP140.dll",
+            "VCRUNTIME140.dll",
+            "VCRUNTIME140_1.dll",
+            "api-ms-win-crt-stdio-l1-1-0.dll",
+            "api-ms-win-crt-filesystem-l1-1-0.dll",
+            "api-ms-win-crt-heap-l1-1-0.dll",
+            "api-ms-win-crt-runtime-l1-1-0.dll",
+            "api-ms-win-crt-utility-l1-1-0.dll",
+            "api-ms-win-crt-math-l1-1-0.dll",
+            "api-ms-win-crt-string-l1-1-0.dll",
+            "api-ms-win-crt-locale-l1-1-0.dll",
+            "KERNEL32.dll"
+          ],
+          "architecture": "coff-x86-64"
+        },
+        {
+          "name": "ggml-cpu-haswell.dll",
+          "size_bytes": 811008,
+          "sha256": "f8cf2f35a06498d783d77fde42004dd54d2f8236b0d42ac323b94bba65a603c4",
+          "imported_dlls": [
+            "ggml-base.dll",
+            "KERNEL32.dll",
+            "ADVAPI32.dll",
+            "VCOMP140.DLL",
+            "MSVCP140.dll",
+            "VCRUNTIME140.dll",
+            "VCRUNTIME140_1.dll",
+            "api-ms-win-crt-stdio-l1-1-0.dll",
+            "api-ms-win-crt-math-l1-1-0.dll",
+            "api-ms-win-crt-convert-l1-1-0.dll",
+            "api-ms-win-crt-environment-l1-1-0.dll",
+            "api-ms-win-crt-string-l1-1-0.dll",
+            "api-ms-win-crt-heap-l1-1-0.dll",
+            "api-ms-win-crt-runtime-l1-1-0.dll"
+          ],
+          "architecture": "coff-x86-64"
+        },
+        {
+          "name": "ggml-base.dll",
+          "size_bytes": 666624,
+          "sha256": "1482359d921b4c1b183d49db1d770f9b5e90d86a618b8b648d4845c2471ad6b0",
+          "imported_dlls": [
+            "KERNEL32.dll",
+            "VCOMP140.DLL",
+            "MSVCP140.dll",
+            "VCRUNTIME140.dll",
+            "VCRUNTIME140_1.dll",
+            "api-ms-win-crt-heap-l1-1-0.dll",
+            "api-ms-win-crt-stdio-l1-1-0.dll",
+            "api-ms-win-crt-convert-l1-1-0.dll",
+            "api-ms-win-crt-environment-l1-1-0.dll",
+            "api-ms-win-crt-math-l1-1-0.dll",
+            "api-ms-win-crt-string-l1-1-0.dll",
+            "api-ms-win-crt-utility-l1-1-0.dll",
+            "api-ms-win-crt-runtime-l1-1-0.dll",
+            "api-ms-win-crt-time-l1-1-0.dll"
+          ],
+          "architecture": "coff-x86-64"
+        },
+        {
+          "name": "ggml-cpu-cascadelake.dll",
+          "size_bytes": 850944,
+          "sha256": "505899aaf3f99c5d714361640f561458ea97f8a09eb0614568a66bead2115cb0",
+          "imported_dlls": [
+            "ggml-base.dll",
+            "KERNEL32.dll",
+            "ADVAPI32.dll",
+            "VCOMP140.DLL",
+            "MSVCP140.dll",
+            "VCRUNTIME140.dll",
+            "VCRUNTIME140_1.dll",
+            "api-ms-win-crt-stdio-l1-1-0.dll",
+            "api-ms-win-crt-math-l1-1-0.dll",
+            "api-ms-win-crt-convert-l1-1-0.dll",
+            "api-ms-win-crt-environment-l1-1-0.dll",
+            "api-ms-win-crt-string-l1-1-0.dll",
+            "api-ms-win-crt-heap-l1-1-0.dll",
+            "api-ms-win-crt-runtime-l1-1-0.dll"
+          ],
+          "architecture": "coff-x86-64"
+        },
+        {
+          "name": "ggml-cpu-skylakex.dll",
+          "size_bytes": 852992,
+          "sha256": "164e2793897944a43ee071ce6c0b09018088bdf4dd8b14ac0755c58849cf8c50",
+          "imported_dlls": [
+            "ggml-base.dll",
+            "KERNEL32.dll",
+            "ADVAPI32.dll",
+            "VCOMP140.DLL",
+            "MSVCP140.dll",
+            "VCRUNTIME140.dll",
+            "VCRUNTIME140_1.dll",
+            "api-ms-win-crt-stdio-l1-1-0.dll",
+            "api-ms-win-crt-math-l1-1-0.dll",
+            "api-ms-win-crt-convert-l1-1-0.dll",
+            "api-ms-win-crt-environment-l1-1-0.dll",
+            "api-ms-win-crt-string-l1-1-0.dll",
+            "api-ms-win-crt-heap-l1-1-0.dll",
+            "api-ms-win-crt-runtime-l1-1-0.dll"
+          ],
+          "architecture": "coff-x86-64"
+        },
+        {
+          "name": "ggml-cpu-sse42.dll",
+          "size_bytes": 790016,
+          "sha256": "7318a9a3b95a85b2453c437b274412bbbae89e5ecdf5babb19b99edc06ded063",
+          "imported_dlls": [
+            "ggml-base.dll",
+            "KERNEL32.dll",
+            "ADVAPI32.dll",
+            "VCOMP140.DLL",
+            "MSVCP140.dll",
+            "VCRUNTIME140.dll",
+            "VCRUNTIME140_1.dll",
+            "api-ms-win-crt-stdio-l1-1-0.dll",
+            "api-ms-win-crt-math-l1-1-0.dll",
+            "api-ms-win-crt-convert-l1-1-0.dll",
+            "api-ms-win-crt-environment-l1-1-0.dll",
+            "api-ms-win-crt-string-l1-1-0.dll",
+            "api-ms-win-crt-heap-l1-1-0.dll",
+            "api-ms-win-crt-runtime-l1-1-0.dll"
+          ],
+          "architecture": "coff-x86-64"
+        },
+        {
+          "name": "ggml-cpu-alderlake.dll",
+          "size_bytes": 809984,
+          "sha256": "d1c5411561361f7ce71ff8455ecf01f666f581b0608fa91a1dfe7d3fd6a25bd1",
+          "imported_dlls": [
+            "ggml-base.dll",
+            "KERNEL32.dll",
+            "ADVAPI32.dll",
+            "VCOMP140.DLL",
+            "MSVCP140.dll",
+            "VCRUNTIME140.dll",
+            "VCRUNTIME140_1.dll",
+            "api-ms-win-crt-stdio-l1-1-0.dll",
+            "api-ms-win-crt-math-l1-1-0.dll",
+            "api-ms-win-crt-convert-l1-1-0.dll",
+            "api-ms-win-crt-environment-l1-1-0.dll",
+            "api-ms-win-crt-string-l1-1-0.dll",
+            "api-ms-win-crt-heap-l1-1-0.dll",
+            "api-ms-win-crt-runtime-l1-1-0.dll"
+          ],
+          "architecture": "coff-x86-64"
+        },
+        {
+          "name": "ggml-cpu-icelake.dll",
+          "size_bytes": 850944,
+          "sha256": "78ad143ee2e674d037b4840ef33b5748a0659762a26e0ae2b621c4f9451cbde8",
+          "imported_dlls": [
+            "ggml-base.dll",
+            "KERNEL32.dll",
+            "ADVAPI32.dll",
+            "VCOMP140.DLL",
+            "MSVCP140.dll",
+            "VCRUNTIME140.dll",
+            "VCRUNTIME140_1.dll",
+            "api-ms-win-crt-stdio-l1-1-0.dll",
+            "api-ms-win-crt-math-l1-1-0.dll",
+            "api-ms-win-crt-convert-l1-1-0.dll",
+            "api-ms-win-crt-environment-l1-1-0.dll",
+            "api-ms-win-crt-string-l1-1-0.dll",
+            "api-ms-win-crt-heap-l1-1-0.dll",
+            "api-ms-win-crt-runtime-l1-1-0.dll"
+          ],
+          "architecture": "coff-x86-64"
+        }
+      ],
+      "external_runtime_imports": [
+        "MSVCP140.dll",
+        "VCRUNTIME140.dll",
+        "VCRUNTIME140_1.dll",
+        "UCRT API sets"
+      ],
+      "validation": "archive and PE import tables only; no Windows execution",
+      "scope_note": "Do not ship unrelated examples or SDL2 merely because present in release archive; final dependency selection belongs to Task14."
+    }
+  },
+  "license_sources": [
+    {
+      "name": "whisper.cpp-v1.9.2-LICENSE",
+      "url": "https://github.com/ggml-org/whisper.cpp/blob/306c88f4d1286aec1bf96e544632897886af5501/LICENSE",
+      "size_bytes": 1078,
+      "sha256": "94f29bbed6a22c35b992c5c6ebf0e7c92f13b836b90f36f461c9cf2f0f1d010d"
+    },
+    {
+      "name": "rapidocr-v3.9.2-LICENSE",
+      "url": "https://github.com/RapidAI/RapidOCR/blob/095232a4c94f7f0e6600ba5bba1177010ad696d4/LICENSE",
+      "size_bytes": 11422,
+      "sha256": "3e0af25fdd06aa9586ae97adb00ea927ebe5a3805ac77d2d3a81ce5f55693333"
+    },
+    {
+      "name": "rapidocr-model-licenses-f65c7da.md",
+      "url": "https://github.com/RapidAI/RapidOCR/blob/f65c7da00e72c19c258245e8e0e5f33af14488be/python/MODEL_LICENSES.md",
+      "size_bytes": 8398,
+      "sha256": "c5fd0e8603d3df743355b546121e6fe0f4ef8ff455c5a85c1681fd3ae520e153"
+    },
+    {
+      "name": "onnxruntime-v1.22.1-LICENSE",
+      "url": "https://github.com/microsoft/onnxruntime/blob/89746dc19a0a1ae59ebf4b16df9acab8f99f3925/LICENSE",
+      "size_bytes": 1073,
+      "sha256": "2f07c72751aed99790b8a4869cf2311df85a860b22ded05fa22803587a48922c"
+    },
+    {
+      "name": "openai-whisper-LICENSE",
+      "url": "https://github.com/openai/whisper/blob/86098128c0b4f24f0e2aa2994de830614b474227/LICENSE",
+      "size_bytes": 1063,
+      "sha256": "b5d65a59060e68c4ff940e1eddfa6f94b2d68fdf58ed7f4dd57721c997e35e9d"
+    }
+  ],
+  "notices": {
+    "rapidocr_wheel": "No LICENSE/NOTICE/MODEL_LICENSES entries; include explicit source notice",
+    "ocr_models": "Official f65c7da model notice lists exact three model SHA256 values; later statement, not bundled v3.9.2 notice",
+    "onnxruntime": "Each acquired wheel includes onnxruntime/LICENSE and onnxruntime/ThirdPartyNotices.txt; preserve both",
+    "transitive": "Archive license metadata is recorded. Task14 must collect actual licenses/notices and build toolchain closure."
+  }
+}

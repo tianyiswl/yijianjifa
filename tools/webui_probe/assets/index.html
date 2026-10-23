@@ -1,0 +1,27 @@
+<!doctype html><html lang="zh-CN"><meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-inline' qrc:; style-src 'unsafe-inline'; media-src 'self'; frame-src 'none'; connect-src 'none'">
+<title>P011 T02 shell diagnostic</title>
+<style>body{font:16px system-ui;margin:32px;background:#f5f7fa;color:#17202a}video{max-width:100%}pre{white-space:pre-wrap}button{padding:12px}</style>
+<h1>T02 桌面壳诊断</h1><p>独立验证页面，不是产品页面；不访问业务数据库或真实账号。</p>
+<video id="media" controls muted src="probe://app/probe.mp4"></video>
+<p><button id="choose" disabled>选择测试文件（不导入）</button></p><pre id="result">正在验证…</pre>
+<script src="qrc:///qtwebchannel/qwebchannel.js"></script>
+<script>
+const result={h264Capability:document.querySelector('video').canPlayType('video/mp4; codecs="avc1.42E01E, mp4a.40.2"'),ticks:0};
+let bridge;const v=document.querySelector('video');
+function save(){document.querySelector('#result').textContent=JSON.stringify(result,null,2);if(bridge)bridge.record(JSON.stringify(result));}
+setInterval(()=>{result.ticks++;result.viewport=[innerWidth,innerHeight];save()},250);
+v.onloadedmetadata=()=>{result.duration=v.duration;v.currentTime=1;save()};
+v.onseeked=()=>{result.seek=v.currentTime;v.play().then(()=>{result.play=true;save()}).catch(e=>{result.playError=e.name;save()})};
+v.ontimeupdate=()=>{result.playbackPosition=v.currentTime;save()};
+v.onerror=()=>{result.mediaError=v.error.code;save()};
+new QWebChannel(qt.webChannelTransport,channel=>{
+ bridge=channel.objects.probe;
+ document.querySelector('#choose').disabled=false;
+ document.querySelector('#choose').onclick=()=>bridge.chooseFile();
+ bridge.call('ping',value=>{result.ping=JSON.parse(value);save()});
+ bridge.call('start',value=>{result.workerAccepted=JSON.parse(value);save()});
+ bridge.call('arbitrary_command',value=>{result.unknownRejected=JSON.parse(value).error==='unsupported_operation';save()});
+ setTimeout(()=>bridge.call('status',value=>{result.worker=JSON.parse(value);save()}),1600);
+});
+</script></html>

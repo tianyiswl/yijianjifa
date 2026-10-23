@@ -1,0 +1,61 @@
+一剪即发 Windows x64 测试版 / Third-party notices
+
+This notice prepares local release materials. It does not approve public
+distribution, whether free or paid.
+
+The project-root MIT LICENSE covers project-owned code only. Third-party
+software, browsers, codecs, runtimes, models, fonts, voice samples, trademarks
+and user content retain their own terms; they are not relicensed as MIT.
+
+Python, PySide6/Qt, SQLAlchemy, Alembic, Pydantic, platformdirs, openpyxl,
+keyring, Playwright, Chromium and FFmpeg are included. The bundled licenses/
+directory contains previously collected upstream texts; it is not an exact
+Windows dependency inventory or a legal compliance declaration.
+
+The retained Windows media inputs are the locked FFmpeg/ffprobe
+7.1.1-essentials_build-www.gyan.dev pair from the earlier delivery (originally
+obtained through Chocolatey). packaging/windows/media_inputs.py pins that
+archive and the executable hashes. Exact source/build materials, linked-library
+versions and distribution obligations remain open. These are separate from
+Playwright's browser-helper FFmpeg revision 1011. The Mac binary inventory does
+not establish Windows compliance. See https://ffmpeg.org/legal.html and
+https://www.gyan.dev/ffmpeg/builds/.
+
+Small supplemental texts are under licenses/release-supplements/:
+- Playwright 1.58.0 LICENSE and NOTICE, copied from Windows 0.1.41.
+- Bundled Node.js LICENSE, including its bundled third-party notices; exact
+  runtime version still needs target-build identification.
+- Playwright browser-helper FFmpeg 1011 COPYING.LGPLv2.1.
+- Chromium 145.0.7632.6 source-root LICENSE, from the official version tag.
+The existing 0.1.41 browsers.json records Chromium revision 1208 and browser
+version 145.0.7632.6. Its ABOUT identifies Chrome for Testing's Chrome package
+and points to chrome://credits and chrome://terms. The root Chromium license
+does not replace those complete credits or the applicable distribution terms.
+Playwright's Apache-2.0 terms do not cover its browser and native dependencies.
+Official sources: https://github.com/microsoft/playwright/tree/v1.58.0
+https://chromium.googlesource.com/chromium/src/+/145.0.7632.6/LICENSE
+
+PySide/Qt/Qt WebEngine target-version texts, third-party attribution and the
+chosen source/relinking provision still need to be matched to the final build.
+Qt for Python license information: https://doc.qt.io/qtforpython-6/licenses.html
+Qt obligations: https://www.qt.io/development/open-source-lgpl-obligations
+Qt WebEngine: https://doc.qt.io/qt-6/qtwebengine-licensing.html
+
+The download/extraction module adds pinned whisper.cpp v1.9.2 CPU CLI/DLLs,
+RapidOCR 3.9.2 and ONNX Runtime 1.22.1. MIT/Apache texts, ONNX third-party
+notices and PaddleOCR conversion attribution are in licenses/recognition/.
+Model weights are omitted and need explicit download/offline import.
+MSVC CRT/OpenMP application-local runtime inputs come from the installed
+Visual Studio x64 redistributable directory and are inventoried by file hash.
+Microsoft redistribution terms and the exact Windows native dependency
+closure still require target-build/device review before public distribution.
+Official guidance: https://learn.microsoft.com/en-us/cpp/windows/redistributing-visual-cpp-files
+A CI startup/resource check is not a clean Windows device recognition test.
+
+Official voice-preview MP3 files are not project-owned code. Their public
+redistribution permission remains unconfirmed and is not granted by MIT.
+No model weights are licensed under the project-root MIT merely by reference.
+
+Both licenses/manifest.json and the supplemental manifest remain
+release_ready=false. Read docs/release/THIRD_PARTY_RELEASE_READINESS.md in the
+source tree before preparing a public source export or binary candidate.

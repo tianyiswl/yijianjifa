@@ -1,0 +1,891 @@
+{
+  "release_ready": false,
+  "files": [
+    {
+      "file": "python/alembic-1.20.0/alembic-1.20.0.dist-info/licenses/LICENSE",
+      "component": "alembic",
+      "version": "1.20.0",
+      "source": "Installed distribution license file",
+      "sha256": "6e68d94a03a0e3e327ddf3e86d1ebedc14eece3922022618fc246a36296fd0cc"
+    },
+    {
+      "file": "python/annotated-types-0.8.0/annotated_types-0.8.0.dist-info/licenses/LICENSE",
+      "component": "annotated-types",
+      "version": "0.8.0",
+      "source": "Installed distribution license file",
+      "sha256": "fe1049884b1a0d9342901e88e07f32925d24b3121d9972b6a6805fb9824b095d"
+    },
+    {
+      "file": "python/bottle-0.13.4/bottle-0.13.4.dist-info/licenses/LICENSE",
+      "component": "bottle",
+      "version": "0.13.4",
+      "source": "Installed distribution license file",
+      "sha256": "af150257b1f7cce92b6207854f2e8f90ea9ae52d7cac758d13a47bd12e2a2443"
+    },
+    {
+      "file": "python/et_xmlfile-2.0.0/et_xmlfile-2.0.0.dist-info/LICENCE.python",
+      "component": "et_xmlfile",
+      "version": "2.0.0",
+      "source": "Installed distribution license file",
+      "sha256": "4ccdaaebc0f44b83720ec0399bb7ab329adce067dd62f73c5535a2dc05628ab2"
+    },
+    {
+      "file": "python/et_xmlfile-2.0.0/et_xmlfile-2.0.0.dist-info/LICENCE.rst",
+      "component": "et_xmlfile",
+      "version": "2.0.0",
+      "source": "Installed distribution license file",
+      "sha256": "0c84bb42f5d367e5ebf9fc2dde35b16141df5ee0fdc189250858bc6c5560f69e"
+    },
+    {
+      "file": "python/imageio-ffmpeg-0.6.0/imageio_ffmpeg-0.6.0.dist-info/LICENSE",
+      "component": "imageio-ffmpeg",
+      "version": "0.6.0",
+      "source": "Installed distribution license file",
+      "sha256": "eca73421d0c905a92e952a553d4d58919c5a507c2c2c76e3c0cf9ba408c299e4"
+    },
+    {
+      "file": "python/Mako-1.4.3/mako-1.4.3.dist-info/licenses/LICENSE",
+      "component": "Mako",
+      "version": "1.4.3",
+      "source": "Installed distribution license file",
+      "sha256": "8c1d171bc5d341ad9cd33d5e2c39b96a82c7bd49b3ae89a470c37e5822232054"
+    },
+    {
+      "file": "python/MarkupSafe-3.0.3/markupsafe-3.0.3.dist-info/licenses/LICENSE.txt",
+      "component": "MarkupSafe",
+      "version": "3.0.3",
+      "source": "Installed distribution license file",
+      "sha256": "489a8e1108509ed98a37bb983e11e0f7e1d31f0bd8f99a79c8448e7ff37d07ea"
+    },
+    {
+      "file": "python/openpyxl-3.1.5/openpyxl-3.1.5.dist-info/LICENCE.rst",
+      "component": "openpyxl",
+      "version": "3.1.5",
+      "source": "Installed distribution license file",
+      "sha256": "0c84bb42f5d367e5ebf9fc2dde35b16141df5ee0fdc189250858bc6c5560f69e"
+    },
+    {
+      "file": "python/packaging-26.3/packaging-26.3.dist-info/licenses/LICENSE",
+      "component": "packaging",
+      "version": "26.3",
+      "source": "Installed distribution license file",
+      "sha256": "cad1ef5bd340d73e074ba614d26f7deaca5c7940c3d8c34852e65c4909686c48"
+    },
+    {
+      "file": "python/packaging-26.3/packaging-26.3.dist-info/licenses/LICENSE.APACHE",
+      "component": "packaging",
+      "version": "26.3",
+      "source": "Installed distribution license file",
+      "sha256": "0d542e0c8804e39aa7f37eb00da5a762149dc682d7829451287e11b938e94594"
+    },
+    {
+      "file": "python/packaging-26.3/packaging-26.3.dist-info/licenses/LICENSE.BSD",
+      "component": "packaging",
+      "version": "26.3",
+      "source": "Installed distribution license file",
+      "sha256": "b70e7e9b742f1cc6f948b34c16aa39ffece94196364bc88ff0d2180f0028fac5"
+    },
+    {
+      "file": "python/platformdirs-4.11.12/platformdirs-4.11.12.dist-info/licenses/LICENSE",
+      "component": "platformdirs",
+      "version": "4.11.12",
+      "source": "Installed distribution license file",
+      "sha256": "29e0fd62e929850e86eb28c3fdccf0cefdf4fa94879011cffb3d0d4bed6d4db6"
+    },
+    {
+      "file": "python/pydantic-2.13.5/pydantic-2.13.5.dist-info/licenses/LICENSE",
+      "component": "pydantic",
+      "version": "2.13.5",
+      "source": "Installed distribution license file",
+      "sha256": "a9e186f3ca16b5eef84318e7a701721351a00cb7b8ae3a4394b67b49e3529ef3"
+    },
+    {
+      "file": "python/pydantic_core-2.46.5/pydantic_core-2.46.5.dist-info/licenses/LICENSE",
+      "component": "pydantic_core",
+      "version": "2.46.5",
+      "source": "Installed distribution license file",
+      "sha256": "2afdd30d54b4d62b6f488a6bcc1546e84ec5061f13f4209c03d012348783795a"
+    },
+    {
+      "file": "python/pyinstaller-6.22.3/pyinstaller-6.22.3.dist-info/licenses/COPYING.txt",
+      "component": "pyinstaller",
+      "version": "6.22.3",
+      "source": "Installed distribution license file",
+      "sha256": "0598064c7d2718e38d7914a7d08343b2fa008e3bea9ebba2aa7a6ffa5900dd64"
+    },
+    {
+      "file": "python/pyobjc-framework-Cocoa-12.2.2/pyobjc_framework_cocoa-12.2.2.dist-info/licenses/LICENSE.txt",
+      "component": "pyobjc-framework-Cocoa",
+      "version": "12.2.2",
+      "source": "Installed distribution license file",
+      "sha256": "0ca04b07928d4872b9d9bb22187ca0426dd8bfab08f26eada0999a71dc81aaff"
+    },
+    {
+      "file": "python/pyobjc-framework-WebKit-12.2.2/pyobjc_framework_webkit-12.2.2.dist-info/licenses/LICENSE.txt",
+      "component": "pyobjc-framework-WebKit",
+      "version": "12.2.2",
+      "source": "Installed distribution license file",
+      "sha256": "0ca04b07928d4872b9d9bb22187ca0426dd8bfab08f26eada0999a71dc81aaff"
+    },
+    {
+      "file": "python/pywebview-6.2.1/pywebview-6.2.1.dist-info/licenses/LICENSE",
+      "component": "pywebview",
+      "version": "6.2.1",
+      "source": "Installed distribution license file",
+      "sha256": "4a988dd3598832cd3653de20dc33cb677d0fb53ab5551c879ca31280ae653675"
+    },
+    {
+      "file": "python/setuptools-84.0.0/setuptools-84.0.0.dist-info/licenses/LICENSE",
+      "component": "setuptools",
+      "version": "84.0.0",
+      "source": "Installed distribution license file",
+      "sha256": "86da0f01aeae46348a3c3d465195dc1ceccde79f79e87769a64b8da04b2a4741"
+    },
+    {
+      "file": "python/setuptools-84.0.0/setuptools/_vendor/autocommand-2.2.2.dist-info/LICENSE",
+      "component": "setuptools",
+      "version": "84.0.0",
+      "source": "Installed distribution license file",
+      "sha256": "ade78d04982d69972d444a8e14a94f87a2334dd3855cc80348ea8e240aa0df2d"
+    },
+    {
+      "file": "python/setuptools-84.0.0/setuptools/_vendor/backports.tarfile-1.2.0.dist-info/LICENSE",
+      "component": "setuptools",
+      "version": "84.0.0",
+      "source": "Installed distribution license file",
+      "sha256": "86da0f01aeae46348a3c3d465195dc1ceccde79f79e87769a64b8da04b2a4741"
+    },
+    {
+      "file": "python/setuptools-84.0.0/setuptools/_vendor/importlib_metadata-8.7.1.dist-info/licenses/LICENSE",
+      "component": "setuptools",
+      "version": "84.0.0",
+      "source": "Installed distribution license file",
+      "sha256": "458502e12d97bbf64438606a20044aa85eb05fb0a8a807bb35dbec253fd1fc04"
+    },
+    {
+      "file": "python/setuptools-84.0.0/setuptools/_vendor/jaraco.text-4.0.0.dist-info/LICENSE",
+      "component": "setuptools",
+      "version": "84.0.0",
+      "source": "Installed distribution license file",
+      "sha256": "86da0f01aeae46348a3c3d465195dc1ceccde79f79e87769a64b8da04b2a4741"
+    },
+    {
+      "file": "python/setuptools-84.0.0/setuptools/_vendor/jaraco_context-6.1.0.dist-info/licenses/LICENSE",
+      "component": "setuptools",
+      "version": "84.0.0",
+      "source": "Installed distribution license file",
+      "sha256": "9755a18519666e5f0f4cae3daad3d7012bcae48a600b31237d75e9fe134e6683"
+    },
+    {
+      "file": "python/setuptools-84.0.0/setuptools/_vendor/jaraco_functools-4.4.0.dist-info/licenses/LICENSE",
+      "component": "setuptools",
+      "version": "84.0.0",
+      "source": "Installed distribution license file",
+      "sha256": "5a57cb4db85e2a2dd88c290628908add57e3451449e0a9a71fdfb38776fd759d"
+    },
+    {
+      "file": "python/setuptools-84.0.0/setuptools/_vendor/more_itertools-10.8.0.dist-info/licenses/LICENSE",
+      "component": "setuptools",
+      "version": "84.0.0",
+      "source": "Installed distribution license file",
+      "sha256": "09f1c8c9e941af3e584d59641ea9b87d83c0cb0fd007eb5ef391a7e2643c1a46"
+    },
+    {
+      "file": "python/setuptools-84.0.0/setuptools/_vendor/packaging-26.0.dist-info/licenses/LICENSE",
+      "component": "setuptools",
+      "version": "84.0.0",
+      "source": "Installed distribution license file",
+      "sha256": "cad1ef5bd340d73e074ba614d26f7deaca5c7940c3d8c34852e65c4909686c48"
+    },
+    {
+      "file": "python/setuptools-84.0.0/setuptools/_vendor/packaging-26.0.dist-info/licenses/LICENSE.APACHE",
+      "component": "setuptools",
+      "version": "84.0.0",
+      "source": "Installed distribution license file",
+      "sha256": "0d542e0c8804e39aa7f37eb00da5a762149dc682d7829451287e11b938e94594"
+    },
+    {
+      "file": "python/setuptools-84.0.0/setuptools/_vendor/packaging-26.0.dist-info/licenses/LICENSE.BSD",
+      "component": "setuptools",
+      "version": "84.0.0",
+      "source": "Installed distribution license file",
+      "sha256": "b70e7e9b742f1cc6f948b34c16aa39ffece94196364bc88ff0d2180f0028fac5"
+    },
+    {
+      "file": "python/setuptools-84.0.0/setuptools/_vendor/platformdirs-4.4.0.dist-info/licenses/LICENSE",
+      "component": "setuptools",
+      "version": "84.0.0",
+      "source": "Installed distribution license file",
+      "sha256": "29e0fd62e929850e86eb28c3fdccf0cefdf4fa94879011cffb3d0d4bed6d4db6"
+    },
+    {
+      "file": "python/setuptools-84.0.0/setuptools/_vendor/tomli-2.4.0.dist-info/licenses/LICENSE",
+      "component": "setuptools",
+      "version": "84.0.0",
+      "source": "Installed distribution license file",
+      "sha256": "b80816b0d530b8accb4c2211783790984a6e3b61922c2b5ee92f3372ab2742fe"
+    },
+    {
+      "file": "python/setuptools-84.0.0/setuptools/_vendor/wheel-0.46.3.dist-info/licenses/LICENSE.txt",
+      "component": "setuptools",
+      "version": "84.0.0",
+      "source": "Installed distribution license file",
+      "sha256": "30c23618679108f3e8ea1d2a658c7ca417bdfc891c98ef1a89fa4ff0c9828654"
+    },
+    {
+      "file": "python/setuptools-84.0.0/setuptools/_vendor/zipp-3.23.0.dist-info/licenses/LICENSE",
+      "component": "setuptools",
+      "version": "84.0.0",
+      "source": "Installed distribution license file",
+      "sha256": "5a57cb4db85e2a2dd88c290628908add57e3451449e0a9a71fdfb38776fd759d"
+    },
+    {
+      "file": "python/setuptools-84.0.0/setuptools/config/NOTICE",
+      "component": "setuptools",
+      "version": "84.0.0",
+      "source": "Installed distribution license file",
+      "sha256": "2dddf08818297a3b89d43d95ff659d8da85741108c9136dfa3a4d856c0623bd8"
+    },
+    {
+      "file": "python/setuptools-84.0.0/setuptools/config/_validate_pyproject/NOTICE",
+      "component": "setuptools",
+      "version": "84.0.0",
+      "source": "Installed distribution license file",
+      "sha256": "09c9bcea95ca086f8bc5bed174e40bc835b297d40fb5f86bbbb570fe0a5581a7"
+    },
+    {
+      "file": "python/SQLAlchemy-2.0.54/sqlalchemy-2.0.54.dist-info/licenses/AUTHORS",
+      "component": "SQLAlchemy",
+      "version": "2.0.54",
+      "source": "Installed distribution license file",
+      "sha256": "dc1db0b5d17455adc37b693ff8e409c9a80f603e441695825518c36f786c963e"
+    },
+    {
+      "file": "python/SQLAlchemy-2.0.54/sqlalchemy-2.0.54.dist-info/licenses/LICENSE",
+      "component": "SQLAlchemy",
+      "version": "2.0.54",
+      "source": "Installed distribution license file",
+      "sha256": "e862bb5b904fb5513c3e14288d7a25a12eb0ecc7847a0a965d310e9a955e7cb9"
+    },
+    {
+      "file": "python/typing-inspection-0.4.4/typing_inspection-0.4.4.dist-info/licenses/LICENSE",
+      "component": "typing-inspection",
+      "version": "0.4.4",
+      "source": "Installed distribution license file",
+      "sha256": "804b59b25f2c31bd278f9202a19ae49a3945aa2664387e2d0a128c7cacc61ec3"
+    },
+    {
+      "file": "python/typing_extensions-4.16.0/typing_extensions-4.16.0.dist-info/licenses/LICENSE",
+      "component": "typing_extensions",
+      "version": "4.16.0",
+      "source": "Installed distribution license file",
+      "sha256": "3b2f81fe21d181c499c59a256c8e1968455d6689d269aa85373bfb6af41da3bf"
+    },
+    {
+      "file": "native/dav1d/1.5.3/COPYING",
+      "component": "dav1d",
+      "version": "1.5.3",
+      "source": "Installed Homebrew package license file",
+      "sha256": "dd92c3c2247c5651606fc23a5e2d6a1ebc5ace9a3e49cbde0e12f05ad1cb1ee5"
+    },
+    {
+      "file": "native/ffmpeg/8.1.1/COPYING.GPLv2",
+      "component": "ffmpeg",
+      "version": "8.1.1",
+      "source": "Installed Homebrew package license file",
+      "sha256": "8177f97513213526df2cf6184d8ff986c675afb514d4e68a404010521b880643"
+    },
+    {
+      "file": "native/ffmpeg/8.1.1/COPYING.GPLv3",
+      "component": "ffmpeg",
+      "version": "8.1.1",
+      "source": "Installed Homebrew package license file",
+      "sha256": "8ceb4b9ee5adedde47b31e975c1d90c73ad27b6b165a1dcd80c7c545eb65b903"
+    },
+    {
+      "file": "native/ffmpeg/8.1.1/COPYING.LGPLv2.1",
+      "component": "ffmpeg",
+      "version": "8.1.1",
+      "source": "Installed Homebrew package license file",
+      "sha256": "246041b6ecf9bc32d718a62c57877c78b5eb397b6467e74ed7ae2626ab189c30"
+    },
+    {
+      "file": "native/ffmpeg/8.1.1/COPYING.LGPLv3",
+      "component": "ffmpeg",
+      "version": "8.1.1",
+      "source": "Installed Homebrew package license file",
+      "sha256": "da7eabb7bafdf7d3ae5e9f223aa5bdc1eece45ac569dc21b3b037520b4464768"
+    },
+    {
+      "file": "native/ffmpeg/8.1.1/LICENSE.md",
+      "component": "ffmpeg",
+      "version": "8.1.1",
+      "source": "Installed Homebrew package license file",
+      "sha256": "2e1d16c72fd74e12063776371da757322f8b77589386532f4fd8634bde7de1af"
+    },
+    {
+      "file": "native/lame/3.100/COPYING",
+      "component": "lame",
+      "version": "3.100",
+      "source": "Installed Homebrew package license file",
+      "sha256": "bfe4a52dc4645385f356a8e83cc54216a293e3b6f1cb4f79f5fc0277abf937fd"
+    },
+    {
+      "file": "native/lame/3.100/LICENSE",
+      "component": "lame",
+      "version": "3.100",
+      "source": "Installed Homebrew package license file",
+      "sha256": "7a40cbd8818c57e5285e83c772a459a996d1662c824a879836b97b473c07cae4"
+    },
+    {
+      "file": "native/libvmaf/3.1.0/LICENSE",
+      "component": "libvmaf",
+      "version": "3.1.0",
+      "source": "Installed Homebrew package license file",
+      "sha256": "a6fdb51d02b9dfe198e55534bb8047fe6d756eda117f4ff83de98f92c1952710"
+    },
+    {
+      "file": "native/libvpx/1.16.0/LICENSE",
+      "component": "libvpx",
+      "version": "1.16.0",
+      "source": "Installed Homebrew package license file",
+      "sha256": "8267348d5af1262c11d1a08de2f5afc77457755f1ac658627dd9acf71011d615"
+    },
+    {
+      "file": "native/mpdecimal/4.0.1/COPYRIGHT.txt",
+      "component": "mpdecimal",
+      "version": "4.0.1",
+      "source": "Installed Homebrew package license file",
+      "sha256": "dba079e24a0286052f9f36a5e0b4f6cc95bc83ada657eb26bef8c0b6473f6512"
+    },
+    {
+      "file": "native/openssl@3/3.6.2/LICENSE.txt",
+      "component": "openssl@3",
+      "version": "3.6.2",
+      "source": "Installed Homebrew package license file",
+      "sha256": "7d5450cb2d142651b8afa315b5f238efc805dad827d91ba367d8516bc9d49e7a"
+    },
+    {
+      "file": "native/opus/1.6.1/COPYING",
+      "component": "opus",
+      "version": "1.6.1",
+      "source": "Installed Homebrew package license file",
+      "sha256": "01e1167d54a096d123cf6dfbbeb19587278845c6481d2d66d545669846079551"
+    },
+    {
+      "file": "native/python@3.12/3.12.13_2/LICENSE",
+      "component": "python@3.12",
+      "version": "3.12.13_2",
+      "source": "Installed Homebrew package license file",
+      "sha256": "3b2f81fe21d181c499c59a256c8e1968455d6689d269aa85373bfb6af41da3bf"
+    },
+    {
+      "file": "native/svt-av1/4.1.0/LICENSE-BSD2.md",
+      "component": "svt-av1",
+      "version": "4.1.0",
+      "source": "Installed Homebrew package license file",
+      "sha256": "c582fcbeb9cf972a60d298bfaf41dc5adff2dd14208946edcb9bb56a281e8438"
+    },
+    {
+      "file": "native/svt-av1/4.1.0/LICENSE.md",
+      "component": "svt-av1",
+      "version": "4.1.0",
+      "source": "Installed Homebrew package license file",
+      "sha256": "0acc2fcb27472bdc9aaf8b71f37055bbdac4f54671b7d922f241bd7fcd0dd3e6"
+    },
+    {
+      "file": "native/x264/r3222/COPYING",
+      "component": "x264",
+      "version": "r3222",
+      "source": "Installed Homebrew package license file",
+      "sha256": "32b1062f7da84967e7019d01ab805935caa7ab7321a7ced0e30ebe75e5df1670"
+    },
+    {
+      "file": "native/x265/4.2/COPYING",
+      "component": "x265",
+      "version": "4.2",
+      "source": "Installed Homebrew package license file",
+      "sha256": "d8afb1bcc7a2cfc603683b168d6987ef0a48e59e0da3693bf55c5d33b67e2b49"
+    },
+    {
+      "file": "native/xz/5.8.3/COPYING",
+      "component": "xz",
+      "version": "5.8.3",
+      "source": "Installed Homebrew package license file",
+      "sha256": "616a3ad264ce29b8f1cb97e53037b139d406899ca8d1f799651e17bfa09830b8"
+    },
+    {
+      "file": "native/xz/5.8.3/COPYING.0BSD",
+      "component": "xz",
+      "version": "5.8.3",
+      "source": "Installed Homebrew package license file",
+      "sha256": "0b01625d853911cd0e2e088dcfb743261034a091bb379246cb25a14cc4c74bf1"
+    },
+    {
+      "file": "native/xz/5.8.3/COPYING.GPLv2",
+      "component": "xz",
+      "version": "5.8.3",
+      "source": "Installed Homebrew package license file",
+      "sha256": "edaef632cbb643e4e7a221717a6c441a4c1a7c918e6e4d56debc3d8739b233f6"
+    },
+    {
+      "file": "native/xz/5.8.3/COPYING.GPLv3",
+      "component": "xz",
+      "version": "5.8.3",
+      "source": "Installed Homebrew package license file",
+      "sha256": "3972dc9744f6499f0f9b2dbf76696f2ae7ad8af9b23dde66d6af86c9dfb36986"
+    },
+    {
+      "file": "native/xz/5.8.3/COPYING.LGPLv2.1",
+      "component": "xz",
+      "version": "5.8.3",
+      "source": "Installed Homebrew package license file",
+      "sha256": "20e50fe7aae3e56378ebf0417d9de904f55a0e61e4df315333e632a4d3555d95"
+    },
+    {
+      "file": "python/pyobjc-framework-UniformTypeIdentifiers-12.2.2/LICENSE.txt",
+      "component": "pyobjc-framework-UniformTypeIdentifiers",
+      "version": "12.2.2",
+      "source": "https://files.pythonhosted.org/packages/70/c6/31ac40c4d918baa36ca06d196bfec0f47f804a74684988cf424060469d98/pyobjc_framework_uniformtypeidentifiers-12.2.2.tar.gz",
+      "sha256": "0ca04b07928d4872b9d9bb22187ca0426dd8bfab08f26eada0999a71dc81aaff"
+    },
+    {
+      "file": "python/proxy_tools-0.1.0/LICENSE.txt",
+      "component": "proxy_tools",
+      "version": "0.1.0",
+      "source": "https://raw.githubusercontent.com/jtushman/proxy_tools/db43f1e35d4f90a65c5a4d56d9e9af88212ec6e6/LICENSE.txt",
+      "sha256": "a428fb8a2e762af3eb0a6edbbb88e9b42ccfee80fd9b423958bcacf9b9abbfe4"
+    },
+    {
+      "file": "native/sqlite/3.53.2/NOTICE.txt",
+      "component": "sqlite",
+      "version": "3.53.2",
+      "source": "https://sqlite.org/copyright.html",
+      "sha256": "2f7fab680cda56548a251cd6f30d5d15d103423dc6cd912aa1348f0d6c990db8"
+    },
+    {
+      "file": "python/pyobjc-core-12.2.2/License.txt",
+      "component": "pyobjc-core",
+      "version": "12.2.2",
+      "source": "https://files.pythonhosted.org/packages/a5/78/abc4ce5920305780aeb36b4067a86253378b36e29ba96673a3deb02eb03a/pyobjc_core-12.2.2.tar.gz",
+      "sha256": "0ca04b07928d4872b9d9bb22187ca0426dd8bfab08f26eada0999a71dc81aaff"
+    },
+    {
+      "file": "recognition/whisper.cpp-v1.9.2-LICENSE",
+      "component": "whisper.cpp",
+      "version": "v1.9.2",
+      "source": "https://github.com/ggml-org/whisper.cpp/blob/306c88f4d1286aec1bf96e544632897886af5501/LICENSE",
+      "sha256": "94f29bbed6a22c35b992c5c6ebf0e7c92f13b836b90f36f461c9cf2f0f1d010d"
+    },
+    {
+      "file": "recognition/rapidocr-v3.9.2-LICENSE",
+      "component": "rapidocr",
+      "version": "3.9.2",
+      "source": "https://github.com/RapidAI/RapidOCR/blob/095232a4c94f7f0e6600ba5bba1177010ad696d4/LICENSE",
+      "sha256": "3e0af25fdd06aa9586ae97adb00ea927ebe5a3805ac77d2d3a81ce5f55693333"
+    },
+    {
+      "file": "recognition/rapidocr-model-licenses-f65c7da.md",
+      "component": "rapidocr-models",
+      "version": "fixed-source",
+      "source": "https://github.com/RapidAI/RapidOCR/blob/f65c7da00e72c19c258245e8e0e5f33af14488be/python/MODEL_LICENSES.md",
+      "sha256": "c5fd0e8603d3df743355b546121e6fe0f4ef8ff455c5a85c1681fd3ae520e153"
+    },
+    {
+      "file": "recognition/onnxruntime-v1.22.1-LICENSE",
+      "component": "onnxruntime",
+      "version": "1.22.1",
+      "source": "https://github.com/microsoft/onnxruntime/blob/89746dc19a0a1ae59ebf4b16df9acab8f99f3925/LICENSE",
+      "sha256": "2f07c72751aed99790b8a4869cf2311df85a860b22ded05fa22803587a48922c"
+    },
+    {
+      "file": "recognition/openai-whisper-LICENSE",
+      "component": "openai-whisper",
+      "version": "fixed-source",
+      "source": "https://github.com/openai/whisper/blob/86098128c0b4f24f0e2aa2994de830614b474227/LICENSE",
+      "sha256": "b5d65a59060e68c4ff940e1eddfa6f94b2d68fdf58ed7f4dd57721c997e35e9d"
+    },
+    {
+      "file": "recognition/wheels/onnxruntime-1.22.1-cp312-cp312-macosx_13_0_universal2/onnxruntime/ThirdPartyNotices.txt",
+      "component": "onnxruntime",
+      "version": "1.22.1",
+      "source": "License/notice from hash-verified wheel; archive identity in recognition-lock.json",
+      "sha256": "e9e90971a8e75a9a8ac0c6412e29c1202d079998389915aa485f46c816c3b4cc"
+    },
+    {
+      "file": "recognition/wheels/onnxruntime-1.22.1-cp312-cp312-macosx_13_0_universal2/onnxruntime/LICENSE",
+      "component": "onnxruntime",
+      "version": "1.22.1",
+      "source": "License/notice from hash-verified wheel; archive identity in recognition-lock.json",
+      "sha256": "2f07c72751aed99790b8a4869cf2311df85a860b22ded05fa22803587a48922c"
+    },
+    {
+      "file": "recognition/wheels/onnxruntime-1.22.1-cp312-cp312-win_amd64/onnxruntime/ThirdPartyNotices.txt",
+      "component": "onnxruntime",
+      "version": "1.22.1",
+      "source": "License/notice from hash-verified wheel; archive identity in recognition-lock.json",
+      "sha256": "e00f828e0a33de591a355ae6606d2625f5758da7d2c844db7821c9dd3e3647b6"
+    },
+    {
+      "file": "recognition/wheels/onnxruntime-1.22.1-cp312-cp312-win_amd64/onnxruntime/LICENSE",
+      "component": "onnxruntime",
+      "version": "1.22.1",
+      "source": "License/notice from hash-verified wheel; archive identity in recognition-lock.json",
+      "sha256": "c250d6278f0b47a6439fb7592b08b58a55eb9f535aa49a1db63211c3f982b674"
+    },
+    {
+      "file": "recognition/python/numpy-2.5.3/numpy-2.5.3.dist-info/licenses/LICENSE.txt",
+      "component": "numpy",
+      "version": "2.5.3",
+      "source": "Actual isolated build-environment distribution license text",
+      "sha256": "649a589ab31076e79e9ce62ba24eae9959598124176640dbc95f87bd10f34fcf"
+    },
+    {
+      "file": "recognition/python/numpy-2.5.3/numpy-2.5.3.dist-info/licenses/numpy/_core/include/numpy/libdivide/LICENSE.txt",
+      "component": "numpy",
+      "version": "2.5.3",
+      "source": "Actual isolated build-environment distribution license text",
+      "sha256": "fbc539f47d0cf83bc61378080fb873d5c14630126cacbfe754035c3926daa5ec"
+    },
+    {
+      "file": "recognition/python/numpy-2.5.3/numpy-2.5.3.dist-info/licenses/numpy/_core/src/common/pythoncapi-compat/COPYING",
+      "component": "numpy",
+      "version": "2.5.3",
+      "source": "Actual isolated build-environment distribution license text",
+      "sha256": "3f2c1ffa76383a55ae0aac01c9737cd70050dff63e1f026694fbe9d662573c98"
+    },
+    {
+      "file": "recognition/python/numpy-2.5.3/numpy-2.5.3.dist-info/licenses/numpy/_core/src/highway/LICENSE",
+      "component": "numpy",
+      "version": "2.5.3",
+      "source": "Actual isolated build-environment distribution license text",
+      "sha256": "e340270d4f64384569a91d546acb5b094d69ce47f0c015db77abb74dc6f815af"
+    },
+    {
+      "file": "recognition/python/numpy-2.5.3/numpy-2.5.3.dist-info/licenses/numpy/_core/src/multiarray/dragon4_LICENSE.txt",
+      "component": "numpy",
+      "version": "2.5.3",
+      "source": "Actual isolated build-environment distribution license text",
+      "sha256": "f7b14309e5f54e5022b26448eefd419988ada2aec01d3c1162d84a0ea8f21f2c"
+    },
+    {
+      "file": "recognition/python/numpy-2.5.3/numpy-2.5.3.dist-info/licenses/numpy/_core/src/npysort/x86-simd-sort/LICENSE.md",
+      "component": "numpy",
+      "version": "2.5.3",
+      "source": "Actual isolated build-environment distribution license text",
+      "sha256": "211e7d737d6179a08f791ebb0a99897ce7cd2457410c542876d125576edfe910"
+    },
+    {
+      "file": "recognition/python/numpy-2.5.3/numpy-2.5.3.dist-info/licenses/numpy/_core/src/umath/svml/LICENSE",
+      "component": "numpy",
+      "version": "2.5.3",
+      "source": "Actual isolated build-environment distribution license text",
+      "sha256": "c17011467b4fe6e20fbfbeda4df09e58c2bca5480a063e55735a4000a379aad9"
+    },
+    {
+      "file": "recognition/python/numpy-2.5.3/numpy-2.5.3.dist-info/licenses/numpy/fft/pocketfft/LICENSE.md",
+      "component": "numpy",
+      "version": "2.5.3",
+      "source": "Actual isolated build-environment distribution license text",
+      "sha256": "a85ca13fdf90160b64a0698215868c13b74d835ad0a4e2ba44713b8c5058a056"
+    },
+    {
+      "file": "recognition/python/numpy-2.5.3/numpy-2.5.3.dist-info/licenses/numpy/linalg/lapack_lite/LICENSE.txt",
+      "component": "numpy",
+      "version": "2.5.3",
+      "source": "Actual isolated build-environment distribution license text",
+      "sha256": "a14cc25e10d40a3aa705b7de2fb764a6535d8ee9b2db4e1724900585457dfd55"
+    },
+    {
+      "file": "recognition/python/numpy-2.5.3/numpy-2.5.3.dist-info/licenses/numpy/ma/LICENSE",
+      "component": "numpy",
+      "version": "2.5.3",
+      "source": "Actual isolated build-environment distribution license text",
+      "sha256": "05f3b88351988ecfad10abe92c0c50e5875c6452d5009a0084cc291551ffcca6"
+    },
+    {
+      "file": "recognition/python/numpy-2.5.3/numpy-2.5.3.dist-info/licenses/numpy/random/LICENSE.md",
+      "component": "numpy",
+      "version": "2.5.3",
+      "source": "Actual isolated build-environment distribution license text",
+      "sha256": "103166b62b80443afb9eb3488e052ea06be0cff566b908f199e561fde49af19f"
+    },
+    {
+      "file": "recognition/python/numpy-2.5.3/numpy-2.5.3.dist-info/licenses/numpy/random/src/distributions/LICENSE.md",
+      "component": "numpy",
+      "version": "2.5.3",
+      "source": "Actual isolated build-environment distribution license text",
+      "sha256": "469778be8f33d54e1bcaab28c281cc472916d2d273f835e55bc487d30503face"
+    },
+    {
+      "file": "recognition/python/numpy-2.5.3/numpy-2.5.3.dist-info/licenses/numpy/random/src/mt19937/LICENSE.md",
+      "component": "numpy",
+      "version": "2.5.3",
+      "source": "Actual isolated build-environment distribution license text",
+      "sha256": "0e111337b25494a773106695f0e799f642b8567aaacca4f116a74a8177179156"
+    },
+    {
+      "file": "recognition/python/numpy-2.5.3/numpy-2.5.3.dist-info/licenses/numpy/random/src/pcg64/LICENSE.md",
+      "component": "numpy",
+      "version": "2.5.3",
+      "source": "Actual isolated build-environment distribution license text",
+      "sha256": "e7d4f4fb20358f314210a892ae17351e04993813646f697ec387385ca2a36918"
+    },
+    {
+      "file": "recognition/python/numpy-2.5.3/numpy-2.5.3.dist-info/licenses/numpy/random/src/philox/LICENSE.md",
+      "component": "numpy",
+      "version": "2.5.3",
+      "source": "Actual isolated build-environment distribution license text",
+      "sha256": "6f5828a57223d4cc7f8ea505a2623e7b978b242752c1515e355f46ba2cec1800"
+    },
+    {
+      "file": "recognition/python/numpy-2.5.3/numpy-2.5.3.dist-info/licenses/numpy/random/src/sfc64/LICENSE.md",
+      "component": "numpy",
+      "version": "2.5.3",
+      "source": "Actual isolated build-environment distribution license text",
+      "sha256": "9d4098846018319cd68e228ee6220361787f73bccbf00237a85e4fc9621b998f"
+    },
+    {
+      "file": "recognition/python/numpy-2.5.3/numpy-2.5.3.dist-info/licenses/numpy/random/src/splitmix64/LICENSE.md",
+      "component": "numpy",
+      "version": "2.5.3",
+      "source": "Actual isolated build-environment distribution license text",
+      "sha256": "268b0ca06759d31ea3ca68dd35f20e877916e927b1c2a835e4592a3c4354b1f9"
+    },
+    {
+      "file": "recognition/python/numpy-2.5.3/numpy/_core/include/numpy/random/LICENSE.txt",
+      "component": "numpy",
+      "version": "2.5.3",
+      "source": "Actual isolated build-environment distribution license text",
+      "sha256": "fbc539f47d0cf83bc61378080fb873d5c14630126cacbfe754035c3926daa5ec"
+    },
+    {
+      "file": "recognition/python/numpy-2.5.3/numpy/ma/LICENSE",
+      "component": "numpy",
+      "version": "2.5.3",
+      "source": "Actual isolated build-environment distribution license text",
+      "sha256": "05f3b88351988ecfad10abe92c0c50e5875c6452d5009a0084cc291551ffcca6"
+    },
+    {
+      "file": "recognition/python/numpy-2.5.3/numpy/random/LICENSE.md",
+      "component": "numpy",
+      "version": "2.5.3",
+      "source": "Actual isolated build-environment distribution license text",
+      "sha256": "103166b62b80443afb9eb3488e052ea06be0cff566b908f199e561fde49af19f"
+    },
+    {
+      "file": "recognition/python/coloredlogs-15.0.1/coloredlogs-15.0.1.dist-info/LICENSE.txt",
+      "component": "coloredlogs",
+      "version": "15.0.1",
+      "source": "Actual isolated build-environment distribution license text",
+      "sha256": "0bef4ffb1855b65570304f2018c6d44e4bab97bd5df8716ecd7800014d717267"
+    },
+    {
+      "file": "recognition/python/humanfriendly-10.0/humanfriendly-10.0.dist-info/LICENSE.txt",
+      "component": "humanfriendly",
+      "version": "10.0",
+      "source": "Actual isolated build-environment distribution license text",
+      "sha256": "4ac48f4117809f2734066150450f120b3bb110ac1d3b32170795e0560dbbc1f5"
+    },
+    {
+      "file": "recognition/python/onnxruntime-1.22.1/onnxruntime/LICENSE",
+      "component": "onnxruntime",
+      "version": "1.22.1",
+      "source": "Actual isolated build-environment distribution license text",
+      "sha256": "2f07c72751aed99790b8a4869cf2311df85a860b22ded05fa22803587a48922c"
+    },
+    {
+      "file": "recognition/python/onnxruntime-1.22.1/onnxruntime/ThirdPartyNotices.txt",
+      "component": "onnxruntime",
+      "version": "1.22.1",
+      "source": "Actual isolated build-environment distribution license text",
+      "sha256": "e9e90971a8e75a9a8ac0c6412e29c1202d079998389915aa485f46c816c3b4cc"
+    },
+    {
+      "file": "recognition/python/colorlog-6.12.0/colorlog-6.12.0.dist-info/licenses/LICENSE",
+      "component": "colorlog",
+      "version": "6.12.0",
+      "source": "Actual isolated build-environment distribution license text",
+      "sha256": "b1d9082bc483623fd59fc7279b457f0e40d942a76426cde257239e04dfe4125a"
+    },
+    {
+      "file": "recognition/python/packaging-26.3/packaging-26.3.dist-info/licenses/LICENSE",
+      "component": "packaging",
+      "version": "26.3",
+      "source": "Actual isolated build-environment distribution license text",
+      "sha256": "cad1ef5bd340d73e074ba614d26f7deaca5c7940c3d8c34852e65c4909686c48"
+    },
+    {
+      "file": "recognition/python/packaging-26.3/packaging-26.3.dist-info/licenses/LICENSE.APACHE",
+      "component": "packaging",
+      "version": "26.3",
+      "source": "Actual isolated build-environment distribution license text",
+      "sha256": "0d542e0c8804e39aa7f37eb00da5a762149dc682d7829451287e11b938e94594"
+    },
+    {
+      "file": "recognition/python/packaging-26.3/packaging-26.3.dist-info/licenses/LICENSE.BSD",
+      "component": "packaging",
+      "version": "26.3",
+      "source": "Actual isolated build-environment distribution license text",
+      "sha256": "b70e7e9b742f1cc6f948b34c16aa39ffece94196364bc88ff0d2180f0028fac5"
+    },
+    {
+      "file": "recognition/python/protobuf-7.36.2/protobuf-7.36.2.dist-info/LICENSE",
+      "component": "protobuf",
+      "version": "7.36.2",
+      "source": "Actual isolated build-environment distribution license text",
+      "sha256": "6e5e117324afd944dcf67f36cf329843bc1a92229a8cd9bb573d7a83130fea7d"
+    },
+    {
+      "file": "recognition/python/requests-2.34.2/requests-2.34.2.dist-info/licenses/LICENSE",
+      "component": "requests",
+      "version": "2.34.2",
+      "source": "Actual isolated build-environment distribution license text",
+      "sha256": "09e8a9bcec8067104652c168685ab0931e7868f9c8284b66f5ae6edae5f1130b"
+    },
+    {
+      "file": "recognition/python/requests-2.34.2/requests-2.34.2.dist-info/licenses/NOTICE",
+      "component": "requests",
+      "version": "2.34.2",
+      "source": "Actual isolated build-environment distribution license text",
+      "sha256": "f5110972dedad2b4e9d314518daf3b7d72d6e02e499acd802181de6f74571dcc"
+    },
+    {
+      "file": "recognition/python/shapely-2.1.2/shapely-2.1.2.dist-info/licenses/LICENSE.txt",
+      "component": "shapely",
+      "version": "2.1.2",
+      "source": "Actual isolated build-environment distribution license text",
+      "sha256": "4a207eac9bf257ed286e1c6f0fce253d1abfdb134fc61ec855e37f5692a3f754"
+    },
+    {
+      "file": "recognition/python/shapely-2.1.2/shapely-2.1.2.dist-info/licenses/LICENSE_GEOS",
+      "component": "shapely",
+      "version": "2.1.2",
+      "source": "Actual isolated build-environment distribution license text",
+      "sha256": "138b2c2f9450073d7c116abe397ca4382625671c752b7a9a5f320b33fc3f3f2a"
+    },
+    {
+      "file": "recognition/python/sympy-1.14.0/sympy-1.14.0.dist-info/licenses/LICENSE",
+      "component": "sympy",
+      "version": "1.14.0",
+      "source": "Actual isolated build-environment distribution license text",
+      "sha256": "07a5e9819f727b4986ad2829c7a29a6320d42575f720eb24d71b7fef573a0286"
+    },
+    {
+      "file": "recognition/python/sympy-1.14.0/sympy/parsing/latex/LICENSE.txt",
+      "component": "sympy",
+      "version": "1.14.0",
+      "source": "Actual isolated build-environment distribution license text",
+      "sha256": "007bc30a58fa40a996e772047120de4eaf31f5110e4f9c3b5f93fcdfbe2eaca1"
+    },
+    {
+      "file": "recognition/python/tqdm-4.70.1/tqdm-4.70.1.dist-info/licenses/LICENCE",
+      "component": "tqdm",
+      "version": "4.70.1",
+      "source": "Actual isolated build-environment distribution license text",
+      "sha256": "fcff87c3a47ce8028a8512aa182d4fcf0ad1c90544ee75cf9b343684cac194de"
+    },
+    {
+      "file": "recognition/python/urllib3-2.8.0/urllib3-2.8.0.dist-info/licenses/LICENSE.txt",
+      "component": "urllib3",
+      "version": "2.8.0",
+      "source": "Actual isolated build-environment distribution license text",
+      "sha256": "130e3a64d5fdd5d096a752694634a7d9df284469de86e5732100268041e3d686"
+    },
+    {
+      "file": "recognition/python/mpmath-1.3.0/mpmath-1.3.0.dist-info/LICENSE",
+      "component": "mpmath",
+      "version": "1.3.0",
+      "source": "Actual isolated build-environment distribution license text",
+      "sha256": "c26cae81da4508e5e249985777a33821f183223ebb74d7f8cfbf90fe7eef2fb7"
+    },
+    {
+      "file": "recognition/python/PyYAML-6.0.3/pyyaml-6.0.3.dist-info/licenses/LICENSE",
+      "component": "pyyaml",
+      "version": "6.0.3",
+      "source": "Actual isolated build-environment distribution license text",
+      "sha256": "8d3928f9dc4490fd635707cb88eb26bd764102a7282954307d3e5167a577e8a4"
+    },
+    {
+      "file": "recognition/python/opencv-python-5.0.0.93/cv2/LICENSE-3RD-PARTY.txt",
+      "component": "opencv-python",
+      "version": "5.0.0.93",
+      "source": "Actual isolated build-environment distribution license text",
+      "sha256": "2537f5653345db7231ff12f307bcfa4c89807d45ed1c4bb8ebfb6f26f61b160a"
+    },
+    {
+      "file": "recognition/python/opencv-python-5.0.0.93/cv2/LICENSE.txt",
+      "component": "opencv-python",
+      "version": "5.0.0.93",
+      "source": "Actual isolated build-environment distribution license text",
+      "sha256": "09d719058e782ac7bc71ba21c944e1136cde2bb957c0e888121f0218d6b5f02c"
+    },
+    {
+      "file": "recognition/python/opencv-python-5.0.0.93/opencv_python-5.0.0.93.dist-info/LICENSE-3RD-PARTY.txt",
+      "component": "opencv-python",
+      "version": "5.0.0.93",
+      "source": "Actual isolated build-environment distribution license text",
+      "sha256": "2537f5653345db7231ff12f307bcfa4c89807d45ed1c4bb8ebfb6f26f61b160a"
+    },
+    {
+      "file": "recognition/python/opencv-python-5.0.0.93/opencv_python-5.0.0.93.dist-info/LICENSE.txt",
+      "component": "opencv-python",
+      "version": "5.0.0.93",
+      "source": "Actual isolated build-environment distribution license text",
+      "sha256": "09d719058e782ac7bc71ba21c944e1136cde2bb957c0e888121f0218d6b5f02c"
+    },
+    {
+      "file": "recognition/python/certifi-2026.7.22/certifi-2026.7.22.dist-info/licenses/LICENSE",
+      "component": "certifi",
+      "version": "2026.7.22",
+      "source": "Actual isolated build-environment distribution license text",
+      "sha256": "e93716da6b9c0d5a4a1df60fe695b370f0695603d21f6f83f053e42cfc10caf7"
+    },
+    {
+      "file": "recognition/python/omegaconf-2.3.1/omegaconf-2.3.1.dist-info/licenses/LICENSE",
+      "component": "omegaconf",
+      "version": "2.3.1",
+      "source": "Actual isolated build-environment distribution license text",
+      "sha256": "b31375ed5d5cbe7ec2d0c4c14df8afa7a8e5501bbe25f70b6cbc461685f4b91a"
+    },
+    {
+      "file": "recognition/python/pyclipper-1.4.0/pyclipper-1.4.0.dist-info/licenses/LICENSE",
+      "component": "pyclipper",
+      "version": "1.4.0",
+      "source": "Actual isolated build-environment distribution license text",
+      "sha256": "32ee7398e3123736fd14e9f08287edc2d97ace102ab54d8dc4edc8d31c651fa8"
+    },
+    {
+      "file": "recognition/python/charset-normalizer-3.5.2/charset_normalizer-3.5.2.dist-info/licenses/LICENSE",
+      "component": "charset-normalizer",
+      "version": "3.5.2",
+      "source": "Actual isolated build-environment distribution license text",
+      "sha256": "6d0d41bfe170ac6c7dc248c9a63e254d0fb45a60d50a8257d0af92c6e249b887"
+    },
+    {
+      "file": "recognition/python/pillow-12.3.0/pillow-12.3.0.dist-info/licenses/LICENSE",
+      "component": "pillow",
+      "version": "12.3.0",
+      "source": "Actual isolated build-environment distribution license text",
+      "sha256": "dda12a98c1979cf3d94df1cff45d27a4cb3f04a60c76f76902ac54cac03ec0ce"
+    },
+    {
+      "file": "recognition/python/six-1.17.0/six-1.17.0.dist-info/LICENSE",
+      "component": "six",
+      "version": "1.17.0",
+      "source": "Actual isolated build-environment distribution license text",
+      "sha256": "4375ba20e2b9c6c4e7cad2940a628fd90e95cc3d50ee92aae755715d8ba1fbd0"
+    },
+    {
+      "file": "recognition/python/idna-3.20/idna-3.20.dist-info/licenses/LICENSE.md",
+      "component": "idna",
+      "version": "3.20",
+      "source": "Actual isolated build-environment distribution license text",
+      "sha256": "1a9a4f0e3d479a27240ddd59a9137a66ab4a0f9dfdc8ca6188cc0bfd85187f04"
+    }
+  ],
+  "limitations": [
+    "FFmpeg 7.1 static linked components and corresponding-source distribution remain incomplete.",
+    "This collection does not establish complete license compliance."
+  ]
+}

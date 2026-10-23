@@ -1,0 +1,25 @@
+<!doctype html><html lang="zh-CN"><meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline' 'unsafe-eval'; style-src 'unsafe-inline'; media-src data:; frame-src 'none'; connect-src 'none'">
+<title>P011 T02 native diagnostic</title>
+<style>body{font:16px system-ui;margin:32px;background:#f5f7fa;color:#17202a}video{max-width:100%}pre{white-space:pre-wrap}button{padding:12px}</style>
+<h1>T02 系统 WebView 诊断</h1><p>仅验证桌面壳，不是产品页面；无业务数据或账号操作。</p>
+<video id="media" controls muted autoplay src="data:video/mp4;base64,__MEDIA__"></video>
+<p><button id="choose" disabled>选择测试文件（不导入）</button> <button id="reveal" disabled>定位测试视频</button></p><pre id="result">正在验证…</pre>
+<script>
+const v=document.querySelector('video');
+const result={h264Capability:v.canPlayType('video/mp4; codecs="avc1.42E01E, mp4a.40.2"'),ticks:0};
+let api;
+function save(){document.querySelector('#result').textContent=JSON.stringify(result,null,2);if(api)api.observations(result)}
+setInterval(()=>{result.ticks++;result.viewport=[innerWidth,innerHeight];save()},250);
+v.onloadedmetadata=()=>{result.duration=v.duration;v.currentTime=1;save()};
+v.onseeked=()=>{result.seek=v.currentTime;v.play().then(()=>{result.play=true;save()}).catch(e=>{result.playError=e.name;save()})};
+v.ontimeupdate=()=>{result.playbackPosition=v.currentTime;save()};
+v.onerror=()=>{result.mediaError=v.error.code;save()};
+addEventListener('pywebviewready',async()=>{
+ api=pywebview.api;
+ result.ping=await api.command('ping');result.workerAccepted=await api.command('start');
+ result.unknownRejected=(await api.command('arbitrary_command')).error==='unsupported_operation';
+ for(const op of ['choose','reveal']){const b=document.querySelector('#'+op);b.disabled=false;b.onclick=async()=>{result[op]=await api.command(op);save()}}
+ save();
+});
+</script></html>

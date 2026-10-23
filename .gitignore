@@ -1,0 +1,47 @@
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.coverage
+htmlcov/
+.venv/
+dist/
+build/
+*.egg-info/
+.tmp/
+.superpowers/
+.DS_Store
+Thumbs.db
+
+# Local runtime, private account state, generated verification outputs
+.venv*/
+outputs/
+profiles/
+cache/
+logs/
+*.db
+*.db-*
+*.sqlite*
+*.log
+.env
+.env.*
+*.pem
+*.key
+node_modules/
+playwright-browsers/
+tools/webui_probe/dist/
+tools/webui_probe/build/
+docs/**/evidence/
+docs/voice-comparison/
+tools/webui_probe/build-*/
+
+# Isolated feature checkouts
+.worktrees/
+
+# Local environment symlinks and generated native recognition payloads
+/.venv
+/.venv-webui-probe312
+/packaging/resources/bin/
+/packaging/resources/recognition-inventory.json
+# Retrieved third-party source snapshots; authored research stays tracked
+/docs/research/channels-declarations-20261009/
+/docs/research/kuaishou-author-declarations-20261009/

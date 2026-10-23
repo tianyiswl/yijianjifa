@@ -1,0 +1,4 @@
+SQLite 3.53.2
+Upstream describes the deliverable SQLite code and documentation as public domain.
+Official statement: https://sqlite.org/copyright.html
+This note does not relicense or describe every tool used to build SQLite.

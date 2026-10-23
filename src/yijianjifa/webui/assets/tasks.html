@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>一剪即发 · 任务记录 V1</title>
+<style>
+*{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;background:#f5f7fb;color:#172033}
+.shell{display:grid;grid-template-columns:210px 1fr;min-height:100vh}.side{background:#fff;border-right:1px solid #e7ebf1;padding:18px 12px}.brand{font-size:20px;font-weight:800;padding:8px 10px 18px}.brand small{display:block;font-size:12px;color:#7a8493;margin-top:3px;font-weight:500}
+.nav{display:grid;gap:4px}.nav div{padding:11px 12px;border-radius:9px}.nav .on{background:#2563eb;color:#fff;font-weight:700}
+main{padding:22px}.top{display:flex;justify-content:space-between;gap:12px;align-items:center;margin-bottom:14px}h1{margin:0;font-size:26px}.sub{color:#707b8b;margin-top:4px}.btn{border:1px solid #d8dee8;background:#fff;border-radius:8px;padding:9px 13px;cursor:pointer;font-weight:650}.btn.primary{background:#2563eb;color:#fff;border-color:#2563eb}.btn.danger{color:#b91c1c}.btn.soft{background:#eff6ff;color:#1d4ed8;border-color:#bfdbfe}
+.tabs{display:flex;gap:7px;margin-bottom:12px}.tab{padding:9px 13px;border-radius:8px;border:1px solid #e0e5ec;background:#fff;cursor:pointer}.tab.on{background:#eff6ff;color:#1d4ed8;border-color:#bfdbfe;font-weight:700}
+.toolbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;background:#fff;padding:11px;border:1px solid #e6eaf0;border-radius:12px;margin-bottom:14px}.toolbar input,.toolbar select{padding:8px 10px;border:1px solid #d7dde7;border-radius:8px}.grow{flex:1}.muted{color:#788292}
+.layout{display:grid;grid-template-columns:minmax(620px,1.2fr) minmax(360px,.8fr);gap:14px}.panel{background:#fff;border:1px solid #e6eaf0;border-radius:13px;overflow:hidden;box-shadow:0 8px 24px rgba(15,23,42,.05)}.ph{padding:13px 15px;border-bottom:1px solid #edf0f4;display:flex;justify-content:space-between;align-items:center}.ph b{font-size:16px}
+table{width:100%;border-collapse:collapse}th,td{padding:10px 11px;border-bottom:1px solid #edf0f4;text-align:left;vertical-align:middle}th{font-size:12px;color:#6b7280;background:#fafbfc}
+#rows>tr.row{cursor:pointer}#rows>tr.row:hover>td{background:#fafcff}
+#rows>tr.row.active>td{background:var(--soft,#eef2ff)}#rows>tr.row.active>td:first-child{box-shadow:inset 3px 0 var(--blue,#435ff5)}
+#rows>tr.row.active>td:nth-child(2){color:#2e4be0;font-weight:600}
+.tag{display:inline-block;border-radius:999px;padding:3px 7px;font-size:12px;background:#f1f5f9}.blue{background:#eff6ff;color:#1d4ed8}.ok{background:#ecfdf5;color:#15803d}.warn{background:#fff7ed;color:#b45309}.bad{background:#fef2f2;color:#b91c1c}.gray{background:#f1f5f9;color:#475569}
+.bar{height:7px;background:#edf1f5;border-radius:999px;overflow:hidden;margin-top:5px}.bar i{height:100%;background:#2563eb;display:block}
+.detail{padding:15px}.card{border:1px solid #e6eaf0;border-radius:11px;padding:12px;margin-bottom:11px}.card h3{margin:0 0 8px;font-size:15px}.kv{display:grid;grid-template-columns:100px 1fr;gap:7px 9px}.k{color:#718096}.line{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:10px}
+.notice{padding:10px 11px;border-radius:9px;background:#fff7ed;color:#9a3412;margin-bottom:11px}.notice.red{background:#fef2f2;color:#b91c1c}
+.issue{border:1px solid #fed7aa;background:#fffaf2;border-radius:12px;padding:13px;margin-bottom:12px}
+.issue.red{border-color:#fecaca;background:#fff7f7}.issue-head{display:flex;justify-content:space-between;gap:10px;align-items:flex-start;margin-bottom:10px}
+.issue-title{font-size:16px;font-weight:800}.issue-grid{display:grid;grid-template-columns:100px 1fr;gap:7px 10px}
+.issue-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}.tech{display:none;margin-top:11px;border-top:1px dashed #e3c8aa;padding-top:10px}.tech.on{display:block}
+.tech pre{white-space:pre-wrap;word-break:break-word;background:#111827;color:#e5e7eb;padding:10px;border-radius:8px;font-size:12px;max-height:220px;overflow:auto}
+.daily-publish-issues{margin-top:12px;border-top:1px solid #edf0f4;padding-top:8px;overflow-wrap:anywhere}.daily-publish-issues h4{margin:0 0 6px;font-size:13px}.daily-publish-issue{padding:8px 0;border-bottom:1px solid #edf0f4;font-size:12px;line-height:1.7}.daily-publish-issue p{margin:2px 0}.daily-publish-issue-reason{color:#b33434}
+.safe-note{font-size:12px;color:#64748b;margin-top:8px}
+.item{padding:9px 0;border-bottom:1px solid #edf0f4;display:grid;grid-template-columns:1fr auto;gap:8px}
+.ctx{position:fixed;display:none;background:#fff;border:1px solid #d9e0ea;border-radius:9px;box-shadow:0 16px 40px rgba(15,23,42,.16);padding:5px;z-index:20;min-width:170px}.ctx button{width:100%;text-align:left;padding:8px 10px;border:0;background:#fff;border-radius:6px;cursor:pointer}.ctx button:hover{background:#f1f5f9}
+.toast{position:fixed;right:20px;bottom:20px;background:#111827;color:#fff;padding:10px 13px;border-radius:8px;display:none;z-index:30;max-width:min(540px,calc(100vw - 40px));pointer-events:none}
+.task-operation-note{display:flex;align-items:center;gap:12px;justify-content:space-between;margin-bottom:12px}.task-operation-note[hidden]{display:none!important}.task-operation-note span{min-width:0}.task-operation-note button{flex-shrink:0;white-space:nowrap}
+@media(max-width:980px){.shell{grid-template-columns:1fr}.side{display:none}.layout{grid-template-columns:1fr}}
+.nav button{display:block;border:0;background:transparent;text-align:left;font:inherit;padding:11px 12px;border-radius:9px;color:#334155;width:100%;cursor:pointer}.nav button:disabled:not(.on){opacity:.45;cursor:default}.detail video{max-width:100%;max-height:300px}.detail pre{white-space:pre-wrap;overflow-wrap:anywhere}
+.task-batch-overlay{position:fixed;inset:0;z-index:3000;background:#18223866;display:flex;align-items:center;justify-content:center;padding:24px}.task-batch-overlay[hidden]{display:none!important}.task-batch-dialog{background:#fff;border-radius:16px;padding:28px;width:min(620px,100%);max-height:80vh;overflow:auto;box-shadow:0 20px 60px #18223833}.task-batch-dialog h3{margin:0 0 18px}.task-batch-dialog p{line-height:1.7}.task-batch-dialog button{margin:12px 10px 0 0}
+</style>
+</head>
+<body>
+<div class="shell">
+<aside class="side"><div class="brand p011-brand"><div class="mark" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M8.5 7.5 21 20M8.5 16.5 21 4M14 12l7-8"/></svg></div><div><b>一剪即发</b><small>一键剪辑 · 一键发布</small></div></div>
+<div class="nav"><div>资料库</div><div>混剪制作</div><div>成品库</div><div>普通发布</div><div>团购带货</div><div>账号管理</div><div class="on">任务记录</div><div>常用方案与设置</div></div></aside>
+<main>
+<div class="top"><div><h1>任务记录</h1><div class="sub">制作任务和发布任务统一查看；最新任务优先显示；可筛选需要处理的问题。</div></div><button class="btn" id="restore">刷新任务</button></div>
+
+<div class="tabs">
+<button class="tab on" data-tab="all">全部任务</button>
+<button class="tab" data-tab="make">制作任务</button>
+<button class="tab" data-tab="publish">发布任务</button>
+<button class="tab" data-tab="download">下载任务</button>
+<button class="tab" data-tab="action">待我处理</button>
+</div>
+
+<div class="toolbar">
+<input type="checkbox" id="all">
+<button class="btn" id="selAll">全选</button><button class="btn" id="clear">取消全选</button>
+<input id="q" placeholder="搜索任务、账号或任务号">
+<select id="status"><option value="">全部状态</option><option value="running">执行中</option><option value="waiting">等待中</option><option value="paused">已暂停</option><option value="action">待处理</option><option value="failed">有失败</option><option value="ambiguous">结果待确认</option><option value="done">已完成</option></select>
+<span class="grow"></span><span class="muted" id="count">已选 0</span>
+<button class="btn" id="deleteSelected" disabled>批量删除</button><button class="btn" id="up">上移</button><button class="btn" id="down">下移</button>
+</div>
+
+<div class="layout">
+<section class="panel"><div class="ph"><b>任务列表</b><span class="muted">双击查看 · 右键快捷操作</span></div>
+<div class="p011-list-scroll"><table><thead><tr><th style="width:44px">选</th><th>任务</th><th>类型</th><th>状态</th><th>进度</th><th>时间</th></tr></thead><tbody id="rows"></tbody></table></div></section>
+<section class="panel"><div class="ph"><b>任务详情</b><span class="muted" id="detailTitle">请选择任务</span></div><div class="detail" id="detail"></div></section>
+</div>
+</main></div>
+<div id="batchModal" class="task-batch-overlay" hidden></div>
+<div id="ctx" class="ctx"></div><div id="toast" class="toast"></div>
+
+
+</body></html>

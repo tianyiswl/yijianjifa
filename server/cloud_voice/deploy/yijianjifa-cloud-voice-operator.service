@@ -1,0 +1,38 @@
+[Unit]
+Description=Yijianjifa private operator redemption management
+After=network.target
+
+[Service]
+Type=simple
+StartLimitInterval=300
+StartLimitBurst=3
+User=yjjfvoice
+Group=yjjfvoice
+WorkingDirectory=/opt/yijianjifa-cloud-voice/current
+Environment=PYTHONDONTWRITEBYTECODE=1
+Environment=PYTHONUNBUFFERED=1
+Environment=PYTHONPATH=/opt/yijianjifa-cloud-voice/current
+Environment=YJJF_OPERATOR_CONFIG=/etc/yijianjifa-cloud-voice-operator/operator.json
+ExecStart=/opt/yijianjifa-cloud-voice/operator-venv/bin/python /opt/yijianjifa-cloud-voice/current/deploy/operator_production.py
+Restart=on-failure
+RestartSec=15
+TimeoutStopSec=120
+KillSignal=SIGTERM
+KillMode=control-group
+UMask=0077
+MemoryAccounting=true
+MemoryLimit=128M
+CPUAccounting=true
+CPUQuota=25%
+LimitNOFILE=128
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ProtectHome=true
+ReadOnlyDirectories=/opt/yijianjifa-cloud-voice /etc/yijianjifa-cloud-voice-operator
+CapabilityBoundingSet=
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

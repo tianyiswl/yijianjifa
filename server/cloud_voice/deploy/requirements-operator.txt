@@ -1,0 +1,7 @@
+# Independent CPython 3.12 on CentOS 7 x86_64 (glibc 2.17).
+# Resolve only prebuilt official PyPI wheels; do not use the system Python/pip.
+# CPython 3.12 needs no typing-extensions dependency for cryptography.
+waitress==3.0.2
+cryptography==50.0.2
+cffi==2.1.1
+pycparser==3.11

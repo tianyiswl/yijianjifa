@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>一剪即发 · 账号管理 V1</title>
+<style>
+:root{
+  --bg:#f5f7fb;--panel:#fff;--line:#e6eaf0;--text:#18212f;--sub:#6b7280;
+  --blue:#2563eb;--blue2:#eff6ff;--green:#16a34a;--amber:#d97706;--red:#dc2626;
+  --shadow:0 10px 30px rgba(15,23,42,.07)
+}
+*{box-sizing:border-box} body{margin:0;font:14px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;color:var(--text);background:var(--bg)}
+.shell{display:grid;grid-template-columns:210px 1fr;min-height:100vh}
+aside{background:#fff;border-right:1px solid var(--line);padding:18px 12px}
+.brand{font-size:19px;font-weight:800;padding:8px 10px 18px}.brand small{display:block;font-size:12px;color:var(--sub);font-weight:500;margin-top:3px}
+nav button{width:100%;border:0;background:transparent;text-align:left;padding:11px 12px;border-radius:10px;margin:3px 0;color:#334155;cursor:pointer}
+nav button.on{background:var(--blue);color:#fff;font-weight:700}
+main{padding:22px}
+.top{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px}
+h1{margin:0;font-size:26px}.hint{color:var(--sub);margin-top:4px}
+.actions{display:flex;gap:8px}.btn{border:1px solid #d7deea;background:#fff;border-radius:9px;padding:9px 13px;cursor:pointer;font-weight:650}.btn.primary{background:var(--blue);color:#fff;border-color:var(--blue)}.btn.soft{background:var(--blue2);color:#1d4ed8;border-color:#bfdbfe}.btn.danger{color:#b91c1c}
+.toolbar{background:#fff;border:1px solid var(--line);border-radius:14px;padding:12px;display:flex;gap:10px;align-items:center;margin-bottom:14px;box-shadow:var(--shadow)}
+input,select{border:1px solid #d8dee9;border-radius:8px;padding:8px 10px;background:#fff}
+.search{min-width:260px}.grow{flex:1}
+.layout{display:grid;grid-template-columns:minmax(620px,1fr) minmax(280px,320px);gap:14px}
+.panel{background:#fff;border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);overflow:hidden}
+.panel h2{font-size:16px;margin:0}.ph{padding:14px 16px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center}
+.table{width:100%;border-collapse:collapse}.table th,.table td{padding:10px 12px;border-bottom:1px solid #eef1f5;text-align:left;vertical-align:middle}.table th{font-size:12px;color:#64748b;background:#fafbfc}
+.row{cursor:pointer}.row:hover{background:#fafcff}.row.active{background:#eff6ff}
+.avatar{width:34px;height:34px;border-radius:50%;display:inline-grid;place-items:center;background:#dbeafe;color:#1d4ed8;font-weight:800;margin-right:8px}
+.namecell{display:flex;align-items:center}.muted{color:var(--sub)}.tag{display:inline-block;padding:3px 7px;border-radius:999px;font-size:12px;margin:1px 3px 1px 0;background:#f1f5f9}
+.tag.ok{background:#ecfdf5;color:#15803d}.tag.warn{background:#fff7ed;color:#b45309}.tag.bad{background:#fef2f2;color:#b91c1c}.tag.blue{background:#eff6ff;color:#1d4ed8}
+.detail{padding:16px}.card{border:1px solid var(--line);border-radius:12px;padding:13px;margin-bottom:12px}.card h3{margin:0 0 10px;font-size:15px}
+.kv{display:grid;grid-template-columns:110px 1fr;gap:8px 10px;margin:7px 0}.kv .k{color:#64748b}
+.line{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:10px}
+.cap{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center;border-top:1px dashed #e5e7eb;padding:10px 0}.cap:first-of-type{border-top:0}
+.status-dot{width:8px;height:8px;border-radius:50%;display:inline-block;margin-right:6px}.g{background:#22c55e}.y{background:#f59e0b}.r{background:#ef4444}.b{background:#3b82f6}
+.checkbox{width:16px;height:16px}
+.context{position:fixed;z-index:20;background:#fff;border:1px solid #dce3ee;border-radius:10px;box-shadow:0 18px 40px rgba(15,23,42,.16);padding:6px;min-width:170px;display:none}
+.context button{display:block;width:100%;text-align:left;border:0;background:#fff;padding:8px 10px;border-radius:7px;cursor:pointer}.context button:hover{background:#f1f5f9}
+.toast{position:fixed;right:22px;bottom:22px;background:#111827;color:#fff;padding:10px 14px;border-radius:9px;display:none;z-index:40}
+.modal{position:fixed;inset:0;background:rgba(15,23,42,.35);display:none;place-items:center;z-index:30}.dialog{width:min(520px,90vw);background:#fff;border-radius:14px;padding:18px;box-shadow:0 25px 70px rgba(15,23,42,.25)}.dialog h3{margin-top:0}.dialog .foot{display:flex;justify-content:flex-end;gap:8px;margin-top:16px}
+@media(max-width:980px){.shell{grid-template-columns:1fr}aside{display:none}.layout{grid-template-columns:1fr}.search{min-width:0;width:100%}.toolbar{flex-wrap:wrap}}
+.account-identity{display:flex;align-items:center;gap:10px}.account-avatar{display:inline-flex;align-items:center;justify-content:center;width:42px;height:42px;flex:0 0 42px;border-radius:50%;background:#e8edff;color:#4159aa;font-size:18px;overflow:hidden}.account-avatar img{width:100%;height:100%;object-fit:cover}.card>.account-avatar{width:54px;height:54px}.line{flex-wrap:wrap}
+</style>
+</head>
+<body>
+<div class="shell">
+<aside>
+  <div class="brand p011-brand"><div class="mark" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M8.5 7.5 21 20M8.5 16.5 21 4M14 12l7-8"/></svg></div><div><b>一剪即发</b><small>一键剪辑 · 一键发布</small></div></div>
+  <nav>
+    <button>资料库</button><button>混剪制作</button><button>成品库</button><button>普通发布</button><button>团购带货</button>
+    <button class="on">账号管理</button><button>任务记录</button><button>常用方案与设置</button>
+  </nav>
+</aside>
+<main>
+  <div class="top">
+    <div><h1>账号管理</h1><div class="hint">统一管理各平台账号、登录状态、平台默认账号和发布能力。</div></div>
+    <div class="actions"><button class="btn" id="checkSelected">重新检查已选账号</button><button class="btn primary" id="addAccount">+ 添加账号</button></div>
+  </div>
+
+  <div class="toolbar">
+    <input class="checkbox" type="checkbox" id="selectAll">
+    <button class="btn" id="selectAllBtn">全选</button>
+    <button class="btn" id="clearAllBtn">取消全选</button>
+    <input class="search" id="q" placeholder="搜索昵称或备注">
+    <select id="platform"><option value="">全部平台</option><option value="抖音">抖音</option></select>
+    <select id="group"><option value="">全部分组</option><option>门店A</option><option>门店B</option><option>产品矩阵</option></select>
+    <select id="state"><option value="">全部状态</option><option value="ok">登录正常</option><option value="relogin">需要登录</option><option value="pending">待检查</option></select>
+    <div class="grow"></div>
+    <span class="muted" id="selectedCount">已选 0</span>
+  </div>
+
+  <div class="layout">
+    <section class="panel">
+      <div class="ph"><h2>账号列表</h2><span class="muted">双击查看详情 · 右键快捷操作</span></div>
+      <div class="p011-list-scroll"><table class="table">
+        <thead><tr><th style="width:44px">选择</th><th>平台</th><th>账号</th><th>分组</th><th>登录</th><th>最近登录时间</th><th>普通发布</th><th data-commerce-column hidden>团购带货</th><th>默认</th></tr></thead>
+        <tbody id="rows"></tbody>
+      </table></div>
+    </section>
+
+    <section class="panel">
+      <div class="ph"><h2>账号详情</h2><span class="muted" id="detailSub">选择一个账号查看</span></div>
+      <div class="detail" id="detail"></div>
+    </section>
+  </div>
+</main>
+</div>
+
+<div class="context" id="ctx"></div>
+<div class="toast" id="toast"></div>
+<div class="modal" id="modal"><div class="dialog" id="dialog"></div></div>
+
+
+</body></html>
