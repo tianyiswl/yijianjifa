@@ -23,6 +23,7 @@ from yijianjifa.storage.models import Setting
 from . import chromium_publish as legacy
 from .chromium_multi_publish import ChromiumMultiPublishAdapter
 from .douyin_topics import compose_description
+from .login_observation import douyin_login_state
 
 
 CREATE_PATH = '/web/api/media/aweme/create'
@@ -392,7 +393,9 @@ class DouyinImagePostAdapter(ChromiumMultiPublishAdapter):
         kind = self._challenge(s)
         if kind:
             return self._park(s, kind)
-        observed = legacy.evaluate_script(s.page, legacy.READ_IDENTITY + 'return identity;', {})
+        observed = self._login_read(s,
+            lambda: legacy.evaluate_script(s.page, legacy.READ_IDENTITY + 'return identity;', {}),
+            classify=lambda value: douyin_login_state(value, payload['platform_user_id']))
         try:
             legacy.verified_identity(observed, expected_uid=payload['platform_user_id'])
         except ValueError:
@@ -402,7 +405,8 @@ class DouyinImagePostAdapter(ChromiumMultiPublishAdapter):
     def _outcome(self, s, item_id, *, published=False):
         account = self._account(s)
         self.refreshed[account.id] = {'platform_user_id': account.platform_user_id, 'nickname': account.nickname,
-            'session_blob': legacy.session_blob(s.context, account.platform_user_id), 'original_ref': s.original_ref}
+            'session_blob': legacy.session_blob(s.context, account.platform_user_id), 'original_ref': s.original_ref,
+            'login_observed_at':self._login_valid_at(s)}
         scheduled = s.payload['execution_mode'] == 'platform_schedule'
         state = 'platform_scheduled' if scheduled else ('published' if published else 'platform_accepted')
         return AdapterOutcome(state, scheduled_at=s.payload['scheduled_at'] if scheduled else None,
@@ -433,7 +437,9 @@ class DouyinImagePostAdapter(ChromiumMultiPublishAdapter):
                 return self._park(s, kind)
             if not self._version(s, query=query):
                 return self._park(s, 'login', '账号登录资料已改变，请确认原账号后继续。')
-            observed = legacy.evaluate_script(s.page, legacy.READ_IDENTITY + 'return identity;', {})
+            observed = self._login_read(s,
+                lambda: legacy.evaluate_script(s.page, legacy.READ_IDENTITY + 'return identity;', {}),
+                classify=lambda value: douyin_login_state(value, s.payload['platform_user_id']))
             try:
                 legacy.verified_identity(observed, expected_uid=s.payload['platform_user_id'])
             except ValueError:

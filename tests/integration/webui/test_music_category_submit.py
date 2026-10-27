@@ -21,7 +21,7 @@ def prepare_media(engine, paths, copy_repo, directory, category_id):
     track = directory / 'music.wav'
     track.write_bytes(b'music fixture; submit freezes its identity')
     return MediaStorageService(engine, paths, kind='music').import_media(
-        track, keep_copy=False, category_ids=[category_id])
+        track, keep_copy=False, category_ids=[category_id] if category_id else [])
 
 
 def test_webui_created_music_category_is_valid_for_mix_submission(db_engine, app_paths, copy_repo, tmp_path):
@@ -49,7 +49,7 @@ def test_music_scope_never_accepts_unrelated_or_missing_categories(db_engine, ap
     api = DesktopApi(db_engine, app_paths)
     try:
         category_id = 'missing' if kind == 'missing' else CategoryRepository(db_engine).create(kind, '非音乐分类').id
-        prepare_media(db_engine, app_paths, copy_repo, tmp_path, category_id)
+        prepare_media(db_engine, app_paths, copy_repo, tmp_path, None)
         with pytest.raises(ValueError, match='音乐分类已失效'):
             api._mix.submit(quantity=1, background_music={'mode': 'random', 'category_ids': [category_id]})
         assert api._mix.tasks() == []

@@ -310,12 +310,27 @@ def make_scheduled_transport(engine,paths,expected_uid):
 
 
 def persist_refreshed_sessions(engine,paths,refreshed):
-    from yijianjifa.features.accounts.service import AccountService
+    from sqlalchemy import text
+    from yijianjifa.features.accounts.service import AccountService, AccountRow
     from yijianjifa.features.accounts.session_store import SessionStore
+    from yijianjifa.storage.db import session_scope
+    from .login_observation import can_refresh_login_session
     service=AccountService(engine);store=SessionStore(paths.data_dir/'profiles')
     for account_id,value in list(refreshed.items()):
         current=service.get(account_id)
         service.assert_same_identity(account_id,value['platform_user_id'])
         if value.get('needs_persist',True) and current.session_ref==value['original_ref']:
-            service.attach_session(account_id,store,value['session_blob'])
+            with session_scope(engine) as db:
+                db.execute(text('BEGIN IMMEDIATE'))
+                row=db.get(AccountRow,account_id)
+                if (row is not None and row.login_state!='removed' and row.platform_user_id==value['platform_user_id']
+                        and row.session_ref==value['original_ref']
+                        and can_refresh_login_session(db,row,value.get('login_observed_at'))):
+                    previous_reference = row.session_ref
+                    row.session_ref=store.put(account_id,value['session_blob'],versioned=True)
+                    from yijianjifa.features.accounts.session_rotation import record_rotation
+                    record_rotation(db,row,previous_reference,row.session_ref)
+                    if value.get('login_observed_at') is not None:
+                        service.record_login_check(db,row,'valid',observed_at=value['login_observed_at'])
+                    else:row.login_state='valid'
         refreshed.pop(account_id,None)

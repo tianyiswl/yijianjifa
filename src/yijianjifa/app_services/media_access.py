@@ -9,7 +9,7 @@ import os
 from collections import OrderedDict
 from pathlib import Path
 
-from yijianjifa.features.library.copy_service import CategoryRepository
+from yijianjifa.features.library.copy_service import CategoryRepository, single_category_ids
 from yijianjifa.features.library.media_storage import MediaStorageService
 from yijianjifa.features.library.preferences import LibraryPreferences
 from yijianjifa.webui.media_registry import MediaRegistry
@@ -57,6 +57,7 @@ class MediaAccess:
         self._durations=OrderedDict()
 
     def import_files(self,kind,selected,*,keep_copy,category_ids,folder=False):
+        category_ids = single_category_ids(category_ids)
         service=MediaStorageService(self._engine,self._paths,kind=kind)
         if type(keep_copy) is not bool or not set(category_ids)<={c.id for c in CategoryRepository(self._engine).list(kind)}:
             raise ValueError('invalid import options')

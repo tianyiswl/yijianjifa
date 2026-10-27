@@ -12,6 +12,7 @@ from .account_wait import AccountBusy
 
 ERROR_CODES=frozenset({'adapter_failed','account_mismatch','permission_missing','configuration_required','verification_required',
     'platform_rejected','timeout','recovery_unavailable','result_unknown','schedule_mismatch',
+    'bilibili_tag_requires_topic','douyin_daily_post_limit','platform_daily_post_limit','posting_limit_skipped',
     'kuaishou_author_statement_required','kuaishou_declaration_options_unverified',
     'channels_declaration_options_unverified','channels_original_unavailable','channels_original_video_too_short',
     'image_count_mismatch','image_order_unverified','image_upload_unverified','image_fields_unverified',
@@ -21,7 +22,7 @@ ERROR_STAGES=frozenset({'adapter_setup','account_validation','page_preparation',
     'upload_preparation','form_preparation','schedule_preparation'})
 ERROR_CATEGORIES=frozenset({'dependency_missing','account_busy','session_unavailable','worker_thread_mismatch',
     'timeout','page_context_unavailable','identity_mismatch','resource_unavailable','execution_failed',
-    'browser_launch_failed','profile_in_use','page_closed','existing_draft','form_changed','javascript_read_failed'})
+    'browser_launch_failed','profile_in_use','page_closed','existing_draft','form_changed','javascript_read_failed','cover_unconfirmed','existing_scheduled_work'})
 
 
 def failure_category(error):
@@ -58,6 +59,50 @@ class AdapterOutcome:
     error_code: str | None = None
     error_stage: str | None = None
     error_category: str | None = None
+    submission_ack: dict | None = None
+    submission_notice: dict | None = None
+    platform_message: str | None = None
+
+
+def has_submission_notice(evidence, *, platform, request_digest, final_started):
+    notice = evidence.get('submission_notice')
+    return (final_started is True and evidence.get('state') in {'platform_accepted', 'platform_scheduled'}
+        and evidence.get('request_digest') == request_digest
+        and evidence.get('error_code') is None and not evidence.get('protocol_violation')
+        and type(platform) is str and platform in {'douyin', 'bilibili', 'kuaishou', 'channels'}
+        and type(request_digest) is str and re.fullmatch(r'[a-f0-9]{64}', request_digest) is not None
+        and type(notice) is dict and notice == {'kind': 'publish_success_toast',
+            'platform': platform, 'request_digest': request_digest})
+
+
+def _validated_submission_ack(ack, request_digest):
+    """A finite, exact-match creator ACK, without native payload or a made-up ID."""
+    if (type(ack) is not dict or set(ack) != {'kind','platform','request_digest','http_status',
+            'outer_code','inner_code','request_matched'}
+            or type(ack['kind']) is not str or ack['kind'] != 'channels_create_ack'
+            or type(ack['platform']) is not str or ack['platform'] != 'channels'
+            or type(request_digest) is not str or not re.fullmatch(r'[a-f0-9]{64}',request_digest)
+            or type(ack['request_digest']) is not str or ack['request_digest'] != request_digest
+            or type(ack['http_status']) is not int or not 200 <= ack['http_status'] < 300
+            or type(ack['outer_code']) is not int or ack['outer_code'] != 0
+            or type(ack['inner_code']) is not int or ack['inner_code'] != 0
+            or ack['request_matched'] is not True):
+        raise ValueError('invalid bound submission acknowledgement')
+    return dict(ack)
+
+
+def has_channels_immediate_ack(evidence, *, platform, execution_mode, request_digest, final_started):
+    """Only this final Channels attempt may use its ACK without a work ID."""
+    if (platform != 'channels' or execution_mode != 'publish_now' or final_started is not True
+            or type(evidence) is not dict or evidence.get('state') != 'platform_accepted'
+            or evidence.get('request_digest') != request_digest or evidence.get('scheduled_at') is not None
+            or evidence.get('error_code') is not None or evidence.get('protocol_violation')):
+        return False
+    try:
+        _validated_submission_ack(evidence.get('submission_ack'),request_digest)
+        return True
+    except ValueError:
+        return False
 
 
 def outcome_evidence(outcome, request_digest):
@@ -75,6 +120,22 @@ def outcome_evidence(outcome, request_digest):
     if outcome.error_code is not None and (type(outcome.error_code) is not str or outcome.error_code not in ERROR_CODES):raise ValueError('unsupported normalized error code')
     evidence={'state':outcome.state,'request_digest':request_digest,'scheduled_at':outcome.scheduled_at,
             'receipt_reference':reference,'error_code':outcome.error_code}
+    if outcome.submission_notice is not None:
+        evidence['submission_notice'] = outcome.submission_notice
+        notice = outcome.submission_notice
+        if not has_submission_notice(evidence, platform=notice.get('platform') if type(notice) is dict else None,
+                request_digest=request_digest, final_started=True):
+            raise ValueError('invalid final success notice')
+    if outcome.platform_message is not None:
+        from .platform_feedback import safe_message
+        message = safe_message(outcome.platform_message)
+        if outcome.state not in {'pre_submit_failed','platform_rejected','result_unknown'} or not message:
+            raise ValueError('invalid platform reason')
+        evidence['platform_message'] = message
+    if outcome.submission_ack is not None:
+        if outcome.state != 'platform_accepted' or outcome.scheduled_at is not None or outcome.error_code is not None:
+            raise ValueError('submission acknowledgement is not a public result')
+        evidence['submission_ack']=_validated_submission_ack(outcome.submission_ack,request_digest)
     if outcome.error_stage is not None or outcome.error_category is not None:
         if (outcome.state not in {'pre_submit_failed','result_unknown'} or outcome.error_code!='adapter_failed'
                 or type(outcome.error_stage) is not str or outcome.error_stage not in ERROR_STAGES
@@ -107,6 +168,13 @@ class PublishCoordinator:
         for child in dto['deliveries']:
             if child['id'] not in selected or child['state']!='waiting':continue
             if self.service.check_schedule(child['id'])!='due' or not child['can_submit']:continue
+            from .posting_limits import batch_limit_reason, SKIP_CODE
+            limited_reason=batch_limit_reason(self.service.engine,child)
+            if limited_reason:
+                try:claim=self.boundary.claim(child['id'])
+                except ValueError:continue
+                return self.boundary.record(child['id'],claim['digest'],owner_token=claim['owner_token'],
+                    outcome=AdapterOutcome('pre_submit_failed',error_code=SKIP_CODE,platform_message=limited_reason))
             try:adapter=self.service.catalog.transport_for_content(child['platform'],child.get('content_type','video'))
             except Exception:adapter=None  # Setup failures retain the normal durable diagnostic path.
             available=getattr(adapter,'account_available',None)

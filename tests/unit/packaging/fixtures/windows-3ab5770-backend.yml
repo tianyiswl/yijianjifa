@@ -1,0 +1,17 @@
+# Exact Backend block from source 3ab5770080a3ab40ddc5dcd991556bb9afef7b28.
+# Unrelated workflow sections are omitted; this remains the actual recovery input.
+      - name: Backend and interface checks
+        if: ${{ !inputs.trim_probe_only && (steps.delivery.outputs.recovery != 'true') }}
+        run: |
+          python -m pytest tests/integration/webui/test_daily_login_flow.py::test_readonly_check_challenge_opens_original_login_flow_without_falsely_expiring_account tests/integration/webui/test_session_check_websocket.py::test_production_probe_blocks_all_websocket_network_without_blocking_future_evaluations tests/unit/webui/test_chromium_multi_publish.py::test_real_bridge_worker_yields_second_account_and_response_has_no_durable_code -q
+          if ($LASTEXITCODE -ne 0) { throw 'Login and asynchronous worker regression preflight failed' }
+          python tools/voice_list_scroll_probe.py --label windows --expect stable --output build/voice-list-scroll-check
+          if ($LASTEXITCODE -ne 0) { throw 'Real Windows voice-list scroll regression failed' }
+          python -m pytest tests/integration/downloads/test_runtime.py::test_cover_grant_lru_across_four_pages_preserves_player_and_library tests/integration/mixing/test_media_guard.py::test_failed_child_start_cleans_attempt_without_waiting_for_lease tests/integration/publish/test_official_final_fixes.py tests/integration/webui/test_application_bundle_routes.py tests/integration/webui/test_bilibili_native_login.py tests/integration/webui/test_channels_publish_boundary.py tests/integration/webui/test_finished_files.py tests/integration/webui/test_multi_publish_ui_scope.py tests/ui/library/test_desktop_library.py tests/unit/webui/test_app_version.py tests/unit/webui/test_kuaishou_declarations.py -q
+          if ($LASTEXITCODE -ne 0) { throw 'Expanded Windows portability preflight failed' }
+          python -m pytest tests/integration/downloads/test_local_video.py::test_symlink_directory_empty_and_oversize_rejected_per_file tests/unit/webui/test_bilibili_preparation_observation.py tests/unit/webui/test_douyin_publish_diagnostics.py -q
+          if ($LASTEXITCODE -ne 0) { throw 'Windows asynchronous observation preflight failed' }
+          python -m pytest tests -q --durations=10
+          if ($LASTEXITCODE -ne 0) { throw 'Full Windows Python regression failed' }
+          node --test tests/webui/*.test.cjs
+          if ($LASTEXITCODE -ne 0) { throw 'Interface checks failed' }

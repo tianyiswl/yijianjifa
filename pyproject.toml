@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "yijianjifa-desktop"
-version = "0.1.42"
+version = "0.1.48"
 license = {file = "LICENSE"}
 description = "一剪即发 desktop video mixing and publishing application"
 requires-python = ">=3.12,<3.14"

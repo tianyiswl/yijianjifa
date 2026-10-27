@@ -325,7 +325,7 @@ def test_received_image_posts_complete_local_delivery_without_claiming_publicati
 
 
 @pytest.mark.parametrize('state',['platform_accepted','processing','reviewing'])
-def test_existing_video_receipt_aggregation_is_not_changed_by_image_completion(db_engine, state):
+def test_video_receipts_share_local_completion_without_changing_the_platform_state(db_engine, state):
     from yijianjifa.features.tasks.service import TaskCenterRow, TaskItemRow
     from yijianjifa.features.publish.normal_service import PublishTaskRow
     from yijianjifa.features.publish.deliveries import PublishDeliveries
@@ -337,7 +337,10 @@ def test_existing_video_receipt_aggregation_is_not_changed_by_image_completion(d
         s.add(TaskItemRow(id='old-video-item',task_id='old-video-task',item_key='old-video-delivery',state=state,detail_json='{}'))
         s.flush()
         PublishDeliveries.aggregate(s, 'old-video-task')
-        assert s.get(TaskCenterRow, 'old-video-task').state == 'action_required'
+        assert s.get(TaskCenterRow, 'old-video-task').state == 'completed'
+        assert s.get(PublishTaskRow, 'old-video-task').state == 'completed'
+        assert s.get(TaskItemRow, 'old-video-item').state == state
+        assert s.get(TaskCenterRow, 'old-video-task').snapshot_json == snapshot
 
 
 def test_content_migration_retains_video_snapshots_histories_and_foreign_keys(tmp_path):

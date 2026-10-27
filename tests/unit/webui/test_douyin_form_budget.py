@@ -51,6 +51,8 @@ def test_two_topic_real_form_completes_with_progress_instead_of_exhausting_the_s
             item.set_input_files = set_input_files
             return item
         def evaluate(code, args=None):
+            from yijianjifa.webui import submit_feedback
+            if code in {submit_feedback.READ,submit_feedback.INSTALL}:return original(code,args)
             if code == legacy.CHALLENGE: return original(code, args)
             if 'return identity;' in code:
                 clock[0] += first_identity_cost if not outer else 1.0

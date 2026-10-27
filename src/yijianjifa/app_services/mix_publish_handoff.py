@@ -26,7 +26,7 @@ def read_source(engine,task_id):
 
 class HandoffPreparation(PublishPreparation):
     def __init__(self,engine,paths,task_id,indices,token):
-        super().__init__(engine,paths)
+        super().__init__(engine,paths,inherit_account_settings=False)
         self.task_id,self.indices,self.token=task_id,indices,token
 
     def _token(self):return self.token

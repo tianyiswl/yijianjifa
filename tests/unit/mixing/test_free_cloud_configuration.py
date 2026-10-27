@@ -1,4 +1,4 @@
-"""A public source checkout must not opt into the operator's paid service."""
+"""Source users can access cloud voice; free local use never auto-synthesizes."""
 import json
 import sys
 from types import SimpleNamespace
@@ -10,17 +10,48 @@ from yijianjifa.app_services.cloud_voice_access import CloudVoiceAccess
 
 
 def cloud(tmp_path):
-    return CloudVoiceAccess(SimpleNamespace(data_dir=tmp_path / 'data'), opener=Mock(), vault=Mock())
+    vault=Mock();vault.get_password.return_value=None
+    return CloudVoiceAccess(SimpleNamespace(data_dir=tmp_path / 'data'), opener=Mock(), vault=vault)
 
 
-def test_unconfigured_source_keeps_local_use_free_without_connecting_to_cloud(tmp_path, monkeypatch):
+def test_source_default_exposes_existing_cloud_business_without_automatic_requests(tmp_path, monkeypatch):
     monkeypatch.delenv('P011_CLOUD_VOICE_ENDPOINT', raising=False)
     monkeypatch.delattr(sys, 'frozen', raising=False)
     service = cloud(tmp_path)
-    assert service.endpoint == ''
-    assert service.read()['enabled'] is False
+    assert service.endpoint == 'https://39.108.82.213'
+    assert service.read()['enabled'] is True
+    assert service.read()['authenticated'] is False
+    service.opener.assert_not_called()
+
+
+def test_explicit_empty_environment_still_disables_cloud_and_credential_access(tmp_path,monkeypatch):
+    monkeypatch.setenv('P011_CLOUD_VOICE_ENDPOINT','')
+    service=cloud(tmp_path)
+    assert service.endpoint=='' and service.read()['enabled'] is False
     service.opener.assert_not_called()
     service.vault.get_password.assert_not_called()
+
+
+def test_source_default_keeps_same_account_namespace_as_official_service(tmp_path,monkeypatch):
+    monkeypatch.delenv('P011_CLOUD_VOICE_ENDPOINT',raising=False)
+    monkeypatch.delattr(sys,'frozen',raising=False)
+    service=cloud(tmp_path)
+    explicit=CloudVoiceAccess(service.paths,endpoint='https://39.108.82.213',opener=Mock(),vault=Mock())
+    assert service.service==explicit.service
+
+
+def test_default_cloud_service_does_not_replace_or_bill_system_voice(tmp_path,monkeypatch):
+    from yijianjifa.features.mixing.tts import voice_services
+    monkeypatch.delenv('P011_CLOUD_VOICE_ENDPOINT',raising=False)
+    paths=SimpleNamespace(data_dir=tmp_path/'data',cache_dir=tmp_path/'cache')
+    system=Mock();monkeypatch.setattr(voice_services,'system_tts_adapter',lambda:system)
+    config,tts,service=voice_services.build_voice_services(paths)
+    service.opener=Mock(side_effect=AssertionError('No automatic cloud request'))
+    assert service.endpoint=='https://39.108.82.213'
+    assert tts.freeze({'options':{},'copies':[]})=={'source':'system'}
+    tts.synthesize('免费系统配音','',1,tmp_path/'system.wav')
+    system.synthesize.assert_called_once()
+    service.opener.assert_not_called()
 
 
 def test_explicit_cloud_configuration_preserves_existing_credential_namespace(tmp_path, monkeypatch):

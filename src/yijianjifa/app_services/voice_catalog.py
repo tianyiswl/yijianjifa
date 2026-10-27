@@ -51,6 +51,15 @@ class VoiceCatalog:
                 raise ValueError('请先选择并登录云配音，或使用系统配音。')
             if selected and callable(getattr(type(self.config), 'available_voice_ids', None)) and selected not in self.config.available_voice_ids():
                 raise ValueError('当前配音服务尚未提供这个音色，请重新选择。')
+            if selected and callable(getattr(type(self.config), 'require_default_voice_credit', None)):
+                try:
+                    previous = json.loads(self.file.read_text(encoding='utf-8')).get('selected', '')
+                except (OSError, ValueError, AttributeError):
+                    previous = ''
+                # Favorites reuse the same persistence path. They must not change
+                # the default or require new credit for an existing selection.
+                if selected != previous:
+                    self.config.require_default_voice_credit()
             self.file.parent.mkdir(parents=True, exist_ok=True)
             temporary = self.file.with_suffix('.tmp')
             temporary.write_text(json.dumps({'selected': selected, 'favorites': list(dict.fromkeys(favorites))}), encoding='utf-8')

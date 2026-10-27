@@ -83,3 +83,24 @@ def test_media_replace_categories_preserves_files_and_other_records(qtbot, db_en
     assert source.exists()
     p.replace_categories({asset.id}, set())
     assert not p.service.category_ids(asset.id)
+
+
+def test_assignment_editor_is_single_choice_while_library_filter_keeps_multiple(qtbot, db_engine, monkeypatch):
+    from yijianjifa.features.library.ui.categories import Categories, CategoryChecks
+    categories=Categories(db_engine, 'copy')
+    editor=CategoryChecks(db_engine, 'copy')
+    qtbot.addWidget(categories);qtbot.addWidget(editor)
+    first,second=(categories.repository.create('copy', name) for name in ('first','second'))
+    categories.refresh();editor.refresh()
+    editor.set_checked({first.id})
+    assert editor.checked()=={first.id}
+    editor.set_checked({second.id})
+    assert editor.checked()=={second.id}
+    editor.set_checked(set())
+    assert editor.checked()==set()
+    categories.set_checked({first.id,second.id})
+    categories.apply_filter()
+    assert categories.filter_ids=={first.id,second.id}
+    monkeypatch.setattr('yijianjifa.features.library.ui.categories.choose_categories', lambda *args: {second.id})
+    assert categories.destination_ids()=={second.id}
+    assert categories.checked()=={first.id,second.id}

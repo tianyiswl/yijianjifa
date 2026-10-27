@@ -19,6 +19,8 @@ def make_host(*,api,engine,window,webview,exit_started,finished_files,finished_d
                     import re
                     rid=request['request_id'];op=request['operation'];p=request['params']
                     if type(request['v']) is not int or request['v']!=1 or type(rid) is not str or not re.fullmatch(r'[A-Za-z0-9_-]{1,64}',rid) or type(op) is not str or type(p) is not dict:return api._error('invalid_request',None)
+                    if op in {'media.import','media.drop'} and type(p.get('category_ids')) is list and len(p['category_ids'])>1:
+                        return api._error('single_category_only',rid)
                     if op in {'image_posts.import','image_posts.drop','image_posts.add_images','image_posts.add_images.drop',
                               'image_posts.metadata.import','image_posts.template.export','image_posts.export','image_posts.preview'}:
                         def image_picker(operation, params):
@@ -100,11 +102,17 @@ def make_host(*,api,engine,window,webview,exit_started,finished_files,finished_d
                             return api._error('invalid_request',rid)
                         except Exception:
                             return {'v':1,'request_id':rid,'ok':False,'error':{'code':'finished_files_failed','message':'成品文件操作未完成，请检查选择和权限。','retryable':False}}
-                    if op in {'task.diagnostic.export','task.problem.copy','task.execution.copy'}:
+                    if op in {'task.diagnostic.export','task.problem.copy','task.execution.copy','task.publish_report.copy'}:
                         if set(p)!={'id'} or type(p['id']) is not str or not 1<=len(p['id'])<=64:return api._error('invalid_request',rid)
                         try:
                             from yijianjifa.app_services.task_center_access import TaskCenterAccess
                             from yijianjifa.features.tasks.diagnostics import DiagnosticBundle
+                            if op=='task.publish_report.copy':
+                                from yijianjifa.app_services.mix_execution import read_execution
+                                report=read_execution(engine,p['id']).get('report') or {}
+                                if not report.get('ready'):return api._error('invalid_request',rid)
+                                copy_text(report['text'])
+                                return {'v':1,'request_id':rid,'ok':True,'data':{'copied':True}}
                             if op=='task.execution.copy':
                                 copy_text(TaskCenterAccess(engine).execution_log_text(p['id']))
                                 return {'v':1,'request_id':rid,'ok':True,'data':{'copied':True}}

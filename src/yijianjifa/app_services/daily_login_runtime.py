@@ -138,6 +138,9 @@ class DailyLoginRuntime:
         for index, target in enumerate(targets, 1):
             if not self._current(job):
                 return
+            if target.get('deferred_reason'):
+                observations.append({**target,'state':'deferred'})
+                continue
             self._progress(job, index, len(targets), target['account_id'], 'started')
             if not self._current(job):
                 return

@@ -75,11 +75,13 @@ def test_build_inspection_rejects_invalid_or_secret_bearing_metadata(endpoint):
 
 def test_mac_build_entry_checks_official_configuration_before_native_building():
     script = str(ROOT / 'packaging/macos/build.sh')
-    missing = subprocess.run(['bash', script, '--official', '--check-configuration'],
+    bash = shutil.which('bash')
+    assert bash, '此构建入口检查需要 Bash'
+    missing = subprocess.run([bash, script, '--official', '--check-configuration'],
                              env=environment(), text=True, capture_output=True)
     assert missing.returncode != 0
     assert 'Official builds require P011_RELEASE_CLOUD_VOICE_ENDPOINT' in missing.stderr
-    configured = subprocess.run(['bash', script, '--official', '--check-configuration'],
+    configured = subprocess.run([bash, script, '--official', '--check-configuration'],
                                 env=environment('https://voice.example.test'), text=True, capture_output=True)
     assert configured.returncode == 0, configured.stderr
     assert json.loads(configured.stdout)['cloud_voice_enabled'] is True

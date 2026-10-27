@@ -60,6 +60,8 @@ class ExcelAccess:
     def apply(self,token,approved_ids,category_ids):
         if type(token) is not str or len(token)!=32 or type(approved_ids) is not list or type(category_ids) is not list or not all(type(x) is str for x in approved_ids+category_ids):
             raise ValueError('导入请求无效。')
+        from yijianjifa.features.library.copy_service import single_category_ids
+        category_ids = single_category_ids(category_ids)
         payload=json.dumps({'token':token,'approved':sorted(set(approved_ids)),'categories':sorted(set(category_ids))},ensure_ascii=False,sort_keys=True)
         digest=hashlib.sha256(payload.encode()).hexdigest();rid='excel_'+token
         with self._lock,self._engine.connect() as connection:
@@ -78,7 +80,7 @@ class ExcelAccess:
                 if any(repo.get(id)!=before for id,before in baseline.items()):raise ValueError('资料在预检查后已修改，请重新检查表格。')
                 result_core=apply_import(repo,preview,approved_update_ids=set(approved_ids))
                 for id in set(result_core.new_ids+result_core.updated_ids+result_core.skipped_duplicate_ids):
-                    if repo.get(id) is not None:repo.set_categories(id,repo.category_ids(id)|set(category_ids))
+                    if category_ids and repo.get(id) is not None:repo.set_categories(id,category_ids)
                 result={'new_count':len(result_core.new_ids),'updated_count':len(result_core.updated_ids),
                         'duplicate_count':len(result_core.skipped_duplicate_ids),'error_count':result_core.error_count}
                 connection.execute(text('INSERT INTO web_command_receipts(request_id,payload_hash,response_json) VALUES (:id,:hash,:response)'),{'id':rid,'hash':digest,'response':json.dumps(result)})

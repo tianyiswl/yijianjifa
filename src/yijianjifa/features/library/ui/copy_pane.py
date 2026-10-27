@@ -188,10 +188,14 @@ class CopyPane(QWidget):
     def apply_excel(self, *, approve_updates=False):
         if self.import_preview is None:
             return
+        category_ids = self.categories.destination_ids()
+        if category_ids is None:
+            return
         p = self.import_preview
         result = apply_import(self.repository, p, approved_update_ids={d.id for d in p.updates} if approve_updates else set())
         for id in result.new_ids + result.updated_ids:
-            self.repository.set_categories(id, self.repository.category_ids(id) | self.categories.checked())
+            if category_ids:
+                self.repository.set_categories(id, category_ids)
         self.import_preview = None
         self.refresh()
         self.status.setText(f"已新增 {len(result.new_ids)} 条，更新 {len(result.updated_ids)} 条，错误 {result.error_count} 行未导入。")
@@ -262,9 +266,14 @@ class CopyPane(QWidget):
     def assign_categories(self, ids, targets=None):
         if not self.may_leave():
             return
+        if len(ids) > 1:
+            from .categories import choose_categories
+            ids = choose_categories(self.repository.engine, 'copy', set(), self)
+            if ids is None:
+                return
         targets = self.list.selection.selected_ids if targets is None else targets
         for id in targets:
-            self.repository.set_categories(id, self.repository.category_ids(id) | ids)
+            self.repository.set_categories(id, ids)
         if self.current_id in targets:
             self._load(self.repository.get(self.current_id))
         self.refresh()
@@ -319,7 +328,7 @@ class CopyPane(QWidget):
         if len(targets) == 1:
             menu.addAction("查看 / 编辑", lambda: self.open_record(id))
             menu.addAction("重命名", lambda: self.rename_dialog(id))
-        menu.addAction(f"追加勾选分类（{len(targets)} 条）", lambda: self.assign_categories(self.categories.checked(), targets))
+        menu.addAction(f"设置分类（{len(targets)} 条）", lambda: self.assign_categories(self.categories.checked(), targets))
         menu.addAction(f"删除 {len(targets)} 条记录", lambda: self.delete_records(targets))
         menu.exec(self.list.table.viewport().mapToGlobal(point))
 

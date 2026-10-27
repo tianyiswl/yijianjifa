@@ -182,13 +182,16 @@ def image_browser(db_engine, app_paths, monkeypatch):
     return adapter, payload, page, events
 
 
-def test_image_session_uploads_once_confirms_same_clock_and_closes(image_browser):
+def test_image_session_uploads_once_confirms_same_clock_and_closes(image_browser, db_engine):
     a, p, page, events = image_browser
     result = a.submit(p, context=None, before_final=lambda: events.append(('journal', None)))
     assert result.state == 'platform_scheduled' and result.scheduled_at == p['scheduled_at']
     assert [event[0] for event in events] == ['goto', 'upload', 'journal', 'final', 'confirm', 'close']
     assert events[3][1] == events[4][1]
     assert result.receipt_reference == {'kind': 'image_post', 'item_id': '1234567890'}
+    from yijianjifa.features.accounts.service import AccountService
+    service = AccountService(db_engine); account = service.get(p['account_id'])
+    assert service.login_checks([account])[account.id]['state'] == 'valid'
 
 
 def test_unverified_image_order_never_submits(image_browser):
@@ -199,12 +202,15 @@ def test_unverified_image_order_never_submits(image_browser):
     assert not any(event[0] in {'journal', 'final', 'confirm'} for event in events)
 
 
-def test_changed_live_image_account_never_uploads(image_browser):
+def test_changed_live_image_account_never_uploads(image_browser, db_engine):
     a, p, page, events = image_browser
     page.uid = '222'
     result = a.submit(p, context=None, before_final=lambda: pytest.fail('wrong account submitted'))
     assert result.error_code == 'account_mismatch'
     assert not any(event[0] == 'upload' for event in events)
+    from yijianjifa.features.accounts.service import AccountService
+    service = AccountService(db_engine); account = service.get(p['account_id'])
+    assert service.login_checks([account])[account.id]['state'] == 'identity_mismatch'
 
 
 def test_image_verification_yields_and_resume_preserves_original_page(image_browser):

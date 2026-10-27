@@ -12,6 +12,7 @@ import tempfile
 import time
 from pathlib import Path
 from yijianjifa.features.accounts.service import AccountIdentityMismatch
+from yijianjifa.features.publish.account_wait import AccountBusy
 
 PLATFORM = 'kuaishou'
 HOME = 'https://cp.kuaishou.com/profile'
@@ -197,7 +198,7 @@ def make_kuaishou_provider(engine, paths):
         if account and account.platform != PLATFORM: raise ValueError('account platform mismatch')
         expected = account.platform_user_id if account else None
         lock = account_lock(account_id or 'kuaishou:new-account')
-        if not lock.acquire(blocking=False): raise ValueError('account busy')
+        if not lock.acquire(blocking=False): raise AccountBusy()
         temp = None; context = None; result = None
         try:
             if account: profile = chromium_profile(store, expected)

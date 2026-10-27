@@ -11,11 +11,16 @@ import time
 
 from yijianjifa.features.library.media_identity import sha256_file
 from yijianjifa.features.publish.coordinator import AdapterOutcome,AdapterValidation,failure_category
+from yijianjifa.features.publish.read_diagnostics import (
+    IdentityReadFailure, IdentityReadTimeout, error_details, identity_failure_details,
+)
 from yijianjifa.storage.db import session_scope
 from yijianjifa.storage.models import Setting
 from . import chromium_publish as legacy
 from .chromium_publish_session import ChromiumPublishSessionAdapter,LiveSession,fingerprint
 from .sms_cooldown import SMSCooldownActive
+from .login_observation import douyin_login_state
+from . import submit_feedback
 
 
 # Preserve the original search/read behavior and add only finite DOM gates.
@@ -24,35 +29,83 @@ from .sms_cooldown import SMSCooldownActive
 READ_RESULT_WITH_DIAGNOSTICS = 'const observedResult=await(async()=>{' + legacy.READ_RESULT + r'''})();
 const visible=e=>!!e&&!!e.getClientRects().length&&getComputedStyle(e).visibility!=='hidden';
 const search=Array.from(document.querySelectorAll('input[placeholder="搜索作品"]')).filter(visible);
-return {...observedResult,diagnostic:{search_count:search.length,
+const diagnostic={search_count:search.length,
  search_matches:search.length===1&&search[0].value===title_text,
- loading:!!document.body?.innerText.includes('加载中，请稍后')}};
+ loading:!!document.body?.innerText.includes('加载中，请稍后')};
+if(observedResult?.ready===true){
+ // 只记录完全匹配的数量，不保存标题、正文、作品标识或页面内容。
+ const norm=s=>s.replace(/\u200b/g,'').replace(/\s+/g,' ').trim();
+ const expected=norm(title_text+' '+body_text);
+ diagnostic.text_match_count=Math.min(10000,Array.from(document.querySelectorAll('body *'))
+  .filter(e=>visible(e)&&norm(e.innerText||'')===expected).length);
+}
+return {...observedResult,diagnostic,posting_limit:window.p011PostingLimitWatch?.seen===true};
 '''
+
+# 只观察本次最终点击之后新增的明确平台提示，不读取文案作为拒绝证据。
+POSTING_LIMIT_WATCH = r'''
+window.p011PostingLimitWatch?.observer?.disconnect();
+const limitNodes=()=>Array.from(document.querySelectorAll('[role="alert"],[class*="toast"]')).filter(e=>
+ e.getClientRects().length&&getComputedStyle(e).visibility!=='hidden'&&
+ /^(?:抱歉[，,]\s*)?今天投稿次数已达到上限[，,]\s*请明天再试[。！!]?$/u.test((e.innerText||'').trim()));
+const previousLimitNodes=new Set(limitNodes());
+const limitWatch={seen:false};
+limitWatch.observer=new MutationObserver(()=>{
+ if(limitNodes().some(e=>!previousLimitNodes.has(e))){limitWatch.seen=true;limitWatch.observer.disconnect();}
+});
+window.p011PostingLimitWatch=limitWatch;
+limitWatch.observer.observe(document.body,{subtree:true,childList:true,characterData:true,attributes:true});
+'''
+FINAL_CLICK_WITH_LIMIT_WATCH=legacy.FINAL_CLICK.replace('window.p011FinalClicked=true;',
+    POSTING_LIMIT_WATCH+'\n('+submit_feedback.INSTALL+')();\nwindow.p011FinalClicked=true;')
 
 
 NORMAL_READ_IDENTITY = r'''
 if(location.origin!=='https://creator.douyin.com')return null;
-const identityDeadline=performance.now()+30000,identityTimeout=Symbol();
+const identityDeadline=performance.now()+30000,identityTimeout=Symbol(),identityFailure=Symbol();
 const remaining=()=>{const ms=identityDeadline-performance.now();if(ms<=0)throw identityTimeout;return ms;};
-async function read(path){
+async function read(path,endpoint,request_index){
+ const started=performance.now();
  const budget=Math.floor(Math.min(20000,remaining()));
  if(budget<=0)throw identityTimeout;
  const requestDeadline=Math.min(identityDeadline,performance.now()+budget),signal=AbortSignal.timeout(budget);
  const check=()=>{if(signal.aborted||performance.now()>=requestDeadline)throw identityTimeout;remaining();};
+ let read_operation='fetch',http_status,content_kind='missing';
+ const fail=error_kind=>{
+  const details={error_kind,endpoint,request_index,read_operation,
+   request_elapsed_ms:Math.min(30000,Math.max(0,Math.floor(performance.now()-started))),content_kind};
+  if(Number.isInteger(http_status)&&http_status>=100&&http_status<=599)details.http_status=http_status;
+  throw {[identityFailure]:details};
+ };
  try{
   const response=await fetch(path,{credentials:'same-origin',cache:'no-store',redirect:'error',signal});
-  check();if(!response.ok)throw Error('identity unavailable');
+  http_status=response.status;
+  const type=response.headers?.get?.('content-type');
+  if(typeof type==='string'&&type.trim()){
+   const mime=type.split(';',1)[0].trim().toLowerCase();
+   content_kind=mime==='application/json'||mime.endsWith('+json')?'json':mime==='text/html'?'html':'other';
+  }
+  check();if(!response.ok)fail('http_error');
+  read_operation='json';
   const value=await response.json();check();return value;
- }catch(error){if(signal.aborted||performance.now()>=requestDeadline)throw identityTimeout;throw error;}
+ }catch(error){
+  if(error&&Object.prototype.hasOwnProperty.call(error,identityFailure))throw error;
+  if(error===identityTimeout||signal.aborted||performance.now()>=requestDeadline||performance.now()>=identityDeadline)fail('timeout');
+  fail(read_operation==='json'?(error instanceof SyntaxError?'json_error':'body_read_error'):'fetch_error');
+ }
 }
 let identity;
 try{
- const a=await read('/aweme/v1/creator/pc/user/info/');
- const b=await read('/aweme/v1/creator/user/info/');
- const c=await read('/aweme/v1/creator/pc/user/info/');
+ const a=await read('/aweme/v1/creator/pc/user/info/','pc_user_info_before',1);
+ const b=await read('/aweme/v1/creator/user/info/','profile_user_info',2);
+ const c=await read('/aweme/v1/creator/pc/user/info/','pc_user_info_after',3);
  identity={uid:a.uid,uid_after:c.uid,status:a.status_code,profile_status:b.status_code,after_status:c.status_code,nickname:b.user_profile?.nick_name};
  remaining();
-}catch(error){if(error===identityTimeout)return {p011_identity_timeout:true};throw error;}
+}catch(error){
+ if(error===identityTimeout)return {p011_identity_timeout:true};
+ if(error&&Object.prototype.hasOwnProperty.call(error,identityFailure))return {p011_identity_failure:error[identityFailure]};
+ throw error;
+}
 '''
 
 
@@ -121,8 +174,11 @@ class ChromiumMultiPublishAdapter(ChromiumPublishSessionAdapter):
             category=failure_category(error)
             self._preparation_failure={'error_stage':stage,'error_category':category}
             self._trace(s,'douyin.'+step,{**context,'state':'failed','error_category':category,
+                                       **error_details(error),'log_schema':1,
                                        'elapsed_ms':max(0,int((time.monotonic()-started)*1000))})
             raise
+        if step=='final_click':
+            context['click_reported_attempted']=type(value) is dict and value.get('attempted') is True
         self._trace(s,'douyin.'+step,{**context,'state':'completed',
                                    'elapsed_ms':max(0,int((time.monotonic()-started)*1000))})
         return value
@@ -137,12 +193,48 @@ class ChromiumMultiPublishAdapter(ChromiumPublishSessionAdapter):
         script=NORMAL_READ_IDENTITY if normal else legacy.READ_IDENTITY
         def read():
             value=legacy.evaluate_script(s.page,script+'return identity;',{})
+            if normal and type(value) is dict and set(value)=={'p011_identity_failure'}:
+                details=identity_failure_details(value['p011_identity_failure'])
+                if details is None:
+                    raise ValueError('invalid identity diagnostic')
+                if details['error_kind']=='timeout':
+                    raise IdentityReadTimeout(details)
+                raise IdentityReadFailure(details)
             if normal and type(value) is dict and set(value)=={'p011_identity_timeout'} and value['p011_identity_timeout'] is True:
                 raise TimeoutError('Douyin identity read timed out')
             return value
-        return self._observe(s,'identity','account_observation',read)
+        return self._login_read(s,lambda:self._observe(s,'identity','account_observation',read),
+                                classify=lambda value:douyin_login_state(value,s.payload['platform_user_id']))
 
-    def _readback(self,s,raw):
+    def _receipt_checks(self,s,raw,form):
+        """回执门槛的只读摘要；不改变匹配判据、稳定计数或提交状态。"""
+        rows=raw.get('matches',[])
+        if type(rows) is not list or len(rows)>10000 or any(type(row) is not dict for row in rows):
+            return {'receipt_gate':'invalid_rows'}
+        matching=legacy.matching_schedule_rows(rows,form)
+        review=matching[0].get('review') if len(matching)==1 else None
+        review_state=('missing' if not matching else 'ambiguous' if len(matching)>1 else
+                      {'定时发布中':'scheduled','审核中':'reviewing','已发布':'published'}.get(review,'other')
+                      if type(review) is str else 'other')
+        stable=min(2,s.stable+1 if rows==s.last_rows else 1) if raw.get('ready') is True else 0
+        checks={'result_count':len(rows),'schedule_match_count':len(matching),
+                'stable_reads':stable,'review_state':review_state}
+        try:legacy.verified_identity(raw.get('identity'),expected_uid=s.payload['platform_user_id'])
+        except (TypeError,ValueError,KeyError):gate='identity'
+        else:
+            gate=('page' if raw.get('path')!='/creator-micro/content/manage' else
+                  'not_ready' if raw.get('ready') is not True else
+                  'query' if raw.get('query')!=form['title_text'] else
+                  ('no_exact_text' if type(raw.get('diagnostic')) is dict
+                   and type(raw['diagnostic'].get('text_match_count')) is int
+                   and raw['diagnostic']['text_match_count']==0 else 'no_result_rows') if not rows else
+                  'no_schedule_match' if not matching else
+                  'ambiguous_schedule' if len(matching)!=1 else
+                  'review_unconfirmed' if review_state not in {'scheduled','reviewing'} else
+                  'unstable' if stable<2 else 'confirmed')
+        return {**checks,'receipt_gate':gate}
+
+    def _readback(self,s,raw,*,form=None):
         if type(raw) is not dict:return
         path=raw.get('path')
         page_kind={'/creator-micro/content/manage':'manage',legacy.UPLOAD_PATH:'upload',
@@ -151,11 +243,16 @@ class ChromiumMultiPublishAdapter(ChromiumPublishSessionAdapter):
                 'page_kind':page_kind}
         diagnostic=raw.get('diagnostic')
         diagnostic=diagnostic if type(diagnostic) is dict else {}
-        for key in ('search_count',):
+        for key in ('search_count','text_match_count'):
             value=diagnostic.get(key)
             if type(value) is int and 0<=value<=10000:checks[key]=value
         for key in ('search_matches','loading'):
             if type(diagnostic.get(key)) is bool:checks[key]=diagnostic[key]
+        if s.phase=='result':
+            try:checks.update(self._receipt_checks(s,raw,form or self._form(s.payload,query=True)))
+            except (KeyError,TypeError,ValueError):
+                # 可选诊断不能中断原有回读；未知结构不作为已接收的证据。
+                checks['receipt_gate']='invalid_rows'
         if s.phase=='prepare':
             upload=raw.get('upload_complete')
             checks['upload_state']='complete' if upload is True else 'pending' if upload is False else 'unknown'
@@ -186,6 +283,7 @@ class ChromiumMultiPublishAdapter(ChromiumPublishSessionAdapter):
             s.locked=True
         with session_scope(self.engine) as db:
             mode_row=db.get(Setting,'publish.browser_mode');mode=json.loads(mode_row.value_json) if mode_row else 'background'
+        if getattr(s,'browser_login_visible',False):mode='visible'
         s.external_browser = mode == 'visible'
         options=self._inspection_browser_options(legacy.browser_options(mode))
         if self.driver is None:
@@ -194,15 +292,19 @@ class ChromiumMultiPublishAdapter(ChromiumPublishSessionAdapter):
         profile=legacy.chromium_profile(self.store,a.platform_user_id)
         s.context=self._observe(s,'browser_launch','page_open',
             lambda:self.driver.chromium.launch_persistent_context(str(profile),**options))
+        s.browser_login_context_headed=mode=='visible'
         self._install_publish_guard(s)
-        s.context.set_default_timeout(15000);s.page=s.context.pages[0] if s.context.pages else s.context.new_page()
-        s.page.add_init_script(legacy.SUCCESS_OBSERVER.replace('new MutationObserver(check).observe(document.documentElement','new MutationObserver(check).observe(document'))
-        self._observe(s,'session_restore','session_restore',
-            lambda:legacy.restore_account_session(s.context,self.store,a,profile,a.platform_user_id))
+        s.context.set_default_timeout(15000)
+        if not getattr(s,'browser_login_preserve_profile',False):
+            self._observe(s,'session_restore','session_restore',
+                lambda:legacy.restore_account_session(s.context,self.store,a,profile,a.platform_user_id))
         s.original_ref=a.session_ref
+        s.page=s.context.pages[0] if s.context.pages else s.context.new_page()
+        s.page.add_init_script(legacy.SUCCESS_OBSERVER.replace('new MutationObserver(check).observe(document.documentElement','new MutationObserver(check).observe(document'))
         self._navigate(s,'/creator-micro/content/manage')
 
-    def _challenge(self,s):return legacy.challenge_kind(s.page.evaluate(legacy.CHALLENGE) or {})
+    def _challenge(self,s):
+        return self._login_challenge(s,lambda:legacy.challenge_kind(s.page.evaluate(legacy.CHALLENGE) or {}))
 
     @property
     def sms_cooldown(self):
@@ -360,6 +462,17 @@ class ChromiumMultiPublishAdapter(ChromiumPublishSessionAdapter):
                 observed=self._read_identity(s,query=query)
                 try:legacy.verified_identity(observed,expected_uid=s.payload['platform_user_id'])
                 except ValueError:return AdapterOutcome('result_unknown' if s.final else 'pre_submit_failed',error_code='account_mismatch')
+                s.browser_login=False
+            if not query and s.final:
+                notice=submit_feedback.outcome(s,s.page,'douyin',self._key(s.payload))
+                if notice and notice.state=='result_unknown':s.platform_message=notice.platform_message
+                elif notice:
+                    if notice.state=='platform_scheduled':
+                        a=self._account(s)
+                        self.refreshed[a.id]={'platform_user_id':a.platform_user_id,'nickname':a.nickname,
+                            'session_blob':legacy.session_blob(s.context,a.platform_user_id),'original_ref':s.original_ref,
+                            'login_observed_at':self._login_valid_at(s)}
+                    return notice
             s.stage='正在核对结果' if s.phase=='result' else '正在核对已有安排' if s.phase=='baseline' else '正在上传并填写资料'
             if s.phase=='prepare' and s.page.url.endswith(legacy.UPLOAD_PATH) and not s.uploaded:
                 path=Path(s.payload['video_path']);root=(self.paths.data_dir/'publish_resources').resolve()
@@ -373,8 +486,12 @@ class ChromiumMultiPublishAdapter(ChromiumPublishSessionAdapter):
                 if count!=1:s.page.wait_for_timeout(100);continue
                 self._observe(s,'upload','upload_preparation',lambda:files.set_input_files(str(path)));s.uploaded=True
             step,stage=('form_read','form_preparation') if s.phase=='prepare' else ('result_read','submission_result') if s.phase=='result' else ('baseline_read','page_preparation')
-            raw=self._observe(s,step,stage,
-                lambda:legacy.evaluate_script(s.page,PREPARE_FORM_WITH_DIAGNOSTICS if s.phase=='prepare' else READ_RESULT_WITH_DIAGNOSTICS,form))
+            def read_form():
+                return self._observe(s,step,stage,
+                    lambda:legacy.evaluate_script(s.page,PREPARE_FORM_WITH_DIAGNOSTICS if s.phase=='prepare' else READ_RESULT_WITH_DIAGNOSTICS,form))
+            raw=(self._login_read(s,read_form,classify=lambda value:douyin_login_state(
+                value.get('identity') if type(value) is dict else None,s.payload['platform_user_id']))
+                if baseline_identity else read_form())
             if baseline_identity:
                 # READ_RESULT already brackets its profile read with two UID
                 # observations. Verify that complete same-read identity before
@@ -382,10 +499,14 @@ class ChromiumMultiPublishAdapter(ChromiumPublishSessionAdapter):
                 try:legacy.verified_identity(raw.get('identity') if type(raw) is dict else None,
                                             expected_uid=s.payload['platform_user_id'])
                 except ValueError:return AdapterOutcome('pre_submit_failed',error_code='account_mismatch')
-            self._readback(s,raw)
+                s.browser_login=False
+            self._readback(s,raw,form=form)
             timeout_stage=('submission_result' if s.final else 'page_preparation' if s.phase=='baseline' else
                            'upload_preparation' if type(raw) is dict and raw.get('upload_complete') is False else 'form_preparation')
             if type(raw) is not dict:s.page.wait_for_timeout(100);continue
+            if s.final and not query and raw.get('posting_limit') is True:
+                self._trace(s,'douyin.posting_limit',{'daily_limit_reached':True,'final_started':True})
+                return AdapterOutcome('platform_rejected',error_code='douyin_daily_post_limit')
             if raw.get('failure_code'):return AdapterOutcome('result_unknown' if s.final else 'pre_submit_failed',error_code='configuration_required')
             if raw.get('ready'):
                 if s.phase=='prepare':
@@ -409,27 +530,33 @@ class ChromiumMultiPublishAdapter(ChromiumPublishSessionAdapter):
                         raise
                     s.final=True;s.phase='result';s.stable=0;s.last_rows=None
                     if not query:deadline=time.monotonic()+self.step_timeout
-                    try:self._observe(s,'final_click','submission_result',lambda:legacy.evaluate_script(s.page,legacy.FINAL_CLICK,form))
+                    try:self._observe(s,'final_click','submission_result',lambda:legacy.evaluate_script(s.page,FINAL_CLICK_WITH_LIMIT_WATCH,form))
                     except Exception:pass
                 else:
                     rows=raw.get('matches',[]);s.stable=s.stable+1 if rows==s.last_rows else 1;s.last_rows=rows
                     if s.stable>=2:
                         if s.phase=='baseline':
-                            if legacy.matching_schedule_rows(rows,form):return AdapterOutcome('pre_submit_failed',error_code='configuration_required')
+                            existing=legacy.matching_schedule_rows(rows,form)
+                            if existing:
+                                self._trace(s,'douyin.existing_schedule',{'matching_count':len(existing),'final_started':False,'uploaded':False})
+                                return AdapterOutcome('pre_submit_failed',error_code='adapter_failed',
+                                                      error_stage='page_preparation',error_category='existing_scheduled_work')
                             s.phase='prepare';s.stable=0;s.last_rows=None
                             if not query and not s.final:deadline=time.monotonic()+self.preparation_timeout
                             self._navigate(s,legacy.UPLOAD_PATH)
                             timeout_stage='upload_preparation'
                         elif legacy.verified_scheduled_receipt(raw,s.payload['platform_user_id'],form):
                             a=self._account(s)
-                            self.refreshed[a.id]={'platform_user_id':a.platform_user_id,'nickname':a.nickname,'session_blob':legacy.session_blob(s.context,a.platform_user_id),'original_ref':s.original_ref}
+                            self.refreshed[a.id]={'platform_user_id':a.platform_user_id,'nickname':a.nickname,'session_blob':legacy.session_blob(s.context,a.platform_user_id),'original_ref':s.original_ref,
+                                                 'login_observed_at':self._login_valid_at(s)}
                             s.stage='平台已接收定时安排'
                             return AdapterOutcome('platform_scheduled',scheduled_at=s.payload['scheduled_at'])
             s.page.wait_for_timeout(100)
         self._trace(s,'douyin.cancelled' if self.cancel.is_set() else 'douyin.timeout',
                     {'phase':s.phase,'uploaded':bool(s.uploaded),'final_started':bool(s.final),'stage':timeout_stage})
         if s.final or query or self.cancel.is_set():
-            return AdapterOutcome('result_unknown' if s.final else 'pre_submit_failed',error_code='timeout')
+            return AdapterOutcome('result_unknown' if s.final else 'pre_submit_failed',error_code='timeout',
+                platform_message=getattr(s,'platform_message',None) if s.final else None)
         return AdapterOutcome('result_unknown' if s.final else 'pre_submit_failed',error_code='adapter_failed',
                               error_stage=timeout_stage,error_category='timeout')
 
@@ -448,8 +575,16 @@ class ChromiumMultiPublishAdapter(ChromiumPublishSessionAdapter):
         return True
 
     def _prepare_result_query(self,s):
+        s.result_query_read_only=False
         if not s.page.url.endswith('/content/manage') and not self._challenge(s):
             self._navigate(s,'/creator-micro/content/manage')
+        if s.page.url.endswith('/content/manage') and not self._challenge(s):
+            s.result_query_read_only=True
+
+    def _result_page_releasable(self,s):
+        # 仅明确进入原结果查询后释放；发布后仍在原表单时保留现场，避免中断请求。
+        return (s.final is True and s.request_id is None
+                and getattr(s,'result_query_read_only',False) is True)
     def _capture_session_blob(self,context,uid):
         return legacy.session_blob(context,uid)
     def _persist_sessions(self):

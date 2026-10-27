@@ -403,6 +403,7 @@ class _WindowsCheckJob:
         from yijianjifa.features.downloads.media import _WindowsJob, _resume_windows_process
         self.process = process
         self.job = None
+        self._member_handles = {}
         try:
             self.job = _WindowsJob(process)
             _resume_windows_process(process)
@@ -411,6 +412,45 @@ class _WindowsCheckJob:
                 self.job.stop(); self.job.close()
             _stop_direct(process)
             raise OSError('isolated check job could not be started') from None
+
+    def _capture_members(self, kernel, deadline):
+        import ctypes
+        from ctypes import wintypes
+        kernel.OpenProcess.argtypes = [wintypes.DWORD, wintypes.BOOL, wintypes.DWORD]
+        kernel.OpenProcess.restype = wintypes.HANDLE
+        kernel.IsProcessInJob.argtypes = [wintypes.HANDLE, wintypes.HANDLE, ctypes.POINTER(wintypes.BOOL)]
+        kernel.IsProcessInJob.restype = wintypes.BOOL
+        kernel.WaitForSingleObject.argtypes = [wintypes.HANDLE, wintypes.DWORD]
+        kernel.WaitForSingleObject.restype = wintypes.DWORD
+        for capacity in (16, 64, 256, 1024, 4096):
+            if time.monotonic() >= deadline: return False
+            class ProcessIds(ctypes.Structure):
+                _fields_ = [('assigned', wintypes.DWORD), ('listed', wintypes.DWORD),
+                            ('pids', ctypes.c_size_t * capacity)]
+            members = ProcessIds()
+            if not kernel.QueryInformationJobObject(self.job.handle, 3, ctypes.byref(members), ctypes.sizeof(members), None):
+                if ctypes.get_last_error() == 234: continue  # ERROR_MORE_DATA
+                return False
+            if members.assigned > capacity or members.listed > capacity: continue
+            for pid in members.pids[:members.listed]:
+                if time.monotonic() >= deadline: return False
+                if pid in self._member_handles: continue
+                # 先持有原始进程对象，再核对 Job；后续只等待句柄，不依赖可复用 PID。
+                handle = kernel.OpenProcess(0x00100000 | 0x1000, False, pid)
+                if not handle:
+                    if ctypes.get_last_error() == 87: continue  # 已退出的进程
+                    return False
+                keep = False
+                try:
+                    belongs = wintypes.BOOL()
+                    if not kernel.IsProcessInJob(handle, self.job.handle, ctypes.byref(belongs)): return False
+                    if belongs.value:
+                        self._member_handles[pid] = handle
+                        keep = True
+                finally:
+                    if not keep: kernel.CloseHandle(handle)
+            return True
+        return False
 
     def stop(self):
         import ctypes
@@ -422,14 +462,24 @@ class _WindowsCheckJob:
         kernel.QueryInformationJobObject.argtypes = [wintypes.HANDLE, ctypes.c_int, ctypes.c_void_p,
                                                     wintypes.DWORD, ctypes.POINTER(wintypes.DWORD)]
         kernel.QueryInformationJobObject.restype = wintypes.BOOL
-        self.job.stop()
         deadline = time.monotonic() + _CLEANUP_SECONDS
+        captured = self._capture_members(kernel, deadline)
+        self.job.stop()
+        if not captured: return False
         while time.monotonic() < deadline:
             info = Accounting()
             if not kernel.QueryInformationJobObject(self.job.handle, 1, ctypes.byref(info), ctypes.sizeof(info), None):
                 return False
-            if info.active == 0:
-                self.process.wait(timeout=_CLEANUP_SECONDS)
+            # Job 的活动计数可先归零；真实解释器和浏览器的进程对象仍须确认退出。
+            states = [kernel.WaitForSingleObject(handle, 0) for handle in self._member_handles.values()]
+            if any(state not in (0, 258) for state in states): return False
+            if info.active == 0 and all(state == 0 for state in states):
+                remaining = deadline - time.monotonic()
+                if remaining <= 0: return False
+                self.process.wait(timeout=remaining)
+                for pid, handle in list(self._member_handles.items()):
+                    if not kernel.CloseHandle(handle): return False
+                    del self._member_handles[pid]
                 self.job.close()
                 return True
             time.sleep(_POLL_SECONDS)

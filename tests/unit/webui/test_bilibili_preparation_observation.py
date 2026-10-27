@@ -2,6 +2,7 @@
 import json
 import time
 from types import SimpleNamespace
+from pathlib import Path
 
 import pytest
 
@@ -653,4 +654,234 @@ def test_schedule_rejects_missing_ambiguous_dialog_batch_or_disabled_scope(case,
     assert 'PRIVATE_SCHEDULE_TEXT' not in json.dumps(detail) and 'PRIVATE_SCHEDULE_TEXT' not in caplog.text
     assert offline_page.evaluate('window.ownedScheduleClicks')=={'regular':0,'hidden':0} and not s.final
     if kind!='disabled':assert offline_page.evaluate(m.form_contract.READ_FORM)['time_enabled'] is None
+    adapter.close()
+
+
+@pytest.mark.parametrize('reference,expected',[('',False),('data:image/jpeg;base64,Zg==',True)])
+def test_cover_done_flag_requires_actual_page_readback(case,reference,expected,monkeypatch):
+    adapter,payload,_,_,_=case;s=adapter._session(payload);adapter._init_observations(s)
+    s.cover_uploaded=True;s.cover_ready=True
+    frame=SimpleNamespace(evaluate=lambda script:{'cover_reference':reference})
+    monkeypatch.setattr(adapter,'_trace',lambda *args:None)
+    assert m.BilibiliMultiPublishAdapter._prepare_cover(adapter,s,frame) is expected
+    assert s.cover_ready is expected
+    assert s.final is False
+    adapter.close()
+
+
+def test_missing_cover_after_confirmation_has_specific_safe_failure(case,monkeypatch):
+    adapter,payload,_,_,_=case
+    def pending(s,frame,f):
+        s.cover_uploaded=True;s.cover_confirm_clicked=True;s.cover_ready=False
+        return False
+    monkeypatch.setattr(adapter,'_prepare_form',pending)
+    adapter.step_timeout=.35
+    result=adapter.submit(payload,context=None,before_final=lambda:pytest.fail('未读回封面不得投稿'))
+    assert result.state=='pre_submit_failed' and result.error_category=='cover_unconfirmed'
+    assert adapter._session(payload).final is False
+    adapter.close()
+
+
+def test_cover_confirmation_waits_for_page_without_clicking_done_twice(case,monkeypatch):
+    adapter,payload,_,_,_=case;s=adapter._session(payload);adapter._init_observations(s)
+    s.cover_uploaded=True;s.cover_ready=False
+    calls=[];raw={'cover_reference':''}
+    done=SimpleNamespace(count=lambda:1,click=lambda **options:None if options.get('trial') else calls.append('done'))
+    s.cover_path=Path('owned.jpg');s.cover_opened=True;s.cover_uploaded_ratios={'four_three','sixteen_nine'}
+    observed={'editor_count':1,'observed':True,'main_slot':True,'task_matches':True,'needs_four_three':True,'four_three_ready':True,'sixteen_nine_ready':True,'submit_enabled':True}
+    frame=SimpleNamespace(locator=lambda selector:done,evaluate=lambda script:raw if script==m.form_contract.READ_FORM else observed)
+    monkeypatch.setattr(adapter,'_trace',lambda *args:None)
+    for _ in range(3):assert m.BilibiliMultiPublishAdapter._prepare_cover(adapter,s,frame) is False
+    assert calls==['done'] and not s.cover_ready and not s.final
+    raw['cover_reference']='data:image/jpeg;base64,Zg=='
+    assert m.BilibiliMultiPublishAdapter._prepare_cover(adapter,s,frame) is True
+    assert calls==['done'] and s.cover_ready and not s.final
+    adapter.close()
+
+
+def test_stalled_cover_save_retries_only_local_confirmation_once_then_stops_before_post(case,monkeypatch):
+    adapter,payload,_,_,_=case;s=adapter._session(payload);adapter._init_observations(s)
+    s.cover_ready=False;s.cover_confirm_clicked=False
+    clock=[0.0];calls=[]
+    monkeypatch.setattr(m,'time',SimpleNamespace(monotonic=lambda:clock[0],time=time.time))
+    s.cover_path=Path('owned.jpg');s.cover_opened=True;s.cover_uploaded=True
+    s.cover_uploaded_ratios={'four_three','sixteen_nine'}
+    observed={'editor_count':1,'observed':True,'main_slot':True,'task_matches':True,
+        'needs_four_three':True,'four_three_ready':True,'sixteen_nine_ready':True,'submit_enabled':True}
+    done=SimpleNamespace(count=lambda:1,click=lambda **options:None if options.get('trial') else calls.append(clock[0]))
+    frame=SimpleNamespace(locator=lambda selector:done,evaluate=lambda script:{'cover_reference':''} if script==m.form_contract.READ_FORM else observed)
+    monkeypatch.setattr(adapter,'_trace',lambda *args:None)
+    assert m.BilibiliMultiPublishAdapter._prepare_cover(adapter,s,frame) is False
+    clock[0]=16
+    assert m.BilibiliMultiPublishAdapter._prepare_cover(adapter,s,frame) is False
+    clock[0]=32
+    assert m.BilibiliMultiPublishAdapter._prepare_cover(adapter,s,frame) is False
+    assert calls==[0,16] and s.cover_wait_expired and not s.final
+    adapter.close()
+
+
+@pytest.mark.parametrize('ready43,ready169,can_confirm',[(False,False,False),(True,False,False),(False,True,False),(True,True,True)])
+def test_cover_done_requires_both_native_aspect_editors_ready(case,offline_page,tmp_path,ready43,ready169,can_confirm):
+    adapter,payload,_,_,_=case;s=adapter._session(payload);adapter._init_observations(s)
+    s.cover_path=tmp_path/'owned.jpg';s.cover_path.write_bytes(b'owned synthetic image')
+    s.cover_ready=False;s.cover_confirm_clicked=False
+    s.cover_opened=True;s.cover_uploaded=True;s.cover_uploaded_ratios={'four_three','sixteen_nine'}
+    offline_page.set_content('<div class="cover-editor"><div class="cover-editor-button"><button class="button submit">完成</button></div></div>')
+    offline_page.evaluate('''ready=>{
+        window.coverConfirmCount=0;document.querySelector('button').onclick=()=>window.coverConfirmCount++;
+        document.querySelector('.cover-editor').__vue__={id:'owned-task',coverIndex:0,$taskConfig:{currentTaskId:'owned-task'},
+          isOverseas:false,activeEditor:'editor_16_9',submitDisabled:false,coverForEditor:{origin_4_3:'owned',origin_16_9:'owned'},
+          isCoverEditorReady_4_3:ready[0],isCoverEditorReady_16_9:ready[1],
+          imageEditor_4_3:ready[0]?{}:null,imageEditor_16_9:ready[1]?{}:null};
+    }''',[ready43,ready169])
+    assert m.BilibiliMultiPublishAdapter._prepare_cover(adapter,s,offline_page) is False
+    assert offline_page.evaluate('window.coverConfirmCount')==int(can_confirm)
+    assert s.cover_confirm_clicked is can_confirm and s.final is False
+    adapter.close()
+
+
+def native_cover_fixture(page):
+    page.set_content('''<div class="creation-statement-container">合成任务</div>
+      <div class="cover-content"><div class="cover-module-main"><button class="cover-slot">封面</button></div></div>
+      <div id="cover-shell"><div class="cover-editor">
+      <div class="cover-editor-panel-canvas-title"><span class="text">首页推荐封面（4:3）</span></div>
+      <div class="cover-editor-panel-canvas-title"><span class="text">个人空间封面（16:9）</span></div>
+      <div class="cover-upload"><input type="file"></div>
+      <div class="cover-editor-button"><button class="button submit">完成</button></div></div></div>''')
+    page.evaluate('''()=>{
+      const store={state:{task_owned:{}}},config={currentTaskId:'owned',tasks:[{id:'owned',archive:{},videoTasks:[]}]};
+      document.querySelector('.creation-statement-container').__vue__={$store:store,$taskConfig:config};
+      const vm={id:'owned',coverIndex:0,$taskConfig:config,isOverseas:false,activeEditor:'editor_16_9',submitDisabled:false,
+        coverForEditor:{origin_4_3:'owned',origin_16_9:'owned'},isCoverEditorReady_4_3:true,isCoverEditorReady_16_9:true,
+        imageEditor_4_3:{},imageEditor_16_9:{}};
+      window.coverClicks=0;window.coverSelections=[];document.querySelector('.cover-editor').__vue__=vm;
+      document.querySelector('.submit').onclick=()=>{window.coverClicks++;store.state.task_owned.mainCover={main:{origin:'owned-committed'}};};
+      document.querySelector('.cover-slot').onclick=()=>{
+        document.querySelector('#cover-shell').style.opacity='1';vm.coverForEditor={};
+        vm.isCoverEditorReady_4_3=vm.isCoverEditorReady_16_9=false;vm.imageEditor_4_3=vm.imageEditor_16_9=null;
+      };
+      document.querySelectorAll('.text').forEach((e,i)=>e.onclick=()=>{vm.activeEditor=i===0?'editor_4_3':'editor_16_9';});
+      document.querySelector('input').onchange=()=>{const ratio=vm.activeEditor==='editor_4_3'?'4_3':'16_9';
+        window.coverSelections.push(ratio);vm.coverForEditor['origin_'+ratio]='owned';vm['isCoverEditorReady_'+ratio]=true;vm['imageEditor_'+ratio]={};};
+    }''')
+
+
+@pytest.mark.parametrize('hidden',['ancestor-opacity','ancestor-aria','confirm-button'])
+def test_stale_or_hidden_native_cover_controls_never_grant_confirmation(offline_page,hidden):
+    native_cover_fixture(offline_page)
+    if hidden=='ancestor-opacity':offline_page.locator('#cover-shell').evaluate("e=>e.style.opacity='0'")
+    elif hidden=='ancestor-aria':offline_page.locator('#cover-shell').evaluate("e=>e.setAttribute('aria-hidden','true')")
+    else:offline_page.locator('.submit').evaluate("e=>e.style.display='none'")
+    observed=offline_page.evaluate(m.form_contract.READ_COVER_EDITOR)
+    if hidden=='confirm-button':assert observed['editor_count']==1 and observed['submit_enabled'] is False
+    else:assert observed['editor_count']==0
+    assert offline_page.evaluate('window.coverClicks')==0
+
+
+def test_obscured_cover_retry_waits_without_default_timeout_then_confirms_once(case,offline_page,monkeypatch):
+    adapter,payload,_,_,_=case;s=adapter._session(payload);adapter._init_observations(s);native_cover_fixture(offline_page)
+    s.cover_confirm_clicked=True;s.cover_wait_started=0;s.cover_uploaded=True;s.cover_ready=False
+    clock=[16.0];adapter.step_timeout=.08
+    monkeypatch.setattr(m,'time',SimpleNamespace(monotonic=lambda:clock[0],time=time.time))
+    offline_page.set_default_timeout(150)
+    offline_page.evaluate("()=>{const e=document.createElement('div');e.id='overlay';e.style='position:fixed;inset:0;z-index:9999;background:white';document.body.append(e)}")
+    started=time.monotonic()
+    assert m.BilibiliMultiPublishAdapter._prepare_cover(adapter,s,offline_page) is False
+    assert time.monotonic()-started<1
+    assert s.cover_retry_count==0 and not s.final and offline_page.evaluate('window.coverClicks')==0
+    offline_page.locator('#overlay').evaluate('e=>e.remove()');clock[0]=17
+    assert m.BilibiliMultiPublishAdapter._prepare_cover(adapter,s,offline_page) is False
+    assert m.BilibiliMultiPublishAdapter._prepare_cover(adapter,s,offline_page) is True
+    assert s.cover_retry_count==1 and not s.final and offline_page.evaluate('window.coverClicks')==1
+    adapter.close()
+
+
+def test_closed_cover_recovery_reopens_same_frame_without_video_upload_or_final(case,offline_page,tmp_path,monkeypatch):
+    adapter,payload,_,events,_=case;s=adapter._session(payload);adapter._init_observations(s);native_cover_fixture(offline_page)
+    s.cover_path=tmp_path/'owned.jpg';s.cover_path.write_bytes(b'owned local frame')
+    s.cover_opened=True;s.cover_uploaded=True;s.cover_uploaded_ratios={'four_three','sixteen_nine'}
+    s.cover_confirm_clicked=True;s.cover_ready=False;s.cover_wait_started=0
+    monkeypatch.setattr(m,'time',SimpleNamespace(monotonic=lambda:16.0,time=time.time))
+    offline_page.set_default_timeout(150)
+    offline_page.locator('#cover-shell').evaluate("e=>e.style.opacity='0'")
+    ready=False
+    for _ in range(9):
+        ready=m.BilibiliMultiPublishAdapter._prepare_cover(adapter,s,offline_page)
+        if ready:break
+    assert ready and s.cover_ready and s.cover_retry_count==1 and not s.final
+    assert offline_page.evaluate('window.coverClicks')==1
+    assert sorted(offline_page.evaluate('window.coverSelections'))==['16_9','4_3']
+    assert not any(name in {'upload','journal','final'} for name,_ in events)
+    adapter.close()
+
+
+def native_cover_sync_prompt(page,*,task_matches=True,title='检测到16:9封面未修改'):
+    page.evaluate('''({task_matches,title})=>{
+      const editor=document.querySelector('.cover-editor'),vm=editor.__vue__;
+      vm.hasShownSyncConfirm=true;if(!task_matches)vm.id='other';
+      const box=document.createElement('div');box.className='bcc-dialog__wrap';box.setAttribute('role','dialog');
+      box.style='position:fixed;inset:0;background:white;z-index:100';
+      const heading=document.createElement('h3');heading.textContent=title;box.append(heading);
+      for(const text of ['确认同步','不同步，手动编辑']){const b=document.createElement('button');b.textContent=text;
+        b.onclick=()=>{window.coverSyncChoice=text;box.remove();};box.append(b);}
+      document.body.append(box);
+    }''',{'task_matches':task_matches,'title':title})
+
+
+@pytest.mark.parametrize('task_matches,title,expected',[(True,'检测到16:9封面未修改',True),(False,'检测到16:9封面未修改',False),(True,'请完成安全验证',False)])
+def test_only_current_cover_sync_confirmation_is_recognized(offline_page,task_matches,title,expected):
+    native_cover_fixture(offline_page);native_cover_sync_prompt(offline_page,task_matches=task_matches,title=title)
+    assert offline_page.evaluate(m.form_contract.READ_COVER_EDITOR).get('sync_prompt',False) is expected
+
+
+def test_cover_sync_dialog_can_be_handled_while_background_editor_is_aria_hidden(offline_page):
+    native_cover_fixture(offline_page);native_cover_sync_prompt(offline_page)
+    offline_page.locator('#cover-shell').evaluate("e=>e.setAttribute('aria-hidden','true')")
+    observed=offline_page.evaluate(m.form_contract.READ_COVER_EDITOR)
+    assert observed['sync_prompt'] is True and observed['editor_count']==0
+    assert observed['submit_enabled'] is False
+
+
+def test_native_cover_sync_prompt_preserves_both_selections_then_saves_before_post(case,offline_page,tmp_path):
+    adapter,payload,_,events,_=case;s=adapter._session(payload);adapter._init_observations(s)
+    native_cover_fixture(offline_page)
+    s.cover_path=tmp_path/'owned.jpg';s.cover_path.write_bytes(b'owned local frame')
+    s.cover_opened=True;s.cover_uploaded=True;s.cover_uploaded_ratios={'four_three','sixteen_nine'}
+    # Materialize the normal confirmation between browser turns, after the
+    # first done click; native choice and second done remain actual DOM clicks.
+    offline_page.evaluate("()=>{document.querySelector('.submit').onclick=()=>{window.coverClicks++;if(!window.openedSyncPrompt){window.openedSyncPrompt=true;return;}document.querySelector('.creation-statement-container').__vue__.$store.state.task_owned.mainCover={main:{origin:'owned-committed'}};};}")
+    assert m.BilibiliMultiPublishAdapter._prepare_cover(adapter,s,offline_page) is False
+    native_cover_sync_prompt(offline_page)
+    for _ in range(5):
+        if m.BilibiliMultiPublishAdapter._prepare_cover(adapter,s,offline_page):break
+    assert s.cover_ready and not s.final
+    assert offline_page.evaluate('window.coverSyncChoice')=='不同步，手动编辑'
+    assert offline_page.evaluate('window.coverClicks')==2
+    assert not any(name in {'upload','journal','final'} for name,_ in events)
+    adapter.close()
+
+
+def test_both_cover_ratios_use_native_selection_then_confirm_once(case,offline_page,tmp_path):
+    adapter,payload,_,_,_=case;s=adapter._session(payload);adapter._init_observations(s)
+    s.cover_path=tmp_path/'owned.jpg';s.cover_path.write_bytes(b'owned synthetic image')
+    s.cover_opened=True;s.cover_uploaded=False;s.cover_uploaded_ratios=set();s.cover_ready=False;s.cover_confirm_clicked=False
+    offline_page.set_content('''<div class="creation-statement-container" style="height:20px">合成任务</div><div class="cover-editor">
+      <div class="cover-editor-panel-canvas-title"><span class="text">首页推荐封面（4:3）</span></div>
+      <div class="cover-editor-panel-canvas-title"><span class="text">个人空间封面（16:9）</span></div>
+      <div class="cover-upload"><input type="file"></div><div class="cover-editor-button"><button class="button submit">完成</button></div></div>''')
+    offline_page.evaluate('''()=>{
+      window.coverActions=[];const store={state:{task_owned:{}}},config={currentTaskId:'owned',tasks:[{id:'owned',archive:{},videoTasks:[]}]};
+      document.querySelector('.creation-statement-container').__vue__={$store:store,$taskConfig:config};
+      const vm={id:'owned',coverIndex:0,$taskConfig:config,isOverseas:false,activeEditor:null,submitDisabled:false,coverForEditor:{},isCoverEditorReady_4_3:false,isCoverEditorReady_16_9:false,imageEditor_4_3:null,imageEditor_16_9:null};
+      document.querySelector('.cover-editor').__vue__=vm;
+      document.querySelectorAll('.text').forEach((e,i)=>e.onclick=()=>{vm.activeEditor=i===0?'editor_4_3':'editor_16_9';});
+      document.querySelector('input').onchange=()=>{const ratio=vm.activeEditor==='editor_4_3'?'4_3':'16_9';window.coverActions.push('upload_'+ratio);vm.coverForEditor['origin_'+ratio]='owned';vm['isCoverEditorReady_'+ratio]=true;vm['imageEditor_'+ratio]={};};
+      document.querySelector('button').onclick=()=>{if(!vm.imageEditor_4_3||!vm.imageEditor_16_9)return;window.coverActions.push('confirm');store.state.task_owned.mainCover={main:{origin:'owned-committed'}};};
+    }''')
+    for _ in range(8):
+        ready=m.BilibiliMultiPublishAdapter._prepare_cover(adapter,s,offline_page)
+        assert not s.final
+        if ready:break
+    assert ready and s.cover_ready,(offline_page.evaluate(m.form_contract.READ_COVER_EDITOR),offline_page.evaluate('window.coverActions'),offline_page.evaluate(m.form_contract.READ_FORM).get('cover_reference'))
+    assert offline_page.evaluate('window.coverActions')==['upload_4_3','upload_16_9','confirm']
     adapter.close()

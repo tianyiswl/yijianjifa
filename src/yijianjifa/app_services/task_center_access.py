@@ -2,6 +2,8 @@
 import json
 import platform
 import re
+import sys
+from pathlib import Path
 from sqlalchemy import select
 from yijianjifa.storage.db import session_scope
 from yijianjifa.storage.models import Setting
@@ -12,9 +14,81 @@ from yijianjifa.features.finished.service import FinishedVideo
 from yijianjifa.features.accounts.service import AccountService
 
 ACTION={'action_required','missed_waiting_user','interrupted','paused_auth','result_unknown','pre_submit_failed','failed','completed_with_errors','partial'}
-STATUS={'running':{'running','publishing'},'waiting':{'waiting'},'paused':{'paused','interrupted'},'action':ACTION,
+STATUS={'running':{'running','publishing'},'waiting':{'waiting','waiting_publish'},'paused':{'paused','interrupted'},'action':ACTION,
         'failed':{'failed','pre_submit_failed','completed_with_errors'},'ambiguous':{'result_unknown'},
         'done':{'completed','published','platform_scheduled','succeeded','skipped'},'cancelled':{'cancelled'}}
+
+
+def _serial_progress(value):
+    """仅复制有限的只读进度字段；不把内部快照或宽松布尔值暴露给界面。"""
+    if type(value) is not dict or value.get('mode')!='per_item_v1':return None
+    numbers=('quantity','item_index','item_number','target_count','item_received','items_received',
+             'targets_received','targets_total','waiting_count','needs_action_count','error_count')
+    if any(type(value.get(k)) is not int or value[k]<0 for k in numbers):return None
+    if type(value.get('needs_action')) is not bool:return None
+    if value.get('stage') not in {'making','publishing','waiting_schedule','needs_attention','paused','completed'}:return None
+    if value.get('waiting_reason') not in {'none','dispatch','account','receipt','schedule','verification','result','authorization','configuration'}:return None
+    if (not 1<=value['item_number']<=value['quantity'] or value['item_index']!=value['item_number']-1
+            or value['item_received']>value['target_count'] or value['items_received']>value['quantity']
+            or value['targets_total']!=value['quantity']*value['target_count']
+            or value['targets_received']>value['targets_total']):return None
+    result={k:value[k] for k in (*numbers,'mode','stage','waiting_reason','needs_action')}
+    skipped=value.get('skipped_count',0)
+    if type(skipped) is not int or skipped<0 or skipped>value['error_count']:return None
+    result['skipped_count']=skipped
+    for k in ('item_title','reason'):
+        if type(value.get(k)) is not str:return None
+        result[k]=_redact_text(value[k])
+    return result
+
+
+def _serial_label(serial,state):
+    if state in {'cancelled','cancelling'}:return {'cancelled':'已取消','cancelling':'正在取消'}[state]
+    if serial['error_count']>serial.get('skipped_count',0):return '本条处理遇到错误，后续等待处理'
+    if state in {'paused','interrupted'} or serial['stage']=='paused':return '已暂停，等待继续'
+    if serial['stage']=='completed':return f"本批处理完成，{serial['skipped_count']}项因投稿上限已跳过" if serial.get('skipped_count') else '本批全部视频已被平台接收'
+    if serial['stage']=='making':return '正在制作'
+    return {'dispatch':'等待发布开始','account':'等待账号空闲','receipt':'等待平台确认接收',
+            'schedule':'等待约定发布时间','verification':'等待完成平台验证','result':'等待核对原结果',
+            'authorization':'等待明确继续本批','configuration':'等待核对本批配置'}.get(serial['waiting_reason'],'等待平台确认接收')
+
+
+def _publishing_counts(execution,total):
+    """旧批次仅按可完整读取的真实目标计数，不沿用把未知结果算失败的汇总。"""
+    publishing=execution.get('publishing') if type(execution) is dict else None
+    if type(publishing) is not dict or publishing.get('complete') is not True or publishing.get('omitted',0)!=0:return None
+    targets=publishing.get('targets')
+    if type(total) is not int or type(targets) is not list or len(targets)!=total:return None
+    identities=[target.get('id') for target in targets if type(target) is dict]
+    if any(type(identity) is not str or not identity for identity in identities) or len(set(identities))!=total:return None
+    counts=dict(accepted=0,error=0,verification=0,result=0,account=0,waiting=0)
+    for target in targets:
+        if type(target) is not dict:return None
+        state=target.get('state')
+        if state in {'published','platform_scheduled','platform_accepted','processing','reviewing'}:counts['accepted']+=1
+        elif state in {'pre_submit_failed','platform_rejected','failed'}:counts['error']+=1
+        elif state=='paused_auth' or state in {'result_unknown','interrupted','unknown'} and target.get('needs_verification') is True:counts['verification']+=1
+        elif state in {'result_unknown','interrupted','unknown'}:counts['result']+=1
+        elif state=='waiting' and target.get('blocked_by'):counts['account']+=1
+        elif state in {'waiting','running','publishing','queued','submitting','uploading','cancelled','waiting_adapter','waiting_configuration','action_required','missed_schedule','missed_waiting_user'}:counts['waiting']+=1
+        else:return None
+    return counts
+
+
+def _execution_log_metadata():
+    """读取固定构建清单的提交号，不把个人路径或任意清单文本带进日志。"""
+    from yijianjifa import APP_VERSION
+    commit='未记录'
+    if getattr(sys,'frozen',False):
+        try:
+            manifest=Path(sys.executable).resolve().parent/'build-manifest.json'
+            if manifest.is_file() and manifest.stat().st_size<=65536:
+                value=json.loads(manifest.read_text(encoding='utf-8-sig'))
+                candidate=value.get('commit') if type(value) is dict else None
+                if type(candidate) is str and re.fullmatch(r'[0-9a-fA-F]{40}',candidate):commit=candidate.lower()
+        except (OSError,UnicodeError,ValueError,TypeError):pass
+    system={'Windows':'Windows','Darwin':'macOS','Linux':'Linux'}.get(platform.system(),'未记录')
+    return ['应用版本：'+APP_VERSION,'构建提交：'+commit,'日志格式：1','系统：'+system]
 
 
 def _mix_diagnostic(value):
@@ -49,7 +123,7 @@ class TaskCenterAccess:
             result['status_label']=data['status_label']
         return result
 
-    def _rows(self):
+    def _rows(self,daily_cache=None):
         with session_scope(self.engine) as session:
             mix=list(session.scalars(select(MixTask).order_by(MixTask.position,MixTask.created_at)))
             result=[]
@@ -60,8 +134,12 @@ class TaskCenterAccess:
                     quantity=t.quantity,completed=t.completed_count,succeeded=t.success_count,failed=t.failure_count,
                     position=t.position,account='',created_at=t.created_at.isoformat()))
                 if snapshot.get('daily_publish'):
+                    frozen=snapshot['daily_publish']
+                    from yijianjifa.features.mixing.serial_gate import has_flow_marker
+                    if has_flow_marker(snapshot):result[-1]['workflow_serial']=True
                     from .daily_mixing import read_status
                     daily = read_status(self.engine, t.id)
+                    if daily_cache is not None:daily_cache[t.id]=daily
                     result[-1]['workflow_needs_attention'] = daily['phase'] in {'needs_attention', 'needs_login'}
                     if daily['phase'] in {'checking_login', 'needs_login'}:
                         result[-1]['status_label'] = {'checking_login': '正在检查账号登录', 'needs_login': '等待登录后继续'}[daily['phase']]
@@ -71,6 +149,12 @@ class TaskCenterAccess:
                             'publishing':'制作完成，发布中', 'needs_attention':'制作完成，发布需要处理',
                             'accepted':'平台已接收', 'completed':'制作及发布完成', 'cancelled':'已停止发布',
                         }.get(daily['phase'], '制作完成')
+                    serial=_serial_progress(daily.get('serial'))
+                    if serial:
+                        result[-1].update(serial=serial,status_label=_serial_label(serial,t.state),
+                            workflow_needs_attention=(serial['needs_action'] or serial['error_count']>0) and t.state not in {'cancelled','cancelling'},
+                            workflow_has_errors=serial['error_count']>0)
+                    elif t.state=='waiting_publish':result[-1]['status_label']='等待读取发布进度'
         ids={t['id'] for t in result};accounts={a.id:a.nickname for a in AccountService(self.engine).list()}
         for t in TaskCenterService(self.engine).list():
             if t.id in ids:continue
@@ -79,7 +163,7 @@ class TaskCenterAccess:
                 else:
                     from .multi_publish import MultiPublishService
                     from .multi_publish_dto import detail
-                    data=detail(MultiPublishService(self.engine,None),t.id)
+                    data=detail(MultiPublishService(self.engine,None,read_only=True),t.id)
                 if all(d['hidden'] for d in data['deliveries']):continue
                 result.append(self._multi_row(t,data))
                 continue
@@ -111,7 +195,8 @@ class TaskCenterAccess:
 
     def list(self,query,tab,status,offset,limit):
         rows=[r for r in self._rows() if (tab=='all' or (tab=='action' and (r['state'] in ACTION or r.get('workflow_needs_attention'))) or tab==r['kind'])
-              and (not status or r['state'] in STATUS[status] or status=='action' and r.get('workflow_needs_attention'))
+              and (not status or r['state'] in STATUS[status] or status=='action' and r.get('workflow_needs_attention')
+                   or status=='failed' and r.get('workflow_has_errors'))
               and query.casefold() in ' '.join([r['name'],r['id'],r['account']]).casefold()]
         return {'total':len(rows),'items':rows[offset:offset+limit]}
 
@@ -125,10 +210,11 @@ class TaskCenterAccess:
             else:
                 from .multi_publish import MultiPublishService
                 from .multi_publish_dto import detail
-                data=detail(MultiPublishService(self.engine,None),pid)
+                data=detail(MultiPublishService(self.engine,None,read_only=True),pid)
             record=self._multi_row(row,data)
             return {**data,'task':record,'items':data['deliveries'],'settings':{'kind':'multi_publish'},'issues':[],'outputs':[]}
-        record=next((r for r in self._rows() if r['id']==pid),None)
+        daily_cache={}
+        record=next((r for r in self._rows(daily_cache) if r['id']==pid),None)
         if record is None:raise KeyError(pid)
         result={'task':record,'controls':[],'settings':{},'items':[],'issues':[],'outputs':[]}
         if record['kind']=='download':
@@ -143,9 +229,9 @@ class TaskCenterAccess:
             return result
         if record['kind']=='make':
             state=record['state']
-            if state in {'waiting','running'}:result['controls'].append('pause')
-            if state in {'paused','interrupted'}:result['controls'].append('resume')
-            if state in {'waiting','running','paused','interrupted'}:result['controls'].append('cancel')
+            if state in {'waiting','running','waiting_publish'}:result['controls'].append('pause')
+            if state in {'paused','interrupted'} and not record.get('workflow_serial'):result['controls'].append('resume')
+            if state in {'waiting','running','waiting_publish','paused','interrupted'}:result['controls'].append('cancel')
             if state=='waiting':result['controls']+=['up','down']
             with session_scope(self.engine) as session:
                 task=session.get(MixTask,pid);snapshot=json.loads(task.snapshot_json)
@@ -157,12 +243,12 @@ class TaskCenterAccess:
                 result['settings']['options'] = {k: v for k, v in snapshot.get('options', {}).items()
                                                  if k in option_keys}
                 if snapshot.get('daily_publish'):
-                    from .daily_mixing import read_status
-                    daily = read_status(self.engine, pid)
+                    daily = daily_cache[pid]
                     result['daily_publish'] = {k: daily[k] for k in (
                         'phase', 'publish_task_ids', 'accepted', 'pending', 'failed', 'total',
                         'making_failed', 'published', 'resolved_start', 'can_continue') if k in daily}
                     result['daily_publish']['reason'] = _redact_text(str(daily.get('reason') or ''))
+                    if 'serial' in record:result['daily_publish']['serial']=record['serial']
                     saved=session.get(Setting,'mix.daily.status:' + pid)
                     result['daily_publish']['login_log'] = [{k:event[k] for k in ('time','step','stage','accounts') if k in event}
                         for event in (json.loads(saved.value_json).get('login_log', []) if saved else [])[-50:]]
@@ -259,7 +345,9 @@ class TaskCenterAccess:
             result['manual_review']=PublishReview(self.engine).read(pid)
         if 'daily_publish' in result:
             from .mix_execution import read_execution
-            result['execution']=read_execution(self.engine,pid)
+            result['execution']=daily_cache[pid].get('execution') or read_execution(self.engine,pid)
+            result['execution'].pop('serial',None)
+            if 'serial' in record:result['execution']['serial']=record['serial']
         return result
 
     def diagnostic(self,pid):
@@ -310,7 +398,12 @@ class TaskCenterAccess:
                           '状态：'+str(delivery.get('state','未记录')),
                           '发布时间：'+('立即发布' if delivery.get('execution_mode')=='publish_now' else str(delivery.get('scheduled_at') or '未记录'))])
             if delivery.get('reason_message'):lines.append('原因：'+str(delivery['reason_message']))
-            events=delivery.get('execution_log',[])
+            from .multi_publish_dto import safe_identity_execution_events
+            events=safe_identity_execution_events(delivery.get('execution_log',[]))
+            if delivery.get('platform')=='douyin':
+                from .multi_publish_dto import identity_diagnostic_summary, result_diagnostic_summary
+                diagnostic=identity_diagnostic_summary(events) or result_diagnostic_summary(events)
+                if diagnostic:lines.append('诊断摘要：'+diagnostic)
             if not events:lines.append('尚未记录执行日志。')
             for entry in events[-500:]:
                 if not isinstance(entry,dict) or not re.fullmatch(r'[a-zA-Z_.]{1,80}',str(entry.get('step',''))):continue
@@ -329,11 +422,14 @@ class TaskCenterAccess:
         lines=['一剪即发 · 任务执行日志','任务：'+str(task['name']),
                '任务编号：'+str(task['id']),'状态：'+str(task['state']),
                '创建时间：'+str(task.get('created_at','未记录'))]
+        lines.extend(_execution_log_metadata())
         children=[];complete=True
-        execution=read_execution(self.engine,pid) if task.get('kind')=='make' else None
+        execution=data.get('execution') or (read_execution(self.engine,pid) if task.get('kind')=='make' else None)
         if execution:
             making=execution['making']
             lines.extend(['',f"制作进度：已完成 {making['completed']}/{making['total']} 条 · 成功 {making['succeeded']} 条 · 失败 {making['failed']} 条"])
+            report=execution.get('report') or {}
+            if report.get('ready'):lines.extend(['',report['text'],''])
         if data.get('daily_publish'):
             daily = data['daily_publish']
             children,complete=self._daily_copy_children(pid,daily)
@@ -343,9 +439,17 @@ class TaskCenterAccess:
             lines.extend(['', '制作后发布：'+labels.get(daily.get('phase'), '等待处理')])
             # An invalid/hidden link must not supply another task's current
             # title/account or its aggregate publishing counts to this copy.
-            if complete:
-                lines.append(f"发布进度：平台已接收 {daily.get('accepted',0)}/{daily.get('total',0)} 项 · 待执行 {daily.get('pending',0)} 项 · 失败 {daily.get('failed',0)} 项")
-            reasons=dict.fromkeys(_text(value) for value in (daily.get('reason'),execution.get('reason')) if value)
+            serial=task.get('serial')
+            if serial:
+                lines.append(f"逐条进度：第{serial['item_number']}/{serial['quantity']}条 · 当前条平台已接收 {serial['item_received']}/{serial['target_count']} · 全局 {serial['targets_received']}/{serial['targets_total']}")
+                lines.append('当前状态：'+_serial_label(serial,task['state']))
+                lines.append(f"发布统计：错误 {serial['error_count']} 项 · 等待 {serial['waiting_count']} 项 · 等待处理 {serial['needs_action_count']} 项")
+            elif complete:
+                counts=_publishing_counts(execution,daily.get('total'))
+                if counts is not None:
+                    lines.append(f"发布进度：平台已接收 {counts['accepted']}/{daily['total']} 项 · 错误 {counts['error']} 项 · 等待核对 {counts['result']} 项 · 等待验证 {counts['verification']} 项 · 等待账号 {counts['account']} 项 · 其他等待 {counts['waiting']} 项")
+                else:lines.append('部分发布记录尚不能完整核实，未推算错误或等待数量。')
+            reasons=dict.fromkeys(_text(value) for value in (daily.get('reason'),(execution or {}).get('reason')) if value)
             for reason in reasons:
                 if reason:lines.append('原因：'+reason)
             publishing=execution.get('publishing') if execution else None

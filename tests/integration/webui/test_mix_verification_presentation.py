@@ -65,7 +65,7 @@ def test_batch_current_never_hides_nonverification_problems(
     link([verification, other], auth_phase=auth_phase)
     with session_scope(db_engine) as session:
         session.get(MixTask, parent).failure_count = failed_making
-    assert (read_execution(db_engine, parent)['current']['label'] == '待完成平台验证') is expected
+    assert (read_execution(db_engine, parent)['current']['label'] == '等待完成平台验证') is expected
 
 
 @pytest.mark.parametrize('stop', ['hidden_other_target', 'automatic_stopped'])
@@ -78,7 +78,7 @@ def test_partial_or_stopped_projection_never_claims_all_remaining_work_only_need
     if stop == 'hidden_other_target':
         with session_scope(db_engine) as session:
             session.get(PublishDeliveryRow, other_id).hidden = True
-    assert read_execution(db_engine, parent)['current']['label'] != '待完成平台验证'
+    assert read_execution(db_engine, parent)['current']['label'] != '等待完成平台验证'
 
 
 def test_verification_read_preserves_states_counts_authorization_logs_and_final_markers(publishing, db_engine):
@@ -116,8 +116,10 @@ def test_verification_read_preserves_states_counts_authorization_logs_and_final_
         event.remove(db_engine, 'before_cursor_execute', observed)
     assert status['reason_code'] == 'verification_required'
     assert status['reason'] != 'verification_required' and '验证' in status['reason']
-    assert status['accepted'] == 1 and status['published'] == 0 and status['failed'] == 1
-    assert execution['current']['label'] == '待完成平台验证'
+    assert status['accepted'] == 1 and status['published'] == 0 and status['failed'] == 0
+    assert status['pending'] == 1 and status['needs_action_count'] == 1 and status['needs_action'] is True
+    assert status['waiting_reason'] == 'verification'
+    assert execution['current']['label'] == '等待完成平台验证'
     assert [target['needs_verification'] for target in execution['publishing']['targets']] == [True, False]
     assert evidence() == before
     assert not any(statement.startswith(('INSERT', 'UPDATE', 'DELETE', 'REPLACE')) for statement in statements)

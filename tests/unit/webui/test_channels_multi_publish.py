@@ -95,12 +95,14 @@ def case(db_engine, app_paths, tmp_path, monkeypatch):
         def goto(self, url, **kwargs): self.url = url; events.append(('navigate', url))
         def wait_for_timeout(self, ms): pass
         def is_closed(self): return False
+        def bring_to_front(self): pass
         def screenshot(self, **kwargs): return b'fixture-frame'
         def evaluate(self, script): return identity
     page = Page()
     def open_session(s, **kwargs):
         if s.page is not None: return
         s.page = page; s.original_ref = 'version-1'
+        s.external_browser = True  # This lifecycle fixture retains a visible original page.
         s.context = SimpleNamespace(close=lambda: events.append(('close', None)))
         adapter._init_observations(s); s.list_seen = True
     monkeypatch.setattr(adapter, '_open', open_session)
@@ -223,8 +225,8 @@ def test_wrong_account_parks_original_page_without_upload_or_close(case):
     request = a.interventions()[0]
     assert request['kind'] == 'login' and '不一致' in request['message']
     assert request['reason'] == 'identity_mismatch'
-    assert '账号管理' in request['message'] and '浏览器' in request['message']
-    assert '取消此本地目标' in request['message'] and '等待任务停止' in request['message']
+    assert '浏览器' in request['message'] and request['browser_login'] is True
+    assert request['view_mode'] == 'browser' and not request.get('image')
     assert not any(k in {'upload', 'final', 'close'} for k, _ in events)
     a.close()
 
@@ -337,7 +339,7 @@ def test_missing_work_id_does_not_erase_complete_success_ack(case, monkeypatch):
     a.close()
 
 
-def test_immediate_ack_without_work_id_keeps_final_unknown_and_cannot_resubmit(case, monkeypatch):
+def test_immediate_ack_without_work_id_is_accepted_not_published_and_cannot_resubmit(case, monkeypatch):
     a, p, _, events, _, media = case
     p['execution_mode'] = 'publish_now'
     a.bind_delivery(digest=digest(p), delivery_id='target', task_id='batch')
@@ -348,8 +350,10 @@ def test_immediate_ack_without_work_id_keeps_final_unknown_and_cannot_resubmit(c
     monkeypatch.setattr(a, '_click_final', click)
     a.validate_target(p, p, p['execution_mode'])
     result = a.submit(p, context=None, before_final=lambda: None)
-    assert result.state == 'result_unknown' and a._session(p).submit_ok is True
-    assert a._session(p).final is True and result.context == {'handle': a._session(p).handle}
+    assert result.state == 'platform_accepted' and a._session(p).submit_ok is True
+    assert result.receipt_reference == {} and result.submission_ack['request_digest'] == digest(p)
+    assert a._session(p).final is True and result.context is None
+    assert sum(k == 'upload' for k, _ in events) == sum(k == 'final' for k, _ in events) == 1
     with pytest.raises(ValueError): a.submit(p, context=None, before_final=lambda: None)
     a.close()
 
@@ -524,14 +528,17 @@ def test_javascript_form_read_failure_never_records_private_exception_text(case,
 
 def test_expired_login_is_checked_before_upload_and_explained(case,monkeypatch):
     a,p,page,events,_,_=case
-    monkeypatch.setattr(a,'_challenge',lambda s:'login')
+    challenge={'login':True};original_evaluate=page.evaluate
+    monkeypatch.setattr(page,'evaluate',lambda script:challenge if script==module.CHALLENGE else original_evaluate(script))
+    # Keep the actual challenge reader and its shared account observation.
+    monkeypatch.setattr(a,'_challenge',module.ChannelsMultiPublishAdapter._challenge.__get__(a))
     result=a.validate_target(p,p,p['execution_mode'])
     assert result.state=='paused_auth'
     assert a.service.get(p['account_id']).login_state=='expired'
     s=a._session(p);message=s.broker.status()['request']['message']
     assert '登录已失效' in message and not s.uploaded and not s.final
     assert not any(k in {'upload','final'} for k,_ in events)
-    monkeypatch.setattr(a,'_challenge',lambda s:None)
+    challenge.clear()
     assert a.validate_target(p,p,p['execution_mode']).authorized
     assert a.service.get(p['account_id']).login_state=='valid'
     a.close()

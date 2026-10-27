@@ -187,7 +187,7 @@ def test_0014_migration_preserves_candidate_and_owned_references(tmp_path):
     with engine.connect() as c:
         for name,rows in before.items():assert list(c.execute(text('SELECT * FROM '+name)))==rows
         assert not list(c.execute(text('PRAGMA foreign_key_check')))
-        assert c.execute(text('SELECT version_num FROM alembic_version')).scalar_one()=='0018_image_post_deliveries'
+        assert c.execute(text('SELECT version_num FROM alembic_version')).scalar_one()=='0019_single_category'
     with engine.begin() as c:
         local=repo.save_candidate(c,Candidate('local','local','local:'+'c'*64,'local:'+'c'*64,None))
         assert repo.save_candidate(c,Candidate('other','local','local:'+'c'*64,'local:'+'c'*64,None))==local
@@ -398,7 +398,7 @@ def test_populated_0014_upgrade_preserves_all_references_and_restores_flag(tmp_p
         # New image/V2 tables have their own indexes and cannot weaken this
         # assertion that every legacy table's indexes were preserved.
         placeholders=','.join('?' for _ in legacy_tables)
-        assert set(c.exec_driver_sql(f"SELECT name FROM sqlite_master WHERE type='index' AND tbl_name IN ({placeholders})",legacy_tables).scalars())==indexes|{'uq_download_local_source'}
+        assert set(c.exec_driver_sql(f"SELECT name FROM sqlite_master WHERE type='index' AND tbl_name IN ({placeholders})",legacy_tables).scalars())==indexes|{'uq_download_local_source','uq_category_target_single'}
         with pytest.raises(Exception):c.execute(text("UPDATE download_outputs SET size_bytes=101 WHERE id='old-output'"))
         c.rollback()
         c.exec_driver_sql('PRAGMA foreign_keys=ON')
@@ -414,7 +414,7 @@ def test_0013_to_head_migration_restores_connection_flag(tmp_path,fk):
     with engine.connect() as c:
         assert c.exec_driver_sql('PRAGMA foreign_keys').scalar_one()==fk
         assert not list(c.exec_driver_sql('PRAGMA foreign_key_check'))
-        assert c.exec_driver_sql('SELECT version_num FROM alembic_version').scalar_one()=='0018_image_post_deliveries'
+        assert c.exec_driver_sql('SELECT version_num FROM alembic_version').scalar_one()=='0019_single_category'
     engine.dispose()
 
 @pytest.mark.parametrize('fk',[0,1])
@@ -454,9 +454,9 @@ def test_direct_alembic_fk_on_copy_refused_before_change(tmp_path,downgrade):
             (alembic_command.downgrade if downgrade else alembic_command.upgrade)(cfg,'0014_downloads' if downgrade else 'head')
     with engine.connect() as c:
         assert c.exec_driver_sql('PRAGMA foreign_keys').scalar_one()==1
-        # Downgrade now encounters the image-delivery parent-copy guard first;
-        # both it and the existing local-video guard must refuse before DDL.
-        assert c.exec_driver_sql('SELECT version_num FROM alembic_version').scalar_one()==('0018_image_post_deliveries' if downgrade else '0014_downloads')
+        # Downgrade encounters the single-category transaction guard first;
+        # direct unguarded migration must refuse before any DDL.
+        assert c.exec_driver_sql('SELECT version_num FROM alembic_version').scalar_one()==('0019_single_category' if downgrade else '0014_downloads')
         assert list(c.exec_driver_sql("SELECT type,name,tbl_name,sql FROM sqlite_master ORDER BY type,name"))==before_schema
         assert c.exec_driver_sql("SELECT 1 FROM sqlite_master WHERE name='_alembic_tmp_download_candidates'").first() is None
         assert not list(c.exec_driver_sql('PRAGMA foreign_key_check'))

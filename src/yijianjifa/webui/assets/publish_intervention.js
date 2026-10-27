@@ -8,12 +8,14 @@ function P011PublishIntervention(){
  const reasonOf=r=>reasons.has(r?.reason)?r.reason:({login:'login_required',sms:'sms_required',complex:'challenge_required'}[r?.kind]||'');
  const accountCheck=r=>['identity_unavailable','identity_mismatch','session_changed'].includes(reasonOf(r));
  const platformName=r=>({bilibili:'B站',channels:'视频号',douyin:'抖音',kuaishou:'快手'}[r.platform]||'平台');
- const sameRequest=(a,b)=>sameHandle(a,b)&&a.kind===b.kind&&reasonOf(a)===reasonOf(b)&&!!a.final_started===!!b.final_started;
+ const browserLogin=r=>r?.browser_login===true&&!r.inspection_id&&!r.final_started;
+ const sameRequest=(a,b)=>sameHandle(a,b)&&a.kind===b.kind&&reasonOf(a)===reasonOf(b)&&!!a.final_started===!!b.final_started&&browserLogin(a)===browserLogin(b);
  const simpleSms=r=>!!r.delivery_id&&!r.inspection_id&&r.kind==='sms'&&!accountCheck(r);
- function doneLabel(r){if(r.inspection_id||!r.delivery_id)return '已完成验证';if(simpleSms(r))return '检查验证状态';if(accountCheck(r)&&r.final_started)return '检查发布结果';return {identity_unavailable:'重新核对原账号',identity_mismatch:'重新核对原账号',session_changed:'确认原账号并继续',login_required:'已登录，继续',sms_required:'检查验证状态',challenge_required:'验证完成'}[reasonOf(r)]||'检查发布结果';}
+ function doneLabel(r){if(browserLogin(r))return '已登录，继续';if(r.inspection_id||!r.delivery_id)return '已完成验证';if(simpleSms(r))return '检查验证状态';if(accountCheck(r)&&r.final_started)return '检查发布结果';return {identity_unavailable:'重新核对原账号',identity_mismatch:'重新核对原账号',session_changed:'确认原账号并继续',login_required:'已登录，继续',sms_required:'检查验证状态',challenge_required:'验证完成'}[reasonOf(r)]||'检查发布结果';}
  function titleText(r){if(r.inspection_id)return '仅检查，不发表 · '+r.account_name;if(!r.delivery_id)return '发布需要验证 · '+r.account_name;const label=simpleSms(r)?'短信验证':reasonOf(r)==='identity_mismatch'?'所选账号不一致':({identity_unavailable:'原账号待核对',session_changed:'账号需确认',login_required:'需要登录',sms_required:'需要短信验证码',challenge_required:'需要平台验证'}[reasonOf(r)]||'发布需要处理');return platformName(r)+label+' · '+r.account_name;}
  const backgroundVerification=r=>!r.inspection_id&&r.external_browser===false&&!accountCheck(r)&&['sms','complex','login'].includes(r.kind);
  function messageText(r){
+  if(browserLogin(r))return '请在打开的浏览器中登录原'+platformName(r)+'账号“'+r.account_name+'”，完成后点击“已登录，继续”。';
   if(simpleSms(r))return '输入短信验证码，点击“确认验证码”。验证通过后，软件会自动继续。';
   if(backgroundVerification(r)&&r.view_mode!=='page'&&!r.delivery_id)return '发布已暂停，请切换到显示浏览器模式，完成'+(r.kind==='login'?'登录':'验证码验证')+'后继续。浏览器原页面会在客户端中显示，已上传视频和填写内容保留。';
   if(backgroundVerification(r)&&r.view_mode!=='page')return '请按页面提示完成'+(r.kind==='login'?'登录':'验证')+'，然后点击“'+doneLabel(r)+'”。如看不到页面，可在“验证遇到问题？”中打开。';
@@ -58,6 +60,10 @@ function P011PublishIntervention(){
  function setFeedback(text,tone='progress',pending=false,action='',revision=null){feedback={text,tone,pending,action,revision};paintFeedback();}
  function viewFeedback(r){
   const revision=Number.isSafeInteger(r.view_revision)&&r.view_revision>0?r.view_revision:null;
+  // Account management can explicitly show this same browser from another
+  // control. Its newer accepted revision replaces even an older queued view;
+  // a local action without its response revision still waits for that reply.
+  if(browserLogin(r)&&r.view_action==='visible'&&feedback&&Number.isSafeInteger(feedback.revision)&&revision>feedback.revision)feedback=null;
   if(r.view_action==='resend_code'&&r.view_state!=='failed'&&(!feedback||feedback.action==='resend_code'&&feedback.revision===revision)&&['queued','sent','failed','waiting'].includes(r.sms_state)){setFeedback(r.sms_message||'正在获取短信验证码。',r.sms_state==='failed'?'error':'progress',r.sms_state==='queued','resend_code',revision);return;}
   if((feedback?.action==='code'&&revision===feedback.revision||!feedback&&r.view_action==='code'&&revision!==null)&&['queued','processing','submitted','failed'].includes(r.code_state)){
    const messages={queued:'验证码请求已排队，正在交给原平台页面。',processing:'正在填写原平台验证码并提交验证。',submitted:'验证码已填入并提交原平台，正在等待验证结果。',failed:'验证码未通过或未能提交，请查看原页面提示后重新输入或获取。'};
@@ -68,21 +74,22 @@ function P011PublishIntervention(){
   if(feedback&&(!feedback.pending||feedback.revision===null||revision!==feedback.revision))return;
   if(revision===null)return;
   const action=feedback?.action||'visible';
-  if(r.view_state==='failed'){setFeedback('画面处理失败：'+(r.view_error||'无法读取原会话画面，请再次展开。'),'error',false,action,revision);return;}
-  if(r.view_state==='queued'){if(!feedback)setFeedback('正在处理原会话画面…','progress',true,action,revision);return;}
+  if(r.view_state==='failed'){setFeedback((browserLogin(r)?'登录页面未能打开：':'画面处理失败：')+(r.view_error||(browserLogin(r)?'请点击“打开登录页面”重试。':'无法读取原会话画面，请再次展开。')),'error',false,action,revision);return;}
+  if(r.view_state==='queued'){if(!feedback)setFeedback(browserLogin(r)?'正在打开登录页面…':'正在处理原会话画面…','progress',true,action,revision);return;}
+  if(browserLogin(r)&&r.view_state==='ready'&&r.view_mode==='browser'&&r.external_browser===true){setFeedback('登录页面已打开，请在浏览器中完成原账号登录。','success',false,action,revision);return;}
   if(r.view_state==='ready'&&r.view_mode==='page'&&r.image){const message={refresh:'原任务画面已更新。',scroll:'原任务画面已滚动。',pointer:'画面操作已完成，请核对平台提示。'}[action]||'原任务页面已显示，可查看下方画面。';setFeedback(message,'success',false,action,revision);}
  }
  async function respond(action,code=''){
   if(sending||!current)return false;
-  const inspection=!!current.inspection_id,v2=!!current.delivery_id||inspection,finalStarted=!inspection&&current.final_started;
+  const inspection=!!current.inspection_id,v2=!!current.delivery_id||inspection,nativeView=v2||browserLogin(current),finalStarted=!inspection&&current.final_started;
   const needsConsent=v2&&!finalStarted&&['code','pointer','done'].includes(action);
   if(needsConsent&&!consent?.checked){setFeedback(inspection?'请确认仍使用此账号继续检查；本次不会发表。':'请勾选确认仍使用此目标原账号继续。','error');return false;}
-  if(v2&&(viewActions.has(action)||action==='code')&&feedback?.pending)return false;
+  if(nativeView&&(viewActions.has(action)||action==='code')&&feedback?.pending)return false;
   if(action==='resend_code'&&Number(current.sms_retry_after)>0)return false;
   const request=current,params=v2?{id:current.id,...(inspection?{inspection_id:current.inspection_id}:{delivery_id:current.delivery_id}),action,...(['code','pointer','scroll'].includes(action)?{code}:{}),...(needsConsent?{consent_same_identity:true}:{})}:{id:current.id,action,code};
   sending=true;
-  const message=v2?{visible:'正在读取原任务页面…',refresh:'正在更新原任务画面…',scroll:'正在滚动原任务画面…',pointer:'正在处理画面操作…',resend_code:'正在请求新的短信验证码…',code:'正在发送验证码处理请求…',done:finalStarted?'正在请求核对原提交结果…':accountCheck(current)?'正在请求重新核对原账号…':'正在请求检查原账号验证状态…',cancel:'正在请求取消本地目标…'}[action]:'正在处理，请稍候…';setFeedback(message||'正在处理，请稍候…','progress',v2&&(viewActions.has(action)||action==='code'),action);
-  try{const data=await api(inspection?'multi_publish.inspection.respond':(v2?'multi_publish.':'publish.')+'intervention.respond',params);if(!sameRequest(current,request))return false;if(data?.accepted!==true)throw Error(data?.message||'操作未受理，请重试。');if(v2&&(viewActions.has(action)||action==='code'&&viewRevision(data))){if(!viewRevision(data))throw Error('画面操作未返回核对标识，请再次查看。');feedback.revision=data.view_revision;latestViewRevision=Math.max(latestViewRevision,data.view_revision);if(action==='code')setFeedback(acceptedText(request,action),'progress',true,'code',data.view_revision);}else setFeedback(acceptedText(request,action));if(data.request&&sameRequest(data.request,request))show(data.request);else if(v2&&(viewActions.has(action)||action==='code'))viewFeedback(current);return true;}
+  const message=browserLogin(current)&&action==='visible'?'正在打开登录页面…':v2?{visible:'正在读取原任务页面…',refresh:'正在更新原任务画面…',scroll:'正在滚动原任务画面…',pointer:'正在处理画面操作…',resend_code:'正在请求新的短信验证码…',code:'正在发送验证码处理请求…',done:finalStarted?'正在请求核对原提交结果…':accountCheck(current)?'正在请求重新核对原账号…':'正在请求检查原账号验证状态…',cancel:'正在请求取消本地目标…'}[action]:'正在处理，请稍候…';setFeedback(message||'正在处理，请稍候…','progress',nativeView&&(viewActions.has(action)||action==='code'),action);
+  try{const data=await api(inspection?'multi_publish.inspection.respond':(v2?'multi_publish.':'publish.')+'intervention.respond',params);if(!sameRequest(current,request))return false;if(data?.accepted!==true)throw Error(data?.message||'操作未受理，请重试。');if(nativeView&&(viewActions.has(action)||action==='code'&&viewRevision(data))){if(!viewRevision(data))throw Error('画面操作未返回核对标识，请再次查看。');feedback.revision=data.view_revision;latestViewRevision=Math.max(latestViewRevision,data.view_revision);if(action==='code')setFeedback(acceptedText(request,action),'progress',true,'code',data.view_revision);}else setFeedback(acceptedText(request,action));if(data.request&&sameRequest(data.request,request))show(data.request);else if(nativeView&&(viewActions.has(action)||action==='code'))viewFeedback(current);return true;}
   catch(e){if(sameRequest(current,request))setFeedback('操作未完成：'+e.message,'error');return false;}
   finally{sending=false;paintFeedback();}
  }
@@ -109,8 +116,8 @@ function P011PublishIntervention(){
    consent=el('input');consent.type='checkbox';consent.setAttribute('aria-label',inspection?'确认同一账号继续检查':'确认同一账号继续此目标');
    const label=el('label');label.append(consent,el('span',inspection?'我确认仍使用 '+r.account_name+' 原账号继续检查，不切换账号。':'我确认继续使用'+platformName(r)+'账号“'+r.account_name+'”处理这条原任务。'));box.append(label);
   }
-  if(v2&&!inspection&&reasonOf(r)==='identity_mismatch')box.append(el('p','账号身份（UID）必须与这条原任务所选账号一致；'+(finalStarted?'核对操作':'勾选确认')+'不会授权使用其他账号。'));
-  const assistance=simple?el('div'):null;
+  if(v2&&!inspection&&reasonOf(r)==='identity_mismatch')box.append(el('p',browserLogin(r)?'请登录本次选择的'+platformName(r)+'账号；登录其他账号不能继续这条任务。':'账号身份（UID）必须与这条原任务所选账号一致；'+(finalStarted?'核对操作':'勾选确认')+'不会授权使用其他账号。'));
+  const assistance=simple&&!browserLogin(r)?el('div'):null;
   // SMS code processing already advances the original session on success.
   // Keep manual page/check tools optional; cancellation belongs in task records.
   if(assistance){
@@ -129,7 +136,7 @@ function P011PublishIntervention(){
    else{label.append(input);box.append(label);smsActions.append(confirm);box.append(smsActions);}
    if(v2&&r.platform==='douyin'&&!inspection){const resend=el('button','再次获取验证码');resend.dataset.action='resend_code';resend.onclick=e=>{if(e.isTrusted)respond('resend_code');};smsActions.append(resend);}
   }
-  if(r.kind==='complex'||r.kind==='login'||v2){
+  if(!browserLogin(r)&&(r.kind==='complex'||r.kind==='login'||v2)){
    if(r.kind==='login'&&!accountCheck(r)){
     const done=doneLabel(r);
     box.append(el('p',v2&&r.platform==='channels'?'请在下方页面完成此视频号登录。若出现“微信快捷登录”，先点击它，再按微信提示完成登录；完成后点击“'+done+'”。':v2?'请按下方'+platformName(r)+'页面提示登录原账号；如页面显示二维码，再用手机扫码。完成后点击“'+done+'”。':'请用手机扫描下方平台二维码，登录 '+r.account_name+' 原账号；完成后点击“'+done+'”。'));
@@ -161,13 +168,14 @@ function P011PublishIntervention(){
   }
   const foot=el('div');foot.className='p011-verification-actions';
   if(simple){
-   box.append(assistance);
-   const help=el('button','验证遇到问题？');help.className='p011-verification-help-toggle';help.setAttribute('aria-expanded','false');help.setAttribute('aria-controls',assistance.id);help.onclick=e=>{if(!e.isTrusted)return;assistance.hidden=!assistance.hidden;help.textContent=assistance.hidden?'验证遇到问题？':'收起帮助';help.setAttribute('aria-expanded',String(!assistance.hidden));updateView(current);};foot.append(help);
+   if(assistance){box.append(assistance);
+    const help=el('button','验证遇到问题？');help.className='p011-verification-help-toggle';help.setAttribute('aria-expanded','false');help.setAttribute('aria-controls',assistance.id);help.onclick=e=>{if(!e.isTrusted)return;assistance.hidden=!assistance.hidden;help.textContent=assistance.hidden?'验证遇到问题？':'收起帮助';help.setAttribute('aria-expanded',String(!assistance.hidden));updateView(current);};foot.append(help);
+   }else if(browserLogin(r)){const open=el('button','打开登录页面');open.dataset.action='visible';open.onclick=e=>{if(e.isTrusted)respond('visible');};foot.append(open);}
    const later=el('button','关闭');later.title='任务保留在“任务记录”中，可稍后继续处理';later.dataset.action='defer';later.onclick=e=>{if(e.isTrusted)defer();};foot.append(later);
    if(codeConfirm)foot.append(codeConfirm);
    const hint=el('p','关闭后可从“任务记录”继续处理。');hint.className='p011-verification-hint';box.append(hint);
   }
-  const actions=inspection?[['visible','在客户端展开页面'],['cancel','取消检查'],['done','已完成验证']]:v2?(codeConfirm?[]:[['done',doneLabel(r)]]):[['cancel','稍后处理'],['visible',backgroundVerification(r)?'显示浏览器验证':'显示浏览器处理'],['done','已完成验证']];
+  const actions=inspection?[['visible','在客户端展开页面'],['cancel','取消检查'],['done','已完成验证']]:v2?(codeConfirm?[]:[['done',doneLabel(r)]]):browserLogin(r)?[['visible','打开登录页面'],['cancel','稍后处理'],['done',doneLabel(r)]]:[['cancel','稍后处理'],['visible',backgroundVerification(r)?'显示浏览器验证':'显示浏览器处理'],['done','已完成验证']];
   for(const [action,label] of actions){const b=el('button',label);b.dataset.action=action;if(action==='done')b.className='primary';b.onclick=e=>{if(e.isTrusted)respond(action);};foot.append(b);}
   box.append(foot);root.append(box);document.body.append(root);updateView(r);viewFeedback(r);paintFeedback();
  }
@@ -183,10 +191,11 @@ function P011PublishIntervention(){
  }
  window.p011CheckPublishResult=checkResult;
  async function openVerification(delivery){
-  if(!alive||sending||typeof delivery!=='string'||!delivery)return false;const epoch=++visibilityEpoch;
-  const data=await api('multi_publish.intervention.status',{delivery_id:delivery}),r=data.request;
-  if(!alive||epoch!==visibilityEpoch||!r||r.delivery_id!==delivery)return false;
-  deferredRequests.delete(r.id);openedDelivery=delivery;show(r);return true;
+  const legacy=delivery&&typeof delivery==='object'&&Object.keys(delivery).sort().join(',')==='account_id,request_id'&&typeof delivery.request_id==='string'&&/^[A-Za-z0-9_-]{1,96}$/.test(delivery.request_id)&&typeof delivery.account_id==='string'&&/^[A-Za-z0-9_-]{1,64}$/.test(delivery.account_id);
+  if(!alive||sending||!legacy&&(typeof delivery!=='string'||!delivery))return false;const epoch=++visibilityEpoch;
+  const data=await api(legacy?'publish.intervention.status':'multi_publish.intervention.status',legacy?{}:{delivery_id:delivery}),r=data.request;
+  if(!alive||epoch!==visibilityEpoch||!r||(legacy?r.id!==delivery.request_id||r.account_id!==delivery.account_id||!!r.delivery_id||!browserLogin(r):r.delivery_id!==delivery))return false;
+  deferredRequests.delete(r.id);openedDelivery=legacy?null:delivery;show(r);return true;
  }
  window.p011OpenPublishVerification=openVerification;
  async function tick(){const epoch=visibilityEpoch,delivery=openedDelivery;try{let data=await api('publish.intervention.status',{});try{const v2=await api('multi_publish.intervention.status',delivery?{delivery_id:delivery}:{});if(v2.request||delivery)data=v2;}catch{}if(alive&&epoch===visibilityEpoch){if(data.request&&!deferredRequests.has(data.request.id)&&(!externalResult(data.request)||delivery===data.request.delivery_id))show(data.request);else close();}}catch{}finally{if(alive)timer=setTimeout(tick,1000);}}

@@ -61,6 +61,18 @@ def test_changed_generated_file_is_not_deleted(db_engine,tmp_path):
     assert core.get(item.id) and file.read_bytes()==b'replaced outside application'
 
 
+def test_active_serial_parent_keeps_its_generated_file_until_batch_cancelled(db_engine,tmp_path):
+    from yijianjifa.features.mixing.queue import MixQueue
+    queue=MixQueue(db_engine,None)
+    task=queue.enqueue({'quantity':1,'output_directory':str(tmp_path)})
+    source=tmp_path/task.id/'finished.mp4';source.parent.mkdir();source.write_bytes(b'generated')
+    video=FinishedVideoService(db_engine).register_generated(source,duration_ms=1000)
+    with pytest.raises(RuntimeError,match='本批'):FinishedDeletion(db_engine).delete(video.id)
+    assert source.exists()
+    queue.cancel_remaining(task.id)
+    assert FinishedDeletion(db_engine).delete(video.id)['deleted']
+
+
 @pytest.mark.parametrize('state,blocked',[('result_unknown',True),('published',False)])
 def test_publish_history_protects_pending_and_survives_deletion(db_engine,tmp_path,state,blocked):
     from yijianjifa.features.publish.history import PublishHistoryRepository
@@ -73,3 +85,53 @@ def test_publish_history_protects_pending_and_survives_deletion(db_engine,tmp_pa
     else:
         assert FinishedDeletion(db_engine).delete(item.id)['deleted']
     assert history.has_quick_block(item.content_hash) and file.exists()
+
+
+@pytest.mark.parametrize('outcome',['platform_scheduled','platform_accepted','result_unknown','platform_rejected'])
+def test_hidden_v2_history_keeps_its_copy_but_does_not_lock_finished_source(db_engine,app_paths,tmp_path,outcome):
+    from datetime import datetime,timedelta,timezone
+    from sqlalchemy import select
+    from yijianjifa.app_services.multi_publish import MultiPublishService
+    from yijianjifa.features.accounts.service import AccountService
+    from yijianjifa.features.publish.coordinator import PublishCoordinator,AdapterOutcome,AdapterValidation
+    from yijianjifa.features.publish.platforms.catalog import PlatformCatalog
+    from yijianjifa.features.publish.deliveries import PublishDeliveryRow,DeliveryAttemptRow,PublishResourceRow
+    from yijianjifa.features.publish.history import PublishHistoryRow,PublishHistoryRepository
+    from yijianjifa.storage.db import session_scope
+    class Adapter:
+        platform_id='douyin'
+        verified_capabilities={'ordinary','publish_now','platform_schedule'}
+        def validate_target(self,target,payload,execution):return AdapterValidation(target['platform_user_id'],True)
+        def submit(self,payload,*,context,before_final):
+            before_final()
+            return AdapterOutcome(outcome,scheduled_at=payload['scheduled_at'],receipt_reference={'work_id':'synthetic'})
+        def reconcile(self,payload,*,context):return AdapterOutcome(outcome)
+    source=tmp_path/'generated.mp4';source.write_bytes(b'generated video')
+    item=FinishedVideoService(db_engine).register_generated(source,duration_ms=1000)
+    account=AccountService(db_engine).create('douyin','isolated','测试')
+    service=MultiPublishService(db_engine,app_paths,catalog=PlatformCatalog(transports={'douyin':Adapter()}))
+    prepared=service.prepare(request_id='hidden-history',video_ids=[item.id],targets=[{'account_id':account.id,'platform':'douyin'}],common_fields={'title':'测试'},execution_mode='platform_schedule',scheduled_times={item.id:(datetime.now(timezone.utc)+timedelta(days=1)).isoformat()})
+    receipt=service.save(prepared['prepared_id'],request_id='hidden-history')
+    PublishCoordinator(service).run_once(receipt['id'])
+    with session_scope(db_engine) as s:
+        row=s.scalar(select(PublishDeliveryRow));delivery_id=row.id;history_id=row.history_id
+        evidence=s.scalar(select(DeliveryAttemptRow)).result_json
+        assert s.get(PublishHistoryRow,history_id).state==outcome
+        copied=Path(s.scalar(select(PublishResourceRow)).path)
+    duplicate_block=PublishHistoryRepository(db_engine).has_quick_block(item.content_hash)
+    # A visible task still protects its source; deleting the local task only
+    # detaches the original. Its owned copy and duplicate history stay intact.
+    assert FinishedDeletion(db_engine).preview([item.id])['items'][0]['allowed'] is False
+    service.cancel_delivery(delivery_id)
+    assert FinishedDeletion(db_engine).preview([item.id])['items'][0]['allowed'] is True
+    service.hide_delivery(delivery_id)
+    copied.write_bytes(b'broken copy')
+    assert FinishedDeletion(db_engine).preview([item.id])['items'][0]['allowed'] is False
+    copied.write_bytes(b'generated video')
+    assert FinishedDeletion(db_engine).preview([item.id])['items'][0]['allowed'] is True
+    assert FinishedDeletion(db_engine).delete(item.id)['deleted']
+    assert not source.exists() and copied.read_bytes()==b'generated video'
+    with session_scope(db_engine) as s:
+        assert s.get(PublishHistoryRow,history_id).state==outcome
+        assert s.scalar(select(DeliveryAttemptRow)).result_json==evidence
+    assert PublishHistoryRepository(db_engine).has_quick_block(item.content_hash)==duplicate_block

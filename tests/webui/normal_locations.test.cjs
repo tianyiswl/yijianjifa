@@ -11,7 +11,7 @@ test('opening shows cached places without search and explicit search refreshes b
   if(op==='publish.locations.search'){requests.push(p);return {available:true,cached:!p.refresh,needs_verification:!p.refresh,token:p.refresh?'fresh':'cached',items:[{id:'s',name:'地点',address:'地址'}]};}
   if(op==='settings.publish.read')return {settings:null};if(op==='settings.publish.save')return {saved:true};if(op==='preset.list')return {items:[],total:0};throw Error(op);
  },'publish');
- await view.click('当前账号发布地点');assert.equal(requests.length,0);await view.click('选择地点：地点 · 地址');assert.ok(view.find(n=>n.textContent==='本次选择：地点 · 地址'));await view.click('国内 · 北海');await view.click('搜索当前账号地点');
+ await view.click('高级设置');await view.click('本账号发布地点');assert.equal(requests.length,0);await view.click('选择地点：地点 · 地址');assert.ok(view.find(n=>n.textContent==='本次选择：地点 · 地址'));await view.click('国内 · 北海');await view.click('搜索当前账号地点');
  assert.equal(requests[0].scope,'national');assert.equal(requests[0].refresh,true);
  await view.click('选择地点：地点 · 地址');assert.ok(view.find(n=>n.textContent==='本次选择：地点 · 地址'));assert.equal(requests.length,1);
  await view.click('从后台刷新地点');assert.equal(requests[1].refresh,true);

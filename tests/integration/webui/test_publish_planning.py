@@ -77,12 +77,11 @@ def test_advanced_candidates_show_success_without_reviving_unresolved(db_engine,
     assert next(r for r in shown['items'] if r['id']==v[0].id)['published']
     with pytest.raises(ValueError):planner.candidates(query='',offset=0,limit=20,include_published=True)
 
-def test_preview_reports_underfilled_accounts_and_daily_time_overflow(db_engine,tmp_path):
+def test_preview_reports_empty_accounts_and_daily_time_overflow(db_engine,tmp_path):
     a,v=fixture(db_engine,tmp_path);b=AccountService(db_engine).create('douyin','b','测试B')
     p=params(a,v[:1]);p['account_ids'].append(b.id)
     r=PublishPlanning(db_engine).preview(p,now=NOW)
-    assert {i['account_id'] for i in r['issues']}=={a.id,b.id}
-    assert all(i['code']=='schedule_underfilled' for i in r['issues'])
+    assert r['issues']==[dict(account_id=b.id,code='account_has_no_videos')]
     p=params(a,v);p['start']='2026-09-25T23:00:00+08:00'
     r=PublishPlanning(db_engine).preview(p,now=NOW)
     assert not any(i['code'] in ('daily_crosses_midnight','daily_groups_overlap') for i in r['issues'])

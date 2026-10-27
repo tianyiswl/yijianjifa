@@ -100,7 +100,9 @@ class MediaPane(QWidget):
             self.status.setText("正在导入，请等待当前导入结束。")
             return
         keep_copy = self.keep_copy.isChecked()
-        category_ids = self.categories.checked()
+        category_ids = self.categories.destination_ids()
+        if category_ids is None:
+            return
         sources = tuple(Path(p) for p in paths)
         def execute():
             completed, errors = 0, []

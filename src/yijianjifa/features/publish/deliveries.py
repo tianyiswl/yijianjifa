@@ -28,6 +28,27 @@ def digest(value):
     return hashlib.sha256(canonical(value).encode()).hexdigest()
 
 
+def account_blocker(session, row):
+    """只读投影沿用领取规则，账号隔离仍由原事务边界执行。"""
+    states = ({'running', 'paused_auth'} if json.loads(row.snapshot_json).get('allow_new_request') is True
+              else {'running', 'paused_auth', 'result_unknown', 'interrupted'})
+    candidates = session.execute(select(PublishDeliveryRow.id, TaskItemRow.state).join(
+        TaskItemRow, TaskItemRow.id == PublishDeliveryRow.item_id).where(
+        PublishDeliveryRow.platform == row.platform,
+        PublishDeliveryRow.platform_user_id == row.platform_user_id,
+        PublishDeliveryRow.id != row.id, TaskItemRow.state.in_(states))).all()
+    if not candidates:
+        return None
+    identity, state = min(candidates, key=lambda value: (
+        0 if value[1] in {'result_unknown', 'interrupted'} else 1, value[0]))
+    return {'delivery_id': identity, 'state': state}
+
+
+def account_blocker_reason(blocker):
+    return ('account_result_unresolved' if blocker['state'] in {'result_unknown', 'interrupted'}
+            else 'account_parked_or_unresolved')
+
+
 @contextmanager
 def write_session(engine):
     from sqlalchemy.engine import Connection
@@ -227,19 +248,19 @@ class PublishDeliveries:
 
     @staticmethod
     def aggregate(session, task_id):
+        from .outcomes import COMPLETED_DELIVERY_STATES
         center=session.get(TaskCenterRow,task_id)
         task=session.get(PublishTaskRow,task_id)
         items=list(session.scalars(select(TaskItemRow).where(TaskItemRow.task_id==task_id)))
         states=[i.state for i in items]
         if center.state=='paused':
             return
-        if states and all(s in TERMINAL for s in states):
-            state='completed' if all(s in {'published','platform_scheduled'} for s in states) else 'completed_with_errors'
-        elif (json.loads(center.snapshot_json).get('content_type')=='image_post' and states and
-                all(s in {'published','platform_scheduled','platform_accepted','processing','reviewing'} for s in states)):
-            # Completing this local image delivery only confirms platform
-            # acceptance. Public visibility remains each child's actual state.
+        if states and all(s in COMPLETED_DELIVERY_STATES for s in states):
+            # This local task is complete; each child retains its actual
+            # platform acceptance, processing, review or public state.
             state='completed'
+        elif states and all(s in COMPLETED_DELIVERY_STATES | TERMINAL for s in states):
+            state='completed_with_errors'
         elif 'running' in states:
             state='running'
         elif any(s=='waiting' for s in states):
@@ -325,7 +346,7 @@ class PublishDeliveries:
             self.aggregate(s,row.task_id)
 
     def record(self, delivery_id, expected_digest, *, owner_token, outcome, reconcile=False):
-        from .coordinator import AdapterOutcome, outcome_evidence
+        from .coordinator import AdapterOutcome, outcome_evidence, has_channels_immediate_ack, has_submission_notice
         if not isinstance(outcome,AdapterOutcome):raise ValueError('trusted adapter outcome required')
         formal={'platform_accepted','processing','reviewing'}
         submitted={'published','platform_scheduled','platform_rejected','result_unknown'}|formal
@@ -345,13 +366,28 @@ class PublishDeliveries:
                 evidence['reported_state']=outcome.state
                 evidence['protocol_violation']='receipt_without_final_marker'
                 state='result_unknown'
-            if state in formal and (not final or not evidence['receipt_reference']):
+            ack_confirmed=has_channels_immediate_ack(evidence,platform=row.platform,execution_mode=row.execution_mode,
+                request_digest=row.request_digest,final_started=final and
+                json.loads(attempt.final_json).get('request_digest')==row.request_digest)
+            ack_confirmed = ack_confirmed or has_submission_notice(evidence, platform=row.platform,
+                request_digest=row.request_digest, final_started=final and
+                json.loads(attempt.final_json).get('request_digest')==row.request_digest)
+            if evidence.get('submission_notice') and not ack_confirmed:
+                state='result_unknown'
+                evidence['protocol_violation']='unbound_success_notice'
+            if state in formal and (not final or not evidence['receipt_reference'] and not ack_confirmed):
                 state='result_unknown'
                 if not final:evidence['protocol_violation']='receipt_without_final_marker'
             if final and state in {'pre_submit_failed','paused_auth'}:
                 state='result_unknown'
             if state=='platform_scheduled' and (row.execution_mode!='platform_schedule' or outcome.scheduled_at!=row.scheduled_at):
                 state='result_unknown'
+            from .posting_limits import explicit_daily_limit, is_limited_result, today
+            if state=='platform_rejected' and explicit_daily_limit(evidence.get('platform_message')):
+                evidence['error_code']='douyin_daily_post_limit' if row.platform=='douyin' else 'platform_daily_post_limit'
+            if is_limited_result({**evidence,'state':state},state):
+                previous=json.loads(attempt.result_json) if attempt.result_json else {}
+                evidence['posting_limit_day']=previous.get('posting_limit_day') or today()
             if attempt.result_json and not reconcile:
                 previous=json.loads(attempt.result_json)
                 evidence['state']=state

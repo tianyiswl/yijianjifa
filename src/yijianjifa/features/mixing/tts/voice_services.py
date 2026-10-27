@@ -32,6 +32,20 @@ class VoiceSourceConfig:
     def save(self, app_id, token):
         raise ValueError('客户端不再提供个人配音服务配置，请选择系统配音或云配音。')
 
+    def require_default_voice_credit(self):
+        """Changing a default needs fresh usable credit, without reserving words."""
+        try:
+            state = self.cloud.read()
+        except VoicePaused:
+            raise ValueError('暂时无法更新配音字数，请检查网络后重试。默认配音未更改。') from None
+        if not state.get('enabled') or not state.get('authenticated'):
+            raise ValueError('请先登录云配音，再设置默认配音。')
+        available = state.get('available_words')
+        if state.get('balance_current') is not True or type(available) is not int or available < 0:
+            raise ValueError('配音字数暂未更新，请检查网络后重试。默认配音未更改。')
+        if available == 0:
+            raise ValueError('配音字数不足，请充值后再设为默认配音。')
+
     def available_voice_ids(self):
         if self.cloud.mode == 'own':
             return set()

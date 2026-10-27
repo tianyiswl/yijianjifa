@@ -102,8 +102,8 @@ def daily_auth_sync(monkeypatch):
             try:
                 targets=api._daily.auth_begin(task_id)
                 for target in targets:
-                    AccountService(api._engine).set_login_state(target['account_id'],'valid')
-                api._daily.auth_accept(task_id,[{**target,'state':'valid'} for target in targets])
+                    if not target.get('deferred_reason'):AccountService(api._engine).set_login_state(target['account_id'],'valid')
+                api._daily.auth_accept(task_id,[{**target,'state':'deferred' if target.get('deferred_reason') else 'valid'} for target in targets])
             except Exception as error:
                 code=getattr(error,'code','daily_login_check_failed')
                 from yijianjifa.app_services.daily_mixing import MESSAGES

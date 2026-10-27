@@ -136,3 +136,27 @@ def test_exif_orientation_normalized_and_alpha_kept(db_engine, app_paths, tmp_pa
     assert QImage(str(post.images[0].path)).size().width() == 60
     assert post.images[1].format == "PNG"
     assert QImage(str(post.images[1].path)).hasAlphaChannel()
+
+
+def test_equal_creation_times_keep_import_order_across_reopen_and_pages(db_engine, app_paths, tmp_path, monkeypatch):
+    # 固定同一时间并反转随机ID大小，确定复现“最新优先”顺序错误。
+    from datetime import datetime, timezone
+    from types import SimpleNamespace
+    from yijianjifa.features.image_posts import service as module
+    from yijianjifa.features.image_posts.models import ImagePost
+    from yijianjifa.storage.db import session_scope
+    ids = iter(['ffffffff-ffff-4fff-8fff-ffffffffffff', '10000000-0000-4000-8000-000000000001',
+                '00000000-0000-4000-8000-000000000002', '10000000-0000-4000-8000-000000000002'])
+    monkeypatch.setattr(module, 'uuid', SimpleNamespace(uuid4=lambda:next(ids)))
+    service = ImagePostService(db_engine, app_paths)
+    first = service.import_group([picture(tmp_path/'first.png')], display_name='先导入')
+    second = service.import_group([picture(tmp_path/'second.png')], display_name='后导入')
+    with session_scope(db_engine) as session:
+        stamp = datetime(2026, 10, 26, tzinfo=timezone.utc)
+        session.get(ImagePost, first.id).created_at = stamp
+        session.get(ImagePost, second.id).created_at = stamp
+    reopened = ImagePostService(db_engine, app_paths)
+    assert [post.id for post in reopened.list()[0]] == [second.id, first.id]
+    assert reopened.list(offset=0,limit=1)[0][0].id == second.id
+    assert reopened.list(offset=1,limit=1)[0][0].id == first.id
+    assert reopened.list(query='先导入')[0][0].id == first.id

@@ -46,15 +46,31 @@ def channels(db_engine, app_paths, tmp_path, monkeypatch, request):
 
     class Page:
         url = form.MANAGE_URL
+        def __init__(self, *, headless):
+            self.headless = headless
+            self.closed = False
         def goto(self, url, **kwargs): self.url = url; events.append('navigate')
         def evaluate(self, script): return identity
         def wait_for_timeout(self, ms): pass
-        def is_closed(self): return False
+        def is_closed(self): return self.closed
+        def bring_to_front(self): events.append('front')
+        def screenshot(self, **kwargs): return b'synthetic-frame'
+
+    class Context:
+        def __init__(self, page): self.page = page; self.closed = False
+        def close(self):
+            self.closed = True
+            self.page.closed = True
+            events.append('close')
 
     def open_session(s, **kwargs):
         if s.page is not None: return
-        s.page = Page(); s.original_ref = 'isolated-version'
-        s.context = SimpleNamespace(close=lambda: events.append('close'))
+        headed = getattr(s, 'browser_login_visible', False)
+        s.page = Page(headless=not headed); s.original_ref = 'isolated-version'
+        s.context = Context(s.page)
+        s.external_browser = headed
+        s.browser_login_context_headed = headed
+        events.append('open_headed' if headed else 'open_background')
         adapter._init_observations(s); s.list_seen = True
 
     def upload(s, surface): s.uploaded = True; events.append('upload'); return True
@@ -131,19 +147,27 @@ def test_wrong_page_uid_remains_parked_until_explicit_exact_account_completion(
     batch, did = freeze(channels, db_engine, 'platform_schedule')
     coordinator = api._multi_publish.coordinator
     assert coordinator.run_once(batch, [did]) == 'paused_auth'
-    original_page = pages[0]
+    assert len(pages) == 2
+    background_page, original_page = pages
+    assert background_page.headless and background_page.closed
+    assert not original_page.headless and not original_page.closed
     session = next(s for s in adapter.sessions.values() if s.binding['delivery_id'] == did)
     original_context = session.context
-    assert session.page is original_page and not session.final
+    frozen_payload, frozen_binding = deepcopy(session.payload), deepcopy(session.binding)
+    assert session.page is original_page and not session.final and not session.resume_authorized
     assert coordinator.run_once(batch, [did]) is None
-    assert not any(event in {'upload', 'final', 'close'} for event in events)
+    assert events.count('close') == events.count('open_background') == events.count('open_headed') == 1
+    assert not any(event in {'upload', 'final'} for event in events)
     request = adapter.interventions()[0]
     command(api, 'intervention.respond', {'id': request['id'], 'delivery_id': did,
         'action': 'done', 'consent_same_identity': True}, 'wrong-account-done')
     assert queued == [('resume', did)]
     assert coordinator.resume_verification(did) == 'paused_auth'
     assert session.page is original_page and session.context is original_context
-    assert not any(event in {'upload', 'final', 'close'} for event in events)
+    assert session.payload == frozen_payload and session.binding == frozen_binding
+    assert not session.resume_authorized and session.payload['platform_user_id'] == 'finder-isolated'
+    assert events.count('close') == events.count('open_headed') == 1
+    assert not any(event in {'upload', 'final'} for event in events)
     with session_scope(db_engine) as db:
         row = db.get(PublishDeliveryRow, did)
         attempt = db.scalar(select(DeliveryAttemptRow).where(
@@ -154,7 +178,7 @@ def test_wrong_page_uid_remains_parked_until_explicit_exact_account_completion(
     command(api, 'intervention.respond', {'id': request['id'], 'delivery_id': did,
         'action': 'done', 'consent_same_identity': True}, 'correct-account-done')
     assert coordinator.resume_verification(did) == 'platform_scheduled'
-    assert pages == [original_page]
+    assert pages == [background_page, original_page]
     assert events.count('upload') == events.count('final') == 1
     assert journal(db_engine, did)[1]['request_digest'] == journal(db_engine, did)[0]
 
@@ -198,7 +222,7 @@ def test_final_account_recheck_parks_existing_upload_and_never_journals_wrong_ui
 
 @pytest.mark.parametrize('mode,work_id,expected', [
     ('publish_now', '9007199254740993', 'platform_accepted'),
-    ('publish_now', None, 'result_unknown'),
+    ('publish_now', None, 'platform_accepted'),
     ('platform_schedule', '9007199254740993', 'platform_scheduled'),
     ('platform_schedule', None, 'platform_scheduled'),
 ])
@@ -214,18 +238,21 @@ def test_real_channels_ack_crosses_only_one_coordinator_final_and_survives_query
     reference = {'work_id': work_id} if work_id else {}
     assert result['receipt_reference'] == reference
     assert result['state'] == expected
+    submission_ack = ({'kind': 'channels_create_ack', 'platform': 'channels', 'request_digest': key,
+        'http_status': 200, 'outer_code': 0, 'inner_code': 0, 'request_matched': True}
+        if mode == 'publish_now' and work_id is None else None)
     assert result == outcome_evidence(AdapterOutcome(expected,
         scheduled_at=result['scheduled_at'], receipt_reference=reference,
-        error_code='result_unknown' if expected == 'result_unknown' else None), key)
+        submission_ack=submission_ack), key)
     assert events.count('upload') == events.count('final') == 1
-    if expected == 'platform_scheduled':
+    if expected in {'platform_scheduled', 'platform_accepted'}:
         detail = command(api, 'detail', {'id': batch}, 'completed-schedule-detail')
         assert detail['state'] == 'completed' and detail['accepted_count'] == 1
-        assert detail['deliveries'][0]['state'] == 'platform_scheduled'
+        assert detail['deliveries'][0]['state'] == expected
         assert events.count('close') == 1
     assert api._multi_publish.coordinator.run_once(batch, [did]) is None
-    # A query can retain the original durable ACK or remain unknown. It cannot
-    # call upload/final, and cannot promote an immediate no-ID ACK to acceptance.
+    # A query retains the exact ACK fact. It cannot call upload/final or invent
+    # a work ID/publication from this no-ID platform acknowledgement.
     recovered = api._multi_publish.coordinator.reconcile_delivery(did)
     assert recovered == expected
     assert events.count('upload') == events.count('final') == 1

@@ -10,6 +10,20 @@ from yijianjifa.storage.db import session_scope
 from yijianjifa.storage.models import Category, CategoryLink, CopyRecord
 
 
+class SingleCategoryOnly(ValueError):
+    def __init__(self):
+        super().__init__('每条内容只能选择一个分类。')
+
+
+def single_category_ids(category_ids: Iterable[str]) -> list[str]:
+    ids = list(category_ids)
+    if len(ids) > 1:
+        raise SingleCategoryOnly()
+    if any(type(value) is not str or not 1 <= len(value) <= 64 for value in ids):
+        raise ValueError('分类无效，请重新选择。')
+    return ids
+
+
 @dataclass(frozen=True, slots=True)
 class CopyDraft:
     id: str
@@ -113,10 +127,12 @@ class CopyRepository:
             return None if row is None else self._to_draft(row)
 
     def set_categories(self, copy_id: str, category_ids: Iterable[str]) -> None:
-        ids = list(dict.fromkeys(category_ids))
+        ids = single_category_ids(category_ids)
         with session_scope(self.engine) as session:
             if session.get(CopyRecord, copy_id) is None:
                 raise KeyError(copy_id)
+            if not set(ids) <= set(session.scalars(select(Category.id).where(Category.kind == 'copy'))):
+                raise ValueError('分类无效，请重新选择。')
             session.query(CategoryLink).filter(
                 CategoryLink.target_type == "copy",
                 CategoryLink.target_id == copy_id,

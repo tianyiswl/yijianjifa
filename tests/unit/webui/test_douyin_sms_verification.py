@@ -1,7 +1,8 @@
 """Original-page SMS verification with synthetic DOM and all network blocked."""
-from types import SimpleNamespace
 import pytest
 
+from yijianjifa.features.accounts.service import AccountRow
+from yijianjifa.storage.db import session_scope
 from yijianjifa.webui.chromium_multi_publish import ChromiumMultiPublishAdapter
 from yijianjifa.webui.chromium_publish_session import LiveSession
 
@@ -16,7 +17,7 @@ def browser():
 
 
 @pytest.fixture
-def sms(browser,db_engine,app_paths,monkeypatch):
+def sms(browser,db_engine,app_paths):
     context=browser.new_context(service_workers='block')
     context.route('**/*',lambda route:route.abort())
     page=context.new_page()
@@ -28,8 +29,13 @@ def sms(browser,db_engine,app_paths,monkeypatch):
         <p class="error"></p><div class="verify-submit disabled" onclick="if(!this.classList.contains('disabled')){verified++;this.closest('section').remove();}">验证</div>
       </section>''')
     adapter=ChromiumMultiPublishAdapter(db_engine,app_paths)
-    monkeypatch.setattr(adapter,'_account',lambda s:SimpleNamespace(id='fixture-account',nickname='合成账号'))
-    session=LiveSession({}, {'delivery_id':'fixture-delivery'})
+    account=adapter.service.create('douyin','123456789','合成账号')
+    ref=adapter.store.put(account.id,b'synthetic-sms-session',versioned=True)
+    with session_scope(db_engine) as db:
+        db.get(AccountRow,account.id).session_ref=ref
+    session=LiveSession({'account_id':account.id,'platform_user_id':account.platform_user_id},
+                        {'delivery_id':'fixture-delivery'})
+    session.original_ref=ref
     session.context=context;session.page=page;session.final=True;session.uploaded=True
     adapter.sessions['fixture']=session
     try:yield adapter,session,page
@@ -70,7 +76,7 @@ def test_resend_after_sixty_seconds_uses_same_page_and_never_republishes(sms):
 
 def test_first_automatic_request_waits_for_previous_task_cooldown_then_sends_once(sms):
     adapter,session,page=sms;now=[1000.0];adapter.sms_cooldown.clock=lambda:now[0]
-    adapter.sms_cooldown.reserve('fixture-account');adapter._thread()
+    adapter.sms_cooldown.reserve(session.payload['account_id']);adapter._thread()
     adapter._park(session,'sms')
     adapter.refresh_interventions()
     assert page.evaluate('sent')==0

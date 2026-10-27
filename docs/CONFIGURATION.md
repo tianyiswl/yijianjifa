@@ -1,57 +1,51 @@
-# 源码、云服务与构建配置
+# 源码与官方发行配置
 
-## 本地数据和依赖
+## 本地免费使用
 
-源码默认使用免费的本地功能和系统配音，不连接任何经营者的云配音服务。平台发布需要登录自己的平台账号。
+源码默认提供现有云配音服务入口 `https://39.108.82.213`，用户不必自行录入供应商密钥即可注册、登录和充值使用。系统配音、导入、混剪、字幕、预览、导出与平台发布仍不依赖云配音账号；默认系统配音不会自动改用收费云音色。发布需登录自己的平台账号。
 
-使用 `--data-dir` 指定独立的绝对数据路径，启动示例见[快速开始](QUICK_START.md)。会话、数据库、音频缓存和用户素材不要放进源码树；不要通过公开 Issue 分享这些文件。
-
-源码运行需安装 Python 依赖及 FFmpeg、ffprobe。发布依赖 `.[publish]` 和 `python -m playwright install chromium`；macOS 界面另需 `.[mac-webui]`。识别功能另需 `.[recognition]`、锁定的 native 运行时和清单匹配的模型，不因安装基础桌面依赖就准备完毕。
+`--data-dir`可指定隔离数据目录。不要将真实数据库、浏览器profile、令牌、用户素材或正式经营配置放入源码树；也不要通过公开Issue或报告分享这些文件。
 
 ## 可选云配音
 
-`P011_CLOUD_VOICE_ENDPOINT` 显式指定服务 HTTPS 入口；未设置或设置为空时关闭云配音。示例域名仅为说明，不能直接作为可用服务：
+使用现有云配音业务不需要配置环境变量。用户主动登录并选择云配音后，按服务字数规则使用；打开软件或使用系统配音不会自动发起收费合成。构建者也可通过环境变量`P011_CLOUD_VOICE_ENDPOINT`显式设置自己的HTTPS服务入口。空字符串明确关闭云配音。
+
+示例（仅域名示意，不能直接作为可用服务）：
 
 ```sh
 export P011_CLOUD_VOICE_ENDPOINT=https://voice.example.test
-.venv/bin/python -m yijianjifa.webui.mac_app --data-dir "$HOME/Library/Application Support/YiJianJiFa-Source-Test"
+python -m yijianjifa.webui.mac_app --data-dir /path/to/isolated-data
 ```
 
-Windows PowerShell 可用 `$env:P011_CLOUD_VOICE_ENDPOINT = 'https://voice.example.test'` 后执行相应 Windows 启动命令。
+环境变量只接受不含用户名、密码、query或fragment的HTTPS地址。无效可选配置保持云服务关闭，不妨碍本地免费功能。测试服务的loopback例外通过现有专用测试入口使用，不能将不安全远程HTTP当正式配置。
 
-入口不能包含用户名、密码、query、fragment、控制字符或无效端口。无效可选配置会保持服务关闭，不影响本地免费功能。专用本机测试入口可使用明确的 loopback 测试配置，不能据此给正式远程服务配置明文 HTTP。
+配音账号令牌仍保存在本机安全凭据服务中。账本、兑换码与付费字数由所配置服务管理，源码不附带供应商密钥或免费云额度。配置到同一入口并使用同一数据目录时，原账号凭据命名空间不变。
 
-账号令牌保存在本机安全凭据服务中。字数与账本由配置的服务管理，源码不附供应商密钥或免费云额度。使用相同入口与相同数据目录时，凭据命名空间保持一致；更换入口不会迁移云端账号、余额或原任务。
+## 官方冻结发行包
 
-自行部署云服务见 [server/cloud_voice](../server/cloud_voice/README.md)。供应商权限、可用音色、价格和服务保障由部署者另行核实，不能把源码公开当成提供了可直接使用的云服务。
+经营者可在构建时显式设置`P011_RELEASE_CLOUD_VOICE_ENDPOINT`。`packaging/release_configuration.py`只将非秘密HTTPS入口写入本次生成的`cloud-voice-service.json`，由Windows/Mac spec收集。未设置时不会拾取上次生成的旧配置。
 
-## 冻结程序的服务配置
+运行时的`P011_CLOUD_VOICE_ENDPOINT`优先于包内配置，包内配置优先于源码内置的现有服务入口；显式空值可关闭服务。仅冻结运行会读取包内配置；源码运行不会隐式读取旧构建目录中的配置。无效的显式配置保持关闭，不会悄悄改连其他服务；没有配置时沿用内置入口。
 
-构建时可显式设置 `P011_RELEASE_CLOUD_VOICE_ENDPOINT`。`packaging/release_configuration.py` 将这个非秘密入口写入本次生成的 `cloud-voice-service.json`，由 Windows/Mac spec 收集。未配置时不会拾取上次构建留下的旧配置。
+官方构建仍须显式配置并验收原服务入口，确保已有账号与余额使用原命名空间。源码或第三方构建未提供覆盖配置时，也可直接对接现有业务；没有登录并主动使用云配音，不会自动发起收费合成。
 
-冻结程序优先读取运行时的 `P011_CLOUD_VOICE_ENDPOINT`，显式空值可关闭服务；否则读取包内默认值。源码运行不读取冻结包的默认服务文件。
+Windows 官方工作流在仓库标识为`tianyiswl/yijianjifa-desktop`时写入原服务入口，也可用非秘密仓库变量`P011_RELEASE_CLOUD_VOICE_ENDPOINT`覆盖。其他仓库未设置变量时，不生成覆盖配置，程序仍沿用内置业务入口；设置变量后可改连自有服务。该接线没有变更任何线上仓库变量或服务。
 
-提供自有正式云服务的构建可使用：
+Windows 官方构建使用`packaging/windows/build.ps1 -Official`；Mac 本地官方构建使用`packaging/macos/build.sh --official`，并要求先在环境中显式设置`P011_RELEASE_CLOUD_VOICE_ENDPOINT`。通用构建入口自身不含经营者服务默认值。官方模式缺少入口时会在构建前失败，防止意外生成关闭老用户云配音的官方包。
 
-- Windows：`./packaging/windows/build.ps1 -Official`
-- macOS：`bash packaging/macos/build.sh --official`
-
-该模式要求先显式设置 `P011_RELEASE_CLOUD_VOICE_ENDPOINT`。通用构建脚本本身不包含经营者默认地址。构建前检查配置，构建后核对实际包内入口；检查不请求服务、不登录或扣费。
-
-只检查配置而不构建：
+两个入口均调用`packaging/check_release_configuration.py`：先离线检查构建配置，冻结后再核对实际包内`cloud-voice-service.json`与本次入口完全一致。通用未配置构建还会拒绝误混入的旧服务配置。可单独检查配置而不执行原生构建：
 
 ```sh
-python packaging/check_release_configuration.py
+python packaging/check_release_configuration.py --official
+bash packaging/macos/build.sh --official --check-configuration
 ```
 
-正式模式检查加 `--official`。macOS 构建脚本可用 `--check-configuration`；Windows 对应 `-CheckConfiguration`。macOS 脚本默认解释器路径面向预先准备的构建环境，可用 `P011_BUILD_PYTHON` 明确指定当前构建解释器。
+Windows PowerShell 对应命令为`./packaging/windows/build.ps1 -Official -CheckConfiguration`。这些检查不请求服务、不登录、不扣费；通过只说明配置接线和文件对应，不能替代Windows/Mac实际构建、旧账号升级与余额保留验收。
 
-## 构建输入与发行范围
+私有供应商密钥、管理密码哈希、兑换码密钥和正式数据库仅留在服务器外置配置中。云端代码可按源码公开策略审阅，运行配置不包含在MIT源码或免费包里。
 
-构建前运行 `python packaging/generate_icons.py`，由仓库中的品牌 SVG 生成 PNG/ICO；macOS 同时生成 ICNS。该脚本需要 PySide6 和 Pillow，macOS 的 ICNS 导出调用系统 `iconutil`。
+## 公开发布的剩余门槛
 
-FFmpeg/ffprobe、Playwright 浏览器、whisper.cpp、Windows VC++/OpenMP 运行库等不随仓库附送。按构建脚本和 `packaging/recognition-lock.json` 准备对应输入，不能把已有文件或旧包检查通过当成新版可分发的证明。官方音色示例未随源码提供，不应从旧私有包中自动搬入公开发行包。
+源码内MIT仅适用于有权授权的项目代码；Qt、FFmpeg、浏览器和媒体等保留原许可。新下载入口、源码仓库地址、可公开媒体与完整第三方材料在经营者确认后落地。
 
-项目 MIT 只覆盖有权授权的自研代码。发布包含第三方二进制的程序包前，仍需准备准确版本、许可和对应源码/构建材料，完成目标系统与真实平台验收。见[第三方交付审查](release/THIRD_PARTY_RELEASE_READINESS.md)和 [Windows 验收说明](../packaging/windows/测试说明.md)。
-
-当前源码公开不包含新版免费程序包发布，也不承诺保留的构建脚本已在所有环境一键完成构建。构建产物应记录源码提交号、平台、依赖版本及 SHA-256。
+本地测试与暂存包不等于已公开、已发布或已完成Windows冻结验收。正式公开前必须人工审阅候选文件、许可证、资产权属、测试报告、构建版本及SHA256。

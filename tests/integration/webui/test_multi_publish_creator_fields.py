@@ -43,7 +43,7 @@ def test_creator_fields_freeze_per_platform_and_reopen_without_upload(db_engine,
     try:
         settings=call(api,'settings.read')['settings']
         settings['targets']=[{'account_id':a.id,'platform':a.platform} for a in [bli,channel]]
-        settings['fields_by_platform']={'bilibili':fields,'channels':{'channels_short_title':'测试短标题'}}
+        settings['fields_by_platform']={'bilibili':fields,'channels':{'channels_short_title':'测试短标题甲'}}
         call(api,'settings.save',{'settings':settings})
         prepared=call(api,'prepare',{'video_ids':[video.id],
             'targets':[{'account_id':a.id,'platform':a.platform,'fields':settings['fields_by_platform'][a.platform]} for a in [bli,channel]],
@@ -64,7 +64,7 @@ def test_creator_fields_freeze_per_platform_and_reopen_without_upload(db_engine,
         else:assert by_platform['bilibili']['effective_fields']['creation_statement_id']==-1
         assert by_platform['bilibili']['effective_fields']['content_authorization'] is False
         assert 'channels_short_title' not in by_platform['bilibili']['effective_fields']
-        assert by_platform['channels']['effective_fields']['channels_short_title']=='测试短标题'
+        assert by_platform['channels']['effective_fields']['channels_short_title']=='测试短标题甲'
         assert 'creation_statement_id' not in by_platform['channels']['effective_fields']
         assert 'creation_statement_choice' not in by_platform['channels']['effective_fields']
         did=by_platform['channels']['delivery_id']
@@ -72,6 +72,31 @@ def test_creator_fields_freeze_per_platform_and_reopen_without_upload(db_engine,
         changed=call(reopened,'detail',{'id':batch['id']})['deliveries']
         assert next(d for d in changed if d['delivery_id']==did)['effective_fields']['channels_short_title']==''
     finally:assert reopened.close(3)
+
+
+def test_invalid_legacy_short_title_is_preserved_for_editing_but_cannot_prepare_a_new_target(db_engine,app_paths,tmp_path):
+    from sqlalchemy import select
+    from yijianjifa.app_services.account_publish_settings import AccountPublishSettings
+    from yijianjifa.features.publish.deliveries import PublishDeliveryRow
+    from yijianjifa.storage.db import session_scope
+    class Channels(Adapter):
+        platform_id='channels';public_field_schema={'channels_short_title':{'type':'string'}}
+    account=AccountService(db_engine).create('channels','222','合成视频号')
+    path=tmp_path/'owned.mp4';path.write_bytes(b'isolated video')
+    video=FinishedVideoService(db_engine).import_external(path,duration_ms=1000,title='标题')
+    api=DesktopApi(db_engine,app_paths,publish_adapters={'channels':Channels()})
+    try:
+        settings=call(api,'settings.read')['settings']
+        settings['fields_by_platform']={'channels':{'channels_short_title':'测试短标题'}}
+        call(api,'settings.save',{'settings':settings})
+        assert AccountPublishSettings(db_engine).read(account.id)['fields']=={'channels_short_title':'测试短标题'}
+        result=api.dispatch(json.dumps({'v':1,'request_id':'invalid-legacy-short-title','operation':'multi_publish.prepare',
+            'params':{'video_ids':[video.id],'targets':[{'account_id':account.id,'platform':'channels'}],
+                'common_fields':{},'execution_mode':'publish_now'}}),trusted_origin=True)
+        assert not result['ok'] and result['error']['code']=='invalid_request'
+        assert call(api,'settings.read')['settings']['fields_by_platform']==settings['fields_by_platform']
+        with session_scope(db_engine) as db:assert list(db.scalars(select(PublishDeliveryRow)))==[]
+    finally:assert api.close(3)
 
 
 def test_builtin_and_legacy_selectors_replace_inherited_source_and_reprepare_without_mixing(db_engine, app_paths, tmp_path):

@@ -14,6 +14,7 @@ from collections.abc import Callable
 from urllib.parse import urlsplit
 from .loaded_avatar import _avatar_url, LoadedAvatarCache
 from yijianjifa.features.accounts.service import AccountIdentityMismatch
+from yijianjifa.features.publish.account_wait import AccountBusy
 
 
 @dataclass(frozen=True)
@@ -210,7 +211,7 @@ def make_creator_provider(engine, paths, spec):
         if account and account.platform!=spec.platform:raise ValueError('account platform mismatch')
         expected=account.platform_user_id if account else None
         lock=account_lock(account_id or spec.platform+':new-account')
-        if not lock.acquire(blocking=False):raise ValueError('account busy')
+        if not lock.acquire(blocking=False):raise AccountBusy()
         temp=None;context=None;result=None
         try:
             if account:profile=chromium_profile(spec,store,expected)
@@ -284,5 +285,5 @@ def make_creator_provider(engine, paths, spec):
         profile_for=lambda store,uid:chromium_profile(spec,store,uid),
         restore=lambda context,store,account,profile:restore_session(spec,context,store,account,profile),
         expression=spec.identity_script,verify=lambda value:spec.verify_identity(value,None),
-        readonly_posts=spec.readonly_identity_posts)
+        readonly_posts=spec.readonly_identity_posts,return_home_origins=spec.return_home_origins)
     return login

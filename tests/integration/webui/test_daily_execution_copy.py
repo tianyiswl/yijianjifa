@@ -86,6 +86,23 @@ def test_daily_copy_uses_real_counts_current_reason_and_truthful_login_events(da
     assert not any(statement.startswith(('INSERT', 'UPDATE', 'DELETE', 'REPLACE')) for statement in statements)
 
 
+def test_compact_panel_keeps_full_login_diagnostics_in_execution_copy(daily_copy,db_engine):
+    from yijianjifa.app_services.mix_execution import read_execution
+    identity,_,progress=daily_copy
+    progress(login_log=[dict(time='2026-10-15T01:00:00Z',step=step,stage='before_make',
+        accounts=1,index=1,account_label='抖音 · 测试账号',message=message) for step,message in [
+        ('daily.login_check_started','开始检查登录'),
+        ('daily.login_check_step','关闭检查浏览器：开始（累计 4.72 秒）'),
+        ('daily.login_check_step','关闭检查浏览器：完成（累计 5.186 秒）'),
+        ('daily.login_check_finished','账号登录有效（累计 5.2 秒）')]])
+    shown=read_execution(db_engine,identity)
+    assert len([e for e in shown['events'] if e['step'].startswith('daily.login')])==1
+    copied=TaskCenterAccess(db_engine).execution_log_text(identity)
+    assert '关闭检查浏览器：开始（累计 4.72 秒）' in copied
+    assert '关闭检查浏览器：完成（累计 5.186 秒）' in copied
+    assert 'daily.login_check_finished' in copied
+
+
 def test_daily_copy_appends_current_owned_publish_steps_once_and_reloads_saved_events(daily_copy, db_engine):
     identity, child, progress = daily_copy
     child_id, delivery_id = child('本批真实发布作品')

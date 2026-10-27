@@ -90,7 +90,7 @@ test('queued making is visibly waiting rather than falsely running or finished',
 
 test('daily bars use making completion and platform acceptance without claiming public publication',async()=>{
  const v=await mount(fixture(op=>op==='mix.daily.status'?{phase:'publishing',total:8,pending:3,accepted:4,failed:1,execution:{making:{total:10,completed:3,succeeded:2,failed:1},timing}}:undefined));await v.click(v.get('quick-generate'));
- assert.match(node(v,'making').textContent,/已处理 3\/10 条.*成功 2.*失败 1/);assert.deepEqual([node(v,'making-bar').attrs.value,node(v,'making-bar').attrs.max],['3','10']);
+ assert.match(node(v,'making').textContent,/成功 2\/10 条.*失败 1 条/);assert.deepEqual([node(v,'making-bar').attrs.value,node(v,'making-bar').attrs.max],['3','10']);
  assert.equal(node(v,'publishing').textContent,'发布：平台已接收 4/8 项 · 需处理 1 项');assert.deepEqual([node(v,'publishing-bar').attrs.value,node(v,'publishing-bar').attrs.max],['4','8']);assert.doesNotMatch(v.get('mixing-batch-progress').textContent,/已发布/);assert.match(node(v,'phase').textContent,/正在提交平台/);v.dispose();
 });
 
@@ -110,7 +110,7 @@ test('stopping uses only the last durable activity and marks its limit even when
 
 test('only-make replaces the old clock and hides publication progress',async()=>{
  const v=await mount(fixture(op=>op==='task.poll'?{epoch:'e',revision:1,tasks:[{id:'only',state:'running',quantity:5,completed:2,succeeded:2,failed:0,execution:{timing:{started_at:'2026-10-16T04:01:10Z',last_activity_at:null,active:true}}}]}:undefined));await v.click(v.get('quick-generate'));await v.click(v.get('quick-only-generate'));
- assert.match(node(v,'making').textContent,/已处理 2\/5 条/);assert.match(node(v,'elapsed').textContent,/00:00:05/);assert.equal(node(v,'publishing').classList.contains('hide'),true);assert.equal(v.clockTimers(),1);v.dispose();assert.equal(v.clockTimers(),0);const before=node(v,'elapsed').textContent;v.setNow('2026-10-16T06:00:00Z');await v.clockTick();assert.equal(node(v,'elapsed').textContent,before);
+ assert.match(node(v,'making').textContent,/成功 2\/5 条/);assert.match(node(v,'elapsed').textContent,/00:00:05/);assert.equal(node(v,'publishing').classList.contains('hide'),true);assert.equal(v.clockTimers(),1);v.dispose();assert.equal(v.clockTimers(),0);const before=node(v,'elapsed').textContent;v.setNow('2026-10-16T06:00:00Z');await v.clockTick();assert.equal(node(v,'elapsed').textContent,before);
 });
 
 test('a recent stopped result restores genuine time while legacy missing time is explicitly unrecorded',async()=>{
@@ -127,7 +127,7 @@ test('a late publishing-daily response cannot replace the selected only-make sum
   if(op==='task.execution.copy')return {copied:true};
  }));await v.click(v.get('quick-generate'));const pending=v.tick();await v.flush();await v.click(v.get('quick-only-generate'));
  assert.equal(v.get('daily-progress').dataset.phase,'running');assert.match(node(v,'elapsed').textContent,/00:00:05/);finish({phase:'completed',accepted:8,pending:0,failed:0,total:8,execution:{timing:{...timing,active:false}}});await pending;
- assert.equal(v.get('daily-progress').dataset.phase,'running');assert.match(node(v,'phase').textContent,/正在制作/);assert.match(node(v,'making').textContent,/已处理 2\/5 条/);assert.equal(node(v,'publishing').classList.contains('hide'),true);assert.match(node(v,'elapsed').textContent,/00:00:05/);assert.equal(v.clockTimers(),1);
+ assert.equal(v.get('daily-progress').dataset.phase,'running');assert.match(node(v,'phase').textContent,/正在制作/);assert.match(node(v,'making').textContent,/成功 2\/5 条/);assert.equal(node(v,'publishing').classList.contains('hide'),true);assert.match(node(v,'elapsed').textContent,/00:00:05/);assert.equal(v.clockTimers(),1);
  v.setNow('2026-10-16T04:01:16Z');await v.clockTick();assert.match(node(v,'elapsed').textContent,/00:00:06/);await v.click(v.get('daily-progress').querySelectorAll('button').find(b=>b.textContent==='复制执行信息'));assert.deepEqual(v.calls.find(c=>c.operation==='task.execution.copy').params,{id:'only'});v.dispose();
 });
 
@@ -139,7 +139,7 @@ test('an old only-make poll cannot roll back completed progress, restart timing 
   }
  }));await v.click(v.get('quick-only-generate'));await v.tick();assert.equal(v.get('daily-progress').dataset.phase,'completed');assert.equal(v.clockTimers(),0);
  finish({epoch:'old-epoch',revision:1,tasks:[{id:'only',state:'running',quantity:5,completed:1,succeeded:1,failed:0,execution:{timing:{started_at:'2026-10-16T04:01:10Z',last_activity_at:null,active:true}}}]});await v.flush();await v.flush();
- assert.equal(v.get('daily-progress').dataset.phase,'completed');assert.match(node(v,'making').textContent,/已处理 5\/5 条/);assert.match(node(v,'elapsed').textContent,/00:00:04.*截至最后记录/);assert.equal(v.clockTimers(),0);await v.tick();assert.deepEqual(v.calls.filter(c=>c.operation==='task.poll').at(-1).params,{epoch:'current-epoch',after:2});v.dispose();
+ assert.equal(v.get('daily-progress').dataset.phase,'completed');assert.match(node(v,'making').textContent,/成功 5\/5 条/);assert.match(node(v,'elapsed').textContent,/00:00:04.*截至最后记录/);assert.equal(v.clockTimers(),0);await v.tick();assert.deepEqual(v.calls.filter(c=>c.operation==='task.poll').at(-1).params,{epoch:'current-epoch',after:2});v.dispose();
 });
 
 for(const previous of ['daily','only'])test(`a stale ${previous} poll rejection cannot replace the current only-make reason or toast`,async()=>{

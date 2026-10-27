@@ -13,16 +13,18 @@ from .publish_planning import PublishPlanning
 
 
 class PublishPreparation:
-    def __init__(self, engine, paths, *, declarations=None, locations=None, covers=None):
+    def __init__(self, engine, paths, *, declarations=None, locations=None, covers=None,inherit_account_settings=True):
         self.covers=covers
         self.locations=locations
         self.declarations=declarations
         self.engine, self.paths = engine, paths
+        self.inherit_account_settings=inherit_account_settings
         self._lock = threading.RLock()
         self._drafts = {}
 
     def _preview(self, params, now):
-        return PublishPlanning(self.engine,declarations=self.declarations,locations=self.locations,covers=self.covers).preview(params, now=now)
+        return PublishPlanning(self.engine,declarations=self.declarations,locations=self.locations,covers=self.covers,
+            inherit_account_settings=self.inherit_account_settings).preview(params, now=now)
 
     def _video_ids(self, params):
         return params['video_ids']

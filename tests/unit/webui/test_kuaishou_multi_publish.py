@@ -456,3 +456,19 @@ def test_list_end_requires_official_no_more_sentinel(case,cursor,complete):
     adapter._response(session,response)
     assert session.list_seen and session.list_complete is complete
     adapter.close()
+
+
+@pytest.mark.parametrize('receipt_present,rejected',[(True,False),(False,False),(True,True)])
+def test_bound_normal_receipt_survives_local_deadline_without_guessing(case,monkeypatch,receipt_present,rejected):
+    adapter,payload,_,events,_=case;m=module();clock=[0.0]
+    monkeypatch.setattr(m,'time',SimpleNamespace(monotonic=lambda:clock[0],time=__import__('time').time))
+    original=adapter._click_final
+    def final(s,frame):
+        original(s,frame)
+        if not receipt_present:s.receipt={}
+        s.submit_rejected=rejected;clock[0]=2.0
+    monkeypatch.setattr(adapter,'_click_final',final)
+    result=adapter.submit(payload,context=None,before_final=lambda:None)
+    assert result.state==('platform_accepted' if receipt_present and not rejected else 'result_unknown')
+    assert sum(e[0]=='final' for e in events)==1
+    adapter.close()

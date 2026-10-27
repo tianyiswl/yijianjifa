@@ -49,6 +49,7 @@ class DownloadAccess:
         if (type(category_ids) is not tuple or len(category_ids) > 100 or any(type(v) is not str or not 1<=len(v)<=64 for v in category_ids)
                 or not set(category_ids) <= {c.id for c in CategoryRepository(self.engine).list('video')}):
             raise DownloadError('input_limit')
+        if len(category_ids)>1:raise DownloadError('single_category_only')
         if cancel.cancelled(): raise DownloadError('cancelled')
         with self.files.open_resource(resource_id,cancel=cancel) as bound:
             resource = bound.resource

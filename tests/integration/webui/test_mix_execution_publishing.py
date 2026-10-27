@@ -98,7 +98,7 @@ def test_saved_pending_unknown_rejected_and_public_states_are_never_inferred_fro
     assert target['state'] == state and target['state_label'] == label
     if final and state != 'published': assert '尚未提交' not in target['reason']
     if state in {'result_unknown', 'interrupted'}: assert '核对' in target['reason']
-    if state in {'result_unknown', 'interrupted'}: assert read_execution(db_engine, parent)['current']['label'] == '发布结果待核对'
+    if state in {'result_unknown', 'interrupted'}: assert read_execution(db_engine, parent)['current']['label'] == '等待核对原结果'
 
 
 @pytest.mark.parametrize('variant', ['unrelated', 'missing-source', 'hidden-task', 'hidden-target', 'wrong-kind'])
@@ -193,7 +193,7 @@ def test_failure_diagnostic_uses_only_fixed_stage_and_category_and_final_guard(p
     target = read_execution(db_engine, parent)['publishing']['targets'][0]
     assert target['state'] == 'result_unknown' and target['state_label'] == '提交结果待核对'
     assert '核对' in target['reason'] and '尚未提交' not in target['reason'] and 'PRIVATE' not in target['reason']
-    assert read_execution(db_engine, parent)['current']['label'] == '发布结果待核对'
+    assert read_execution(db_engine, parent)['current']['label'] == '等待核对原结果'
     with session_scope(db_engine) as session:
         delivery = session.get(PublishDeliveryRow, delivery_id)
         assert session.get(TaskItemRow, delivery.item_id).state == saved_state

@@ -16,9 +16,9 @@ async function mount(value){let current=value;const v=await mountMixing(async(op
 const node=(v,name)=>v.query('.mixing-execution-'+name);
 
 test('a verified platform handoff is a neutral verification reminder rather than a stopped failure',async()=>{
- const {v}=await mount(status());assert.equal(node(v,'phase').textContent,'待完成平台验证');
+ const {v}=await mount(status());assert.equal(node(v,'phase').textContent,'等待完成平台验证');
  assert.equal(v.get('daily-progress').dataset.runState,'verification');assert.equal(v.get('mixing-batch-progress').dataset.runState,'verification');
- assert.match(node(v,'publishing').textContent,/平台已接收 0\/1 项 · 待验证 1 项/);
+ assert.match(node(v,'publishing').textContent,/平台已接收 0\/1 项 · 等待验证 1 项/);
  assert.match(node(v,'hint').textContent,/验证窗口.*任务记录/);assert.equal(node(v,'reason').classList.contains('hide'),true);
  assert.doesNotMatch(v.get('daily-progress').textContent,/verification_required|已停止|未完成1项/);
  assert.equal(v.calls.filter(c=>c.operation==='mix.daily.submit').length,1);v.dispose();
@@ -26,19 +26,19 @@ test('a verified platform handoff is a neutral verification reminder rather than
 
 test('verification and another running target keep the batch running with a separate pending verification count',async()=>{
  const s=status([target(),target('running',{id:'other',needs_verification:false,reason:''})]);s.execution.timing.active=true;
- const {v}=await mount(s);assert.equal(v.get('daily-progress').dataset.runState,'running');assert.match(node(v,'phase').textContent,/运行中/);
- assert.match(node(v,'publishing').textContent,/待验证 1 项/);assert.doesNotMatch(node(v,'phase').textContent,/停止|结束/);v.dispose();
+ const {v}=await mount(s);assert.equal(v.get('daily-progress').dataset.runState,'running');assert.match(node(v,'phase').textContent,/正在处理其余账号.*等待完成平台验证/);
+ assert.match(node(v,'publishing').textContent,/等待验证 1 项/);assert.doesNotMatch(node(v,'phase').textContent,/停止|结束/);v.dispose();
 });
 
 test('a real failure remains visible alongside a verification handoff',async()=>{
  const {v}=await mount(status([target(),target('pre_submit_failed',{id:'failed',needs_verification:false,reason:'视频文件无法读取。'})]));
- assert.notEqual(v.get('daily-progress').dataset.runState,'verification');assert.match(node(v,'publishing').textContent,/待验证 1 项.*其他需处理 1 项/);
+ assert.notEqual(v.get('daily-progress').dataset.runState,'verification');assert.match(node(v,'publishing').textContent,/错误 1 项.*等待验证 1 项/);
  assert.match(node(v,'reason').textContent,/视频文件无法读取/);assert.equal(node(v,'reason').attrs.role,'alert');assert.equal(node(v,'reason').classList.contains('hide'),false);v.dispose();
 });
 
 test('a timeout unknown without exact handoff evidence stays a result that needs checking',async()=>{
  const {v}=await mount(status([target('result_unknown',{needs_verification:false,reason:'提交结果尚未确认。'})],{reason_code:'timeout',reason:'等待平台响应超时。'}));
- assert.match(node(v,'phase').textContent,/发布结果待核对/);assert.notEqual(v.get('daily-progress').dataset.runState,'verification');assert.match(node(v,'reason').textContent,/超时/);v.dispose();
+ assert.match(node(v,'phase').textContent,/等待核对原结果/);assert.notEqual(v.get('daily-progress').dataset.runState,'verification');assert.match(node(v,'reason').textContent,/超时/);v.dispose();
 });
 
 test('an explicit cancellation wins over stale verification evidence',async()=>{
@@ -65,9 +65,9 @@ test('a stale flag on an accepted target does not reintroduce a verification rem
 });
 
 
-test('a progress read failure after verification restores real alert semantics',async()=>{
+test('验证等待时读取暂不可用仍显示等待重读并保留网络原因',async()=>{
  const {v,set}=await mount(status());set(new Error('网络不可用'));await v.tick();
- assert.match(node(v,'reason').textContent,/进度读取失败/);assert.equal(node(v,'reason').attrs.role,'alert');assert.equal(node(v,'reason').classList.contains('is-verification'),false);v.dispose();
+ assert.match(node(v,'reason').textContent,/等待重新读取进度.*网络不可用/);assert.equal(node(v,'reason').attrs.role,'status');assert.equal(node(v,'reason').classList.contains('is-verification'),true);v.dispose();
 });
 
 test('a stale verification code cannot hide a newer independent error message',async()=>{
@@ -88,4 +88,11 @@ test('a second problem without a saved reason still remains visible beside verif
 test('an empty top-level reason still lets a real execution error prevent a verification-only title',async()=>{
  const s=status(undefined,{reason:''});s.execution.reason='本地成品文件无法读取。';const {v}=await mount(s);
  assert.notEqual(v.get('daily-progress').dataset.runState,'verification');assert.match(node(v,'reason').textContent,/本地成品文件无法读取/);assert.equal(node(v,'reason').attrs.role,'alert');v.dispose();
+});
+
+test('过期的顶层验证原因不能盖住执行记录中的真实错误',async()=>{
+ const s=status();s.execution.reason='当前视频文件无法读取。';const {v}=await mount(s);
+ assert.notEqual(v.get('daily-progress').dataset.runState,'verification');
+ assert.match(node(v,'reason').textContent,/当前视频文件无法读取/);
+ assert.equal(node(v,'reason').attrs.role,'alert');v.dispose();
 });

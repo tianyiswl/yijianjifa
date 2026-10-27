@@ -24,12 +24,14 @@ from yijianjifa.storage.models import Setting
 from .chromium_publish import account_lock
 from .publish_intervention import InterventionBroker, intervention_reason
 from .playwright_runtime import can_stop_exclusively
+from .login_observation import observe_login_read, challenge_login_state, can_refresh_login_session
 
 
 def fingerprint(account):return hashlib.sha256((account.session_ref or '').encode()).hexdigest()
 
 
 VIEW_ACTIONS=frozenset({'visible','refresh','scroll','pointer','resend_code'})
+LOGIN_PLATFORMS={'channels':'视频号','douyin':'抖音','bilibili':'B站','kuaishou':'快手'}
 
 # Read-only hit testing of the actual visible controls. A screenshot click is
 # verification input, never a replacement for the host's final-submit journal.
@@ -122,6 +124,20 @@ class ChromiumPublishSessionAdapter:
         """Isolate checks from normal delivery sessions and their cancellation."""
         return type(self)(self.engine,self.paths,cancel=cancel,expected_uid=self.expected_uid,
                           step_timeout=self.step_timeout,inspection_only=True)
+
+    def _login_read(self,s,read,*,classify=None):
+        def remember(state,observed_at):
+            s.login_observation_state=state;s.login_observed_at=observed_at
+        return observe_login_read(self.service,s.payload['account_id'],s.payload['platform_user_id'],
+                                  s.original_ref,read,classify=classify,on_observed=remember)
+
+    def _login_challenge(self,s,read):
+        return self._login_read(s,read,classify=challenge_login_state)
+
+    def _login_valid_at(self,s):
+        return getattr(s,'login_observed_at',None) if getattr(s,'login_observation_state',None)=='valid' else None
+
+    _can_refresh_login_session=staticmethod(can_refresh_login_session)
 
     def _inspection_browser_options(self,options):
         # Service worker requests bypass routes. The host final marker must
@@ -258,17 +274,34 @@ class ChromiumPublishSessionAdapter:
 
     def _park(self,s,kind='sms',message=None,*,reason=None):
         reason=intervention_reason(kind,reason)
+        s.browser_login=(getattr(self,'platform_id',None) in LOGIN_PLATFORMS
+                         and not self.inspection_only and not s.uploaded and not s.final and kind=='login')
+        if s.browser_login:
+            error=None
+            if not getattr(s,'browser_login_attempted',False):
+                s.browser_login_attempted=True
+                try:
+                    if not self._show_intervention_browser(s):error='未能打开登录浏览器，请点击“打开登录页面”重试；原任务仍已暂停。'
+                except Exception:error='未能打开登录浏览器，请点击“打开登录页面”重试；原任务仍已暂停。'
+            prefix={'identity_mismatch':'当前页面账号与所选账号不一致。',
+                    'identity_unavailable':'暂未确认所选账号。',
+                    'session_changed':'所选账号的登录资料已更新。'}.get(reason,'登录已失效。')
+            message=error or prefix+'此视频尚未提交。请在打开的浏览器中登录原账号，完成后点击“已登录，继续”。'
         request=s.broker.status()['request']
         if request and (request['expires_at']<time.time() or request['kind']!=kind or request.get('reason')!=reason):
             s.broker.finish(s.request_id);s.request_id=None
         if s.request_id is None:
             a=self._account(s)
             s.request_id=s.broker.request(a.id,a.nickname,kind,message or ('提交已发生，请完成验证后核对原结果。' if s.final else '请完成所选账号验证，再明确继续此目标。'),reason=reason)
-        if kind in {'complex','login'}:self._refresh_intervention_frame(s,force=True)
+        if getattr(s,'browser_login',False):
+            if getattr(s,'external_browser',False):s.broker.open_browser(s.request_id)
+            else:s.broker.browser_failure(s.request_id,'未能打开登录浏览器，请重试；原任务仍已暂停。')
+        elif kind in {'complex','login'}:self._refresh_intervention_frame(s,force=True)
         s.stage={'identity_unavailable':'等待重新核对所选账号','identity_mismatch':'等待切回所选账号','session_changed':'等待确认更新后的账号'}.get(reason,'等待账号验证')
         return AdapterOutcome('result_unknown' if s.final else 'paused_auth',context={'handle':s.handle},error_code='verification_required')
 
     def _refresh_intervention_frame(self,s,*,force=False):
+        if getattr(s,'browser_login',False):return False
         request=s.broker.status()['request']
         if (s.page is None or not s.request_id or request is None
                 or (request['kind'] not in {'complex','login'} and request.get('view_mode')!='page')
@@ -296,6 +329,16 @@ class ChromiumPublishSessionAdapter:
                     # Retry failed disposal on this owner instead of leaving
                     # its account locked until another publishing job arrives.
                     self.account_available({'account_id':s.payload['account_id']})
+                    if s.cleanup_pending:continue
+                    refreshed=True
+                if s.page is not None and s.page.is_closed():
+                    # A closed page cannot retain an active form or verification.
+                    # Release only its dead browser resources on this owner;
+                    # keep the original target, final boundary and result evidence.
+                    try:self._release_page(s)
+                    except Exception:pass  # The owner retains its retry and lease.
+                    refreshed=True
+                    continue
                 refreshed=self._refresh_intervention_frame(s) or refreshed
         return refreshed
 
@@ -332,6 +375,9 @@ class ChromiumPublishSessionAdapter:
         # A missing final marker cannot establish absence of an external side
         # effect. Keep interrupted/protocol-unknown attempts blocked.
         if not s.final:return AdapterOutcome('result_unknown',error_code='recovery_unavailable')
+        from .submit_feedback import recorded_outcome
+        recorded=recorded_outcome(self.engine,s)
+        if recorded:return recorded
         self._open(s,query=True);self._consume(s)
         s.phase='result'
         self._prepare_result_query(s)
@@ -344,19 +390,26 @@ class ChromiumPublishSessionAdapter:
     def _release_page(self,s):
         try:
             if s.context:s.context.close()
-            self._forget_page(s)
-        finally:
-            # A failed close retains the live context AND its profile lock.
-            # Only successful close or exclusive SDK termination proves cleanup.
-            if s.request_id:s.broker.finish(s.request_id);s.request_id=None
-            s.version_grant=None;s.resume_authorized=False
-            s.cancel_response=False
+        except Exception:
+            # Preserve the original recovery entry as well as its profile lease
+            # until this owning worker has actual browser-close proof.
+            s.cleanup_pending=True;s.cleanup_retry_at=time.monotonic()+1
+            raise
+        self._forget_page(s)
+        if s.request_id:s.broker.finish(s.request_id);s.request_id=None
+        s.version_grant=None;s.resume_authorized=False
+        s.cancel_response=False
 
     def _trace(self,s,step,checks=None):
         from yijianjifa.features.publish.execution_log import append_event
         binding=getattr(s,'binding',{})
         if not binding.get('delivery_id'):return
         append_event(self.engine,binding.get('delivery_id'),binding.get('attempt',1),step,checks)
+
+    def _result_page_releasable(self,s):
+        # Unknown outcomes normally retain their original page. Only a
+        # platform-specific proof of settled IO or a read-only query may opt in.
+        return False
 
     def _step(self,s,**kwargs):
         self._trace(s,'execution.start',{'query':bool(kwargs.get('query'))})
@@ -370,11 +423,29 @@ class ChromiumPublishSessionAdapter:
             kwargs['before_final']=logged_final
         try:result=self._advance(s,**kwargs)
         except Exception as error:
-            self._trace(s,'execution.error',{'exception_type':type(error).__name__,'stage':getattr(self,'_preparation_stage','unknown'),'elapsed_ms':int((time.monotonic()-started)*1000)})
-            if not s.final:self._release_page(s)
+            from yijianjifa.features.publish.read_diagnostics import error_details
+            # 未知第三方异常类型名也可能携带任意文本，只公开固定代码名称。
+            known_types={'Error','TimeoutError','TypeError','ValueError','RuntimeError','OSError',
+                'Exception','IdentityReadFailure','IdentityReadTimeout','AccountBusy','AccountIdentityMismatch',
+                'FileNotFoundError','PermissionError','ConnectionError','ConnectionResetError',
+                'ConnectionAbortedError','BrokenPipeError','JSONDecodeError','OperationalError','IntegrityError'}
+            name=type(error).__name__
+            self._trace(s,'execution.error',{'exception_type':name if name in known_types else 'UnknownError',
+                'stage':getattr(self,'_preparation_stage','unknown'),**error_details(error),'log_schema':1,
+                'phase':s.phase if s.phase in {'baseline','prepare','result'} else 'unknown',
+                'final_started':bool(s.final),'elapsed_ms':int((time.monotonic()-started)*1000)})
+            if not s.final or self._result_page_releasable(s) is True:
+                try:
+                    self._release_page(s)
+                    self._trace(s,'browser.close',{'closed':True})
+                except Exception as close_error:
+                    # Retain the lease/retry on close failure without hiding
+                    # the original observation or identity error.
+                    self._trace(s,'browser.close',{'closed':False,'exception_type':type(close_error).__name__})
             raise
         self._trace(s,'execution.result',{'state':result.state,'error_code':result.error_code,'elapsed_ms':int((time.monotonic()-started)*1000)})
-        if result.state not in {'paused_auth','result_unknown'}:
+        if (result.state not in {'paused_auth','result_unknown'}
+                or result.state=='result_unknown' and self._result_page_releasable(s) is True):
             # Cleanup is separate from the observed delivery outcome. In
             # particular, a browser close error cannot undo a submit receipt.
             try:
@@ -390,6 +461,38 @@ class ChromiumPublishSessionAdapter:
                     except Exception:pass
         return result
 
+    def _show_intervention_browser(self,s):
+        """Show an unused login page; uploaded forms are never rebuilt."""
+        self._thread()
+        if (getattr(self,'platform_id',None) not in LOGIN_PLATFORMS or self.inspection_only
+                or s.uploaded or s.final or self.cancel.is_set()):return False
+        self._account(s)
+        headed=getattr(s,'external_browser',False) or getattr(s,'browser_login_context_headed',False)
+        if (s.context is not None and s.page is not None and headed
+                and not getattr(s,'browser_login_open_failed',False) and not s.page.is_closed()):
+            try:s.page.bring_to_front()
+            except Exception:
+                s.external_browser=False
+                raise ValueError('登录浏览器未能显示，请重试。') from None
+            s.external_browser=True
+            return True
+        preserve_profile=getattr(s,'browser_login_preserve_profile',False) or (
+            s.context is not None and s.page is not None and s.original_ref is not None)
+        if s.context is not None:
+            try:s.context.close()
+            except Exception:raise ValueError('原登录浏览器未能关闭，请重试。') from None
+            s.context=None;s.page=None
+        s.external_browser=False;s.browser_login_visible=True
+        s.browser_login_preserve_profile=preserve_profile;s.phase='baseline'
+        try:
+            self._open(s)
+            s.page.bring_to_front()
+        except Exception:
+            s.browser_login_open_failed=True;s.external_browser=False
+            raise ValueError('登录浏览器未能打开，请重试。') from None
+        s.browser_login_open_failed=False;s.external_browser=True
+        return True
+
     def _consume(self,s,*,view_only=False,view_revision=None):
         if not s.request_id:return
         response=s.broker.consume(s.request_id,view_revision=view_revision)
@@ -400,6 +503,17 @@ class ChromiumPublishSessionAdapter:
             s.broker.finish(s.request_id);s.request_id=None
             raise ValueError('verification cancelled')
         if action=='visible':
+            if getattr(s,'browser_login',False):
+                try:opened=self._show_intervention_browser(s)
+                except Exception:
+                    raise ValueError('未能打开登录浏览器，请重试；原任务仍已暂停。') from None
+                if not opened:
+                    raise ValueError('未能打开登录浏览器，请重试；原任务仍已暂停。')
+                s.broker.open_browser(s.request_id)
+                s.broker.message(s.request_id,'请在打开的浏览器中登录原'+LOGIN_PLATFORMS.get(self.platform_id,'平台')+'账号，完成后点击“已登录，继续”。')
+                # Displaying a page never grants identity/resume authority,
+                # even if the human has already completed login in that page.
+                return
             # Render the original live browser page inside the client. A new
             # headed context would lose the upload and in-flight submission.
             s.broker.open_view(s.request_id)
@@ -485,13 +599,15 @@ class ChromiumPublishSessionAdapter:
             revision=request.get('view_revision') if view_revision is None else view_revision
             if request.get('view_revision')!=revision:raise ValueError('页面操作已更新，请查看最新验证画面。')
             try:
-                if s.page is None or s.page.is_closed():
+                browser_open=getattr(s,'browser_login',False) and request.get('view_action')=='visible'
+                if not browser_open and (s.page is None or s.page.is_closed()):
                     s.broker.consume(request_id,view_revision=revision)
                     raise ValueError('原验证页面已关闭，请重新检查账号登录状态。')
                 self._consume(s,view_only=True,view_revision=revision)
             except Exception as error:
                 safe=str(error) if str(error) in {'原验证页面已关闭，请重新检查账号登录状态。',
                     '原验证页面画面读取失败，请点击更新画面重试。',
+                    '未能打开登录浏览器，请重试；原任务仍已暂停。',
                     '请只在登录或验证码区域操作；验证完成后点击“已完成验证”。'} else '无法更新原验证页面，请重新操作或查看任务状态。'
                 s.broker.view_result(request_id,revision,error=safe)
                 if code_action:s.broker.code_feedback(request_id,'failed',safe)
@@ -539,13 +655,15 @@ class ChromiumPublishSessionAdapter:
             result=[]
             for s in self.sessions.values():
                 request=s.broker.status()['request']
-                if request:result.append({**request,'delivery_id':s.binding['delivery_id'],'platform':self.platform_id,'final_started':s.final,'external_browser':getattr(s,'external_browser',False) is True})
+                if request:result.append({**request,'delivery_id':s.binding['delivery_id'],'platform':self.platform_id,'final_started':s.final,'external_browser':getattr(s,'external_browser',False) is True,'browser_login':getattr(s,'browser_login',False) is True})
             return result
 
     def respond(self,request_id,action,code=''):
         with self._lock:
             session=next((s for s in self.sessions.values() if s.request_id==request_id),None)
             if session is None:raise ValueError('verification request unavailable')
+            if getattr(session,'browser_login',False) and action in {'pointer','scroll','refresh'}:
+                raise ValueError('请在打开的浏览器中操作登录页面。')
             # Response only enters the broker memory, never DB/session audit.
             result=session.broker.respond(request_id,action,code)
             if not session.final and action not in VIEW_ACTIONS:

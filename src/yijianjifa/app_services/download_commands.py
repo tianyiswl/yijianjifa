@@ -14,6 +14,7 @@ from yijianjifa.features.downloads.contracts import DownloadError, DownloadOptio
 
 MODEL_IDS=('whisper-small-multilingual','rapidocr-cls-mobile-v2','rapidocr-det-ppocrv6-small','rapidocr-rec-ppocrv6-small')
 MESSAGES={
+ 'single_category_only':'每条内容只能选择一个分类。',
  'input_limit':'输入数量、长度或设置超出限制，请检查后分批操作。',
  'unsafe_source':'此链接或文件位置不符合安全读取范围，请重新选择。',
  'redirect_limit':'链接跳转次数过多，请重新粘贴作品链接。',
@@ -144,7 +145,8 @@ class DownloadCommands:
         elif name=='import':
             exact(('resource_id','category_ids'));identity(p['resource_id'])
             if type(p['category_ids']) is not list or len(p['category_ids'])>100:raise DownloadError('input_limit')
-            if p['category_ids']:identities(p['category_ids'],100)
+            if len(p['category_ids'])>1:raise DownloadError('single_category_only')
+            if p['category_ids']:identities(p['category_ids'],1)
         elif name in ('models.download','models.import'):
             exact(('model_id',))
             if p['model_id'] not in MODEL_IDS:raise DownloadError('model_unknown')

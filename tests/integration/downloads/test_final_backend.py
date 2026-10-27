@@ -2,6 +2,7 @@
 from dataclasses import asdict
 import json
 import time
+import threading
 from unittest.mock import patch
 
 import pytest
@@ -160,3 +161,74 @@ def test_notification_and_transition_marker_rollback_with_task_state(runtime):
             bare._refresh(connection,task)
         assert len(NotificationService(worker.engine,sound_enabled=False).history_for(task))==1
     finally:assert bare.close()
+
+
+def test_refresh_cannot_repeat_model_notice_after_concurrent_resume(db_engine,app_paths,monkeypatch):
+    """调度刷新与恢复使用两个连接，旧暂停读取不能覆盖已提交的恢复。"""
+    from sqlalchemy import event
+    from yijianjifa.app_services.download_runtime import DownloadRuntime
+    from yijianjifa.app_services.media_access import MediaAccess
+    from yijianjifa.features.downloads.contracts import Region
+    from tests.integration.downloads.test_files import save_candidate
+    from tests.integration.downloads.test_runtime import Models
+    media=MediaAccess(db_engine,app_paths)
+    bare=DownloadRuntime(db_engine,app_paths,media=media,models=Models())
+    read_reason=threading.Event();release_refresh=threading.Event()
+    resume_write=threading.Event();resume_done=threading.Event();errors=[]
+    try:
+        cid=save_candidate(db_engine)
+        with db_engine.begin() as connection:
+            task=bare.repository.create_batch(connection,(cid,),DownloadOptions(asr_language='zh',model_ids=('whisper-small-multilingual',)),
+                'isolated-grant',{cid:Region(0,.6,1,.4)})
+            item=bare.repository._summary(connection,task)['items'][0]['id']
+            bare._put(connection,'control',task,{'epoch':bare._epoch,'enabled':True,'cancel':False,'show_browser':False})
+            bare._put(connection,'item',item,{'reason':'model','error_code':'model_required','watermark':'clean','source_id':None})
+            bare.repository.record_stage(connection,item,StageResult('asr','waiting',error_code='model_required'))
+            bare._refresh(connection,task)
+        assert len(NotificationService(db_engine,sound_enabled=False).history_for(task))==1
+        original_reason=bare._reason
+        def pause_after_reason(connection,identity):
+            result=original_reason(connection,identity)
+            if threading.current_thread().name=='isolated-refresh' and not read_reason.is_set():
+                read_reason.set()
+                assert release_refresh.wait(3)
+            return result
+        monkeypatch.setattr(bare,'_reason',pause_after_reason)
+        def before_execute(connection,cursor,statement,parameters,context,executemany):
+            if threading.current_thread().name=='isolated-resume' and statement.startswith('UPDATE download_stages'):
+                resume_write.set()
+        event.listen(db_engine,'before_cursor_execute',before_execute)
+        def refresh():
+            try:
+                with db_engine.begin() as connection:bare._refresh(connection,task)
+            except BaseException as error:errors.append(error)
+        def resume():
+            try:
+                with db_engine.begin() as connection:bare.enqueue(connection,'download.resume',{'task_id':task,'show_browser':False})
+            except BaseException as error:errors.append(error)
+            finally:resume_done.set()
+        first=threading.Thread(target=refresh,name='isolated-refresh')
+        second=threading.Thread(target=resume,name='isolated-resume')
+        first.start()
+        assert read_reason.wait(3)
+        second.start()
+        assert resume_write.wait(3)
+        # 原实现允许恢复先提交；正确实现必须让它等待刷新事务释放写锁。
+        resume_done.wait(.2)
+        release_refresh.set()
+        first.join(timeout=3);second.join(timeout=3)
+        assert not first.is_alive() and not second.is_alive()
+        assert errors==[]
+        history=NotificationService(db_engine,sound_enabled=False).history_for(task)
+        assert [notice.status for notice in history]==['action_required']
+        assert detail(bare,task)['state']=='waiting'
+        with db_engine.connect() as connection:
+            assert bare._reason(connection,item)['reason'] is None
+            assert bare._get(connection,'notice',task)=={'v':1,'event':None}
+    finally:
+        release_refresh.set()
+        if 'first' in locals():first.join(timeout=3)
+        if 'second' in locals() and second.ident is not None:second.join(timeout=3)
+        if 'before_execute' in locals():event.remove(db_engine,'before_cursor_execute',before_execute)
+        assert bare.close()
+        media.close()

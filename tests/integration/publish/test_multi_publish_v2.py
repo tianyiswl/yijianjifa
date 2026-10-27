@@ -673,14 +673,24 @@ def test_actual_finished_deletion_follows_v2_child_consumers_not_parent_batch(se
     with pytest.raises(RuntimeError):FinishedVideoService(service.engine).delete(second.id)
 
 
-def test_unknown_child_protects_actual_finished_deletion_after_hide(setup_v2):
+def test_unknown_child_keeps_its_copy_and_duplicate_guard_after_source_deletion(setup_v2):
     r=prepare_save(setup_v2);service,video,_,adapters=setup_v2
     adapters['douyin'].outcome='result_unknown';PublishCoordinator(service).run_once(r['id'])
     for d in service.get_task(r['id'])['deliveries']:
         service.cancel_delivery(d['id']);service.hide_delivery(d['id'])
-    with pytest.raises(RuntimeError):FinishedVideoService(service.engine).delete(video.id)
+    with session_scope(service.engine) as s:
+        row=s.scalar(select(PublishDeliveryRow).where(PublishDeliveryRow.platform=='douyin'))
+        attempt=s.scalar(select(DeliveryAttemptRow).where(DeliveryAttemptRow.delivery_id==row.id))
+        evidence=attempt.result_json
+        copied=Path(json.loads(row.snapshot_json)['video_path'])
     from yijianjifa.app_services.finished_delete import FinishedDeletion
-    with pytest.raises(RuntimeError):FinishedDeletion(service.engine).delete(video.id)
+    assert FinishedDeletion(service.engine).delete(video.id)['deleted']
+    assert copied.exists() and video.effective_path.exists() # external original stays
+    with session_scope(service.engine) as s:
+        assert s.get(DeliveryAttemptRow,attempt.id).result_json==evidence
+        assert s.get(PublishHistoryRow,row.history_id).state=='result_unknown'
+    assert PublishHistoryRepository(service.engine).has_quick_block(video.content_hash)
+    assert [call[0] for call in adapters['douyin'].calls]==['submit']
 
 
 def test_missed_target_reschedule_keeps_delivery_history_and_attempt_audit(setup_v2,db_engine):

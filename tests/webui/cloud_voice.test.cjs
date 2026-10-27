@@ -1,7 +1,7 @@
 const test=require('node:test'),assert=require('node:assert/strict');
 const {mount}=require('./support/commerce_view.cjs');
 function setup(calls,initial={},selectedVoice=''){
- let state={enabled:true,authenticated:true,mode:'hosted',account_id:'account',account_label:'测试用户',available_words:12345,reserved_words:0,pack:{price_fen:1990,words:10000},...initial};
+ let state={enabled:true,authenticated:true,balance_current:true,mode:'hosted',account_id:'account',account_label:'测试用户',available_words:12345,reserved_words:0,pack:{price_fen:1990,words:10000},...initial};
  let catalog={items:[{id:'doubao:test',name:'测试声音',gender:'女声',style:'通用',language:'中文',standard_sample:true}],selected:selectedVoice,favorites:[],configured:true,mode:state.mode};
  if(selectedVoice==='doubao:old')catalog.items.push({id:'doubao:old',name:'旧声音',gender:'男声',style:'通用',language:'中文',standard_sample:true});
  return async(op,p)=>{calls.push([op,p]);if(op==='voice.cloud.read')return state;if(op==='voice.catalog')return catalog;if(op==='voice.settings.read')return {configured:false};
@@ -233,4 +233,69 @@ test('first use restoration rule is inline and acknowledged once without modal',
  await v.getId('cloudPolicySeen').onclick();await v.flush();
  assert.equal(v.getId('cloudPolicyNotice').hidden,true);
  assert.equal(calls.filter(([op])=>op==='voice.cloud.policy.seen').length,1);v.dispose();
+});
+
+test('explicit default action persists the voice without generating speech',async()=>{
+ const calls=[],v=await mount(setup(calls,{balance_current:true}),'voices');
+ try{
+  assert.equal(v.getId('useVoice').textContent,'设为默认配音');
+  await v.getId('useVoice').onclick();await v.flush();
+  assert.equal(v.getId('selectedName').textContent,'测试声音');
+  assert.match(v.getId('toast').textContent,/已设为默认配音/);
+  assert.ok(!calls.some(([op])=>op==='voice.audition.text'));
+ }finally{v.dispose();}
+});
+for(const [name,state] of [
+ ['empty quota',{available_words:0,balance_current:true}],
+ ['stale quota',{available_words:12345,balance_current:false}],
+ ['invalid quota',{available_words:'12345',balance_current:true}],
+])test(`default voice refuses ${name} and preserves the original selection`,async()=>{
+ const calls=[],base=setup(calls,state,'doubao:old'),v=await mount(base,'voices');
+ try{
+  v.getId('voiceRows').children[0].onclick();
+  await v.getId('useVoice').onclick();await v.flush();
+  assert.equal(v.getId('selectedName').textContent,'旧声音');
+  assert.ok(!calls.some(([op])=>op==='voice.selection.save'||op==='voice.cloud.mode.save'||op==='voice.audition.text'));
+  assert.match(v.getId('toast').textContent,/充值|更新|网络/);
+ }finally{v.dispose();}
+});
+test('default selection rechecks current quota rather than trusting the page-opening balance',async()=>{
+ const calls=[],base=setup(calls,{balance_current:true},'doubao:old');let reads=0;
+ const v=await mount(async(op,p)=>{const result=await base(op,p);return op==='voice.cloud.read'&&++reads>1?{...result,available_words:0}:result;},'voices');
+ try{
+  v.getId('voiceRows').children[0].onclick();await v.getId('useVoice').onclick();await v.flush();
+  assert.equal(v.getId('selectedName').textContent,'旧声音');
+  assert.ok(!calls.some(([op])=>op==='voice.selection.save'));
+  assert.match(v.getId('toast').textContent,/充值/);
+ }finally{v.dispose();}
+});
+test('a quota connection error cannot change the existing default',async()=>{
+ const calls=[],base=setup(calls,{balance_current:true},'doubao:old');let reads=0;
+ const v=await mount(async(op,p)=>{if(op==='voice.cloud.read'&&++reads>1)throw Error('网络连接失败');return base(op,p);},'voices');
+ try{
+  v.getId('voiceRows').children[0].onclick();await v.getId('useVoice').onclick();await v.flush();
+  assert.equal(v.getId('selectedName').textContent,'旧声音');
+  assert.ok(!calls.some(([op])=>op==='voice.selection.save'));
+  assert.match(v.getId('toast').textContent,/网络/);
+ }finally{v.dispose();}
+});
+test('free system default needs neither a current balance nor cloud quota',async()=>{
+ const calls=[],v=await mount(setup(calls,{available_words:0,balance_current:false},'doubao:test'),'voices');
+ try{
+  const readsBefore=calls.filter(([op])=>op==='voice.cloud.read').length;
+  await v.getId('systemVoice').onclick();await v.flush();
+  assert.equal(v.getId('selectedName').textContent,'系统配音');
+  assert.equal(calls.filter(([op])=>op==='voice.cloud.read').length,readsBefore);
+  assert.ok(!calls.some(([op])=>op==='voice.audition.text'));
+ }finally{v.dispose();}
+});
+test('favoriting an available voice never needs quota or changes the selected default',async()=>{
+ const calls=[],v=await mount(setup(calls,{available_words:0,balance_current:false},'doubao:test'),'voices');
+ try{
+  const readsBefore=calls.filter(([op])=>op==='voice.cloud.read').length;
+  await v.getId('voiceRows').children[0].children[3].children[0].onclick({stopPropagation(){}});await v.flush();
+  assert.equal(v.getId('selectedName').textContent,'测试声音');
+  assert.equal(calls.filter(([op])=>op==='voice.cloud.read').length,readsBefore);
+  assert.match(v.getId('toast').textContent,/已收藏/);
+ }finally{v.dispose();}
 });

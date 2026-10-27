@@ -11,7 +11,7 @@ test('notification portal stays open for its own clicks and is removed on naviga
  const dispose=context.P011Notifications(),panel=body.children[0],root=side.children[0];
  assert.equal(panel.className,'p011-notify-panel');assert.equal(root.children.length,2);assert.equal(root.children[0].className,'p011-help');
  assert.deepEqual(root.children[0].children[0].children.map(n=>n.textContent),['使用教程','下载最新版']);
- assert.equal(root.children[0].children[1].textContent,'版本 0.1.31');
+ assert.equal(root.children[1].className,'p011-notify-footer');assert.equal(root.children[1].children[0].textContent,'版本 0.1.31');assert.equal(root.children[1].children[1].textContent,'通知');
  panel.hidden=false;handlers.click({type:'click',target:panel});assert.equal(panel.hidden,false);
  handlers.click({type:'click',target:body});assert.equal(panel.hidden,true);
  dispose();assert.equal(panel.removed,true);assert.equal(root.removed,true);assert.deepEqual(Object.keys(handlers),[]);

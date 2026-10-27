@@ -32,11 +32,13 @@ def test_navigation_timeout_has_finite_stage_without_exception_or_credentials(ch
 def test_hard_deadline_retains_last_stage_even_when_sdk_never_returns(check_fixture, monkeypatch, tmp_path):
     from yijianjifa.webui import session_check
     f = check_fixture
-    monkeypatch.setattr(session_check, 'CHECK_SECONDS', .8)
+    # Include cold worker startup, then test the deliberately blocked SDK call.
+    monkeypatch.setattr(session_check, 'CHECK_SECONDS', 3)
     trace = real_worker(f, monkeypatch, tmp_path, 'evaluate')
     result = f.provider.check_session(f.account.id, f.cancel)
     assert result['state'] == 'unavailable' and result['reason'] == 'timeout'
     value = result.get('diagnostic')
+    assert any(row['event'] == 'evaluate' for row in records(trace))
     assert value and value['stage'] == 'surface'
     assert any(e['stage'] == 'parent_deadline' and e['state'] == 'failed' for e in value['events'])
     assert value['last_stage'] == 'cleanup'
@@ -143,6 +145,7 @@ def test_parent_deadline_reports_cleanup_hangs_without_accepting_prior_valid_ide
                         SimpleNamespace(monotonic=parent_time, sleep=time.sleep))
     result = f.provider.check_session(f.account.id, f.cancel)
     assert result['state'] == 'unavailable' and result['reason'] == 'timeout'
+    assert any(row['event'] == sdk_stage for row in records(trace))
     assert result['diagnostic']['stage'] == reported
     assert any(row['event'] == sdk_stage for row in records(trace))
     assert_released(f, trace)

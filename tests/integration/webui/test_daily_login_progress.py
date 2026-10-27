@@ -22,12 +22,12 @@ def test_blocked_serial_check_exposes_the_actual_account_and_time_then_reports_i
     assert checking['execution']['events'][-1]['step'] == 'daily.login_check_started'
     assert checking['execution']['events'][-1]['time']
     assert api._mix.queue.get(identity).state == 'paused' and api._mix.executor.renderer.index == 0
-    provider.release.set(); result = phase(api, identity, 'needs_attention')
-    assert '抖音 · 原账号' in result['reason'] and '超时' in result['reason']
-    assert result['login_accounts'] == [] and result['can_continue']
+    provider.release.set(); result = phase(api, identity, 'making')
+    assert any('原账号' in row.get('account_label','') and '超时' in row['message'] for row in result['execution']['events'])
+    assert result['login_accounts'] == [] and not result['can_continue']
     assert AccountService(api._engine).get(first.id).login_state == 'valid'
     events = [event for event in result['execution']['events'] if event['step'].startswith('daily.login_check_')]
-    assert len(events) == 4 and all(event['time'] for event in events)
+    assert len(events) == 2 and all(event['time'] for event in events)
     assert '第二账号' in events[-1]['account_label']
     assert all(word not in json.dumps(result['execution']) for word in ('platform_user_id', 'session_fingerprint', 'synthetic-session'))
     assert api._mix.executor.renderer.index == 0 and result['publish_task_ids'] == []

@@ -62,12 +62,36 @@ class CategoryLink(Base):
     __tablename__ = "category_links"
     __table_args__ = (
         UniqueConstraint("category_id", "target_type", "target_id", name="uq_category_target"),
+        Index("uq_category_target_single", "target_type", "target_id", unique=True),
     )
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
     category_id: Mapped[str] = mapped_column(ForeignKey("categories.id", ondelete="CASCADE"), nullable=False, index=True)
     target_type: Mapped[str] = mapped_column(String(16), nullable=False, index=True)
     target_id: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+
+
+class CategoryLinkMigrationBackup(Base):
+    """Local recovery evidence for associations removed by the single-category migration.
+
+    Deliberately has no foreign keys: deleting content or a category must not
+    erase its migration history. Downgrading also keeps this recovery table.
+    """
+
+    __tablename__ = "category_link_migration_backups"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
+    migration_revision: Mapped[str] = mapped_column(String(32), nullable=False)
+    link_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    category_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    target_type: Mapped[str] = mapped_column(String(16), nullable=False)
+    target_id: Mapped[str] = mapped_column(String(64), nullable=False)
+    category_kind: Mapped[str | None] = mapped_column(String(16), nullable=True)
+    category_name: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    category_created_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    retained_link_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    archived_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow, nullable=False)
+    restored_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
 class UsageProgress(Base):

@@ -50,16 +50,18 @@ def test_mix_copy_numbers_items_with_saved_material_stage_reason_and_events(monk
     assert '未记录执行步骤' in result
     assert '未补造历史日志' in result
 
-def test_native_copy_uses_id_only_and_checks_trusted_origin(monkeypatch):
+@pytest.mark.parametrize('operation',['task.execution.copy','task.publish_report.copy'])
+def test_native_copy_uses_id_only_and_checks_trusted_origin(monkeypatch,operation):
     copies=[];reads=[]
     monkeypatch.setattr(TaskCenterAccess,'execution_log_text',lambda self,pid:reads.append(pid) or '真实已记录日志')
+    monkeypatch.setattr('yijianjifa.app_services.mix_execution.read_execution',lambda engine,pid:reads.append(pid) or {'report':{'ready':True,'text':'真实已记录日志'}})
     error=lambda code,rid:{'ok':False,'error':{'code':code}}
     api=SimpleNamespace(_error=error,dispatch=lambda *a,**kw:error('not_trusted',None))
     host=make_host(api=api,engine=None,window=None,webview=None,exit_started=threading.Event(),finished_files=None,
         finished_deletion=None,deletion_recovery_pending=False,cover_response=None,drops=None,drop_access=None,
         media=None,excel=None,output=None,voice_catalog=None,volc_config=None,voices=None,play_sound=None,
         copy_text=copies.append,request_exit=None)
-    raw=lambda params:json.dumps({'v':1,'request_id':'copy','operation':'task.execution.copy','params':params})
+    raw=lambda params:json.dumps({'v':1,'request_id':'copy','operation':operation,'params':params})
     assert host.dispatch(raw({'id':'task'}),trusted_origin=True)['data']=={'copied':True}
     assert copies==['真实已记录日志'] and reads==['task']
     assert not host.dispatch(raw({'id':'task','text':'arbitrary'}),trusted_origin=True)['ok']
@@ -75,3 +77,34 @@ def test_native_clipboard_failure_is_reported(monkeypatch):
         media=None,excel=None,output=None,voice_catalog=None,volc_config=None,voices=None,play_sound=None,copy_text=broken,request_exit=None)
     result=host.dispatch(json.dumps({'v':1,'request_id':'copy','operation':'task.execution.copy','params':{'id':'task'}}),trusted_origin=True)
     assert not result['ok']
+
+
+def test_copy_records_application_version_log_schema_and_only_trusted_build_commit(monkeypatch, tmp_path):
+    import sys
+    from yijianjifa import APP_VERSION
+    exe = tmp_path / 'app.exe'
+    exe.write_bytes(b'offline executable marker')
+    (tmp_path / 'build-manifest.json').write_text(json.dumps({'commit': 'a' * 40}), encoding='utf-8')
+    monkeypatch.setattr(sys, 'frozen', True, raising=False)
+    monkeypatch.setattr(sys, 'executable', str(exe))
+    access = TaskCenterAccess(None)
+    monkeypatch.setattr(access, 'detail', lambda pid: saved_data())
+    copied = access.execution_log_text('task')
+    assert '应用版本：' + APP_VERSION in copied
+    assert '日志格式：1' in copied
+    assert '构建提交：' + 'a' * 40 in copied
+
+
+@pytest.mark.parametrize('value', ['https://example.invalid/?token=SECRET', {'private': 'SECRET'}, 'a' * 41, 'z' * 40])
+def test_copy_rejects_malformed_build_identity_without_echoing_private_data(monkeypatch, tmp_path, value):
+    import sys
+    exe = tmp_path / 'app.exe'
+    exe.write_bytes(b'offline executable marker')
+    (tmp_path / 'build-manifest.json').write_text(json.dumps({'commit': value}), encoding='utf-8')
+    monkeypatch.setattr(sys, 'frozen', True, raising=False)
+    monkeypatch.setattr(sys, 'executable', str(exe))
+    access = TaskCenterAccess(None)
+    monkeypatch.setattr(access, 'detail', lambda pid: saved_data())
+    copied = access.execution_log_text('task')
+    assert '构建提交：未记录' in copied
+    assert 'SECRET' not in copied and 'example.invalid' not in copied

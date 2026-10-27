@@ -17,7 +17,7 @@ from sqlalchemy import text, select
 
 from yijianjifa.features.accounts.service import AccountRow, AccountIdentityMismatch
 from yijianjifa.features.library.media_identity import sha256_file
-from yijianjifa.features.publish.coordinator import AdapterOutcome, AdapterValidation
+from yijianjifa.features.publish.coordinator import AdapterOutcome, AdapterValidation, outcome_evidence, has_channels_immediate_ack
 from yijianjifa.features.publish.deliveries import PublishDeliveryRow, DeliveryAttemptRow, digest
 from yijianjifa.storage.db import session_scope
 from yijianjifa.storage.models import Setting
@@ -52,7 +52,9 @@ CHALLENGE = r'''() => {
  const complex=all('iframe,[class*="captcha"],[id*="captcha"]').some(e=>visible(e)&&/captcha|verify|验证/i.test([e.src,e.id,e.className].join(' ')))||
    dialogLeaves.some(v=>['管理员本人验证','需在手机上进行确认','直接发表'].includes(v))||
    all('.declare-original-dialog').some(visible);
- const login=window._store?.userStore?.isExpired===true||/\/platform\/login(?:\/|-|$)/.test(location.pathname)||leaves.some(v=>['扫码登录','微信扫码登录'].includes(v));
+ const quickLogin=all('button,[role="button"],a').some(e=>visible(e)&&e.textContent.trim()==='微信快捷登录'&&
+   !e.closest('.post-create,.post-create-wrap,.video-title,[contenteditable="true"]'));
+ const login=window._store?.userStore?.isExpired===true||/\/platform\/login(?:\/|-|$)/.test(location.pathname)||leaves.some(v=>['扫码登录','微信扫码登录'].includes(v))||quickLogin;
  return {sms:sms.length===1,complex,login};
 }'''
 
@@ -372,6 +374,7 @@ class ChannelsMultiPublishAdapter(ChromiumPublishSessionAdapter):
         s.list_seen = False; s.list_rows = []; s.form_filled = False
         s.form_observation = None
         s.owned_media = None; s.submit_ok = False; s.submit_rejected = False
+        s.submission_ack = None
         s.create_pending = {}; s.create_epoch = 0; s.create_settled = False
         s.create_ever_started = False; s.reminder_continued = False
         s.reminder_preference_pending = False
@@ -385,6 +388,8 @@ class ChannelsMultiPublishAdapter(ChromiumPublishSessionAdapter):
     def _open(self, s, *, query=False):
         if s.page is not None:
             return
+        if s.context is not None:
+            raise ValueError('original browser cleanup pending')
         self._validation_stage = 'page_open'
         a = self._account(s)
         if not a.session_ref:
@@ -394,29 +399,48 @@ class ChannelsMultiPublishAdapter(ChromiumPublishSessionAdapter):
             if not lock.acquire(blocking=False):
                 raise AccountBusy()
             s.locked = True
-        with session_scope(self.engine) as db:
-            row = db.get(Setting, 'publish.browser_mode')
-            mode = json.loads(row.value_json) if row else 'background'
-        s.external_browser = mode == 'visible'
-        options = self._inspection_browser_options({**browser.browser_options(mode), 'timezone_id': 'Asia/Shanghai'})
-        if self.driver is None:
-            from .playwright_runtime import acquire_playwright
-            self.driver = acquire_playwright()
-        profile = creator_auth.chromium_profile(auth.SPEC, self.store, a.platform_user_id)
-        s.context = self.driver.chromium.launch_persistent_context(str(profile), **options)
-        self._install_publish_guard(s)
-        s.context.set_default_timeout(10000)
-        self._validation_stage = 'session_restore'
-        creator_auth.restore_session(auth.SPEC, s.context, self.store, a, profile)
-        s.original_ref = a.session_ref
-        s.page = s.context.pages[0] if s.context.pages else s.context.new_page()
-        self._init_observations(s)
-        s.page.on('request', lambda request: self._create_request_started(s, request))
-        s.page.on('response', lambda response: self._response(s, response))
-        s.page.on('requestfinished', lambda request: self._create_request_ended(s, request))
-        s.page.on('requestfailed', lambda request: self._create_request_ended(s, request))
-        self._validation_stage = 'page_navigation'
-        s.page.goto(form_contract.MANAGE_URL, wait_until='domcontentloaded')
+        s.result_query_read_only = False
+        try:
+            with session_scope(self.engine) as db:
+                row = db.get(Setting, 'publish.browser_mode')
+                mode = json.loads(row.value_json) if row else 'background'
+            if getattr(s, 'browser_login_visible', False):
+                mode = 'visible'
+            s.external_browser = mode == 'visible'
+            options = self._inspection_browser_options({**browser.browser_options(mode), 'timezone_id': 'Asia/Shanghai'})
+            if self.driver is None:
+                from .playwright_runtime import acquire_playwright
+                self.driver = acquire_playwright()
+            profile = creator_auth.chromium_profile(auth.SPEC, self.store, a.platform_user_id)
+            s.context = self.driver.chromium.launch_persistent_context(str(profile), **options)
+            s.browser_login_context_headed = mode == 'visible'
+            if query:
+                # A new management page has no permission to repeat the historical
+                # final action. The original live verification page returns above.
+                self._install_write_guard(s.context)
+                s.result_query_read_only = True
+            else:
+                self._install_publish_guard(s)
+            s.context.set_default_timeout(10000)
+            self._validation_stage = 'session_restore'
+            if not getattr(s, 'browser_login_preserve_profile', False):
+                creator_auth.restore_session(auth.SPEC, s.context, self.store, a, profile)
+            s.original_ref = a.session_ref
+            s.page = s.context.pages[0] if s.context.pages else s.context.new_page()
+            self._init_observations(s)
+            s.page.on('request', lambda request: self._create_request_started(s, request))
+            s.page.on('response', lambda response: self._response(s, response))
+            s.page.on('requestfinished', lambda request: self._create_request_ended(s, request))
+            s.page.on('requestfailed', lambda request: self._create_request_ended(s, request))
+            self._validation_stage = 'page_navigation'
+            s.page.goto(form_contract.MANAGE_URL, wait_until='domcontentloaded')
+        except Exception:
+            if query:
+                # Query setup precedes the shared step wrapper. Dispose only
+                # this new page; a failed close retains the owner for retry.
+                try:self._release_page(s)
+                except Exception:pass
+            raise
 
     def _surface(self, s):
         # Wujie open shadow DOM is part of the top-level rendered page and is
@@ -478,18 +502,17 @@ class ChannelsMultiPublishAdapter(ChromiumPublishSessionAdapter):
         return False
 
     def _challenge(self, s):
-        return browser.challenge_kind(s.page.evaluate(CHALLENGE) or {})
+        return self._login_challenge(s,lambda:browser.challenge_kind(s.page.evaluate(CHALLENGE) or {}))
 
     def _login_required(self,s):
         self._trace(s,'channels.login_expired',{'before_upload':not s.uploaded,'final_started':bool(s.final)})
-        if not s.final:self.service.set_login_state(s.payload['account_id'],'expired')
         message=('视频号登录已失效，请先在验证页面登录所选账号；完成后继续核对原提交结果。' if s.final else '视频号登录已失效，请先在验证页面登录所选账号；完成后点击“已完成验证”，客户端将继续发布。尚未提交平台。')
         result=self._park(s,'login',message)
         s.stage='登录已失效，等待重新登录'
         return result
 
     def _identity(self, s):
-        return auth.verified_identity(s.page.evaluate(auth.IDENTITY_SCRIPT), s.payload['platform_user_id'])
+        return self._login_read(s,lambda:auth.verified_identity(s.page.evaluate(auth.IDENTITY_SCRIPT), s.payload['platform_user_id']))
 
     def _park_identity_mismatch(self, s, stage):
         # Retain only a safe failure stage, never identity snapshots or secrets.
@@ -538,7 +561,6 @@ class ChannelsMultiPublishAdapter(ChromiumPublishSessionAdapter):
             else:
                 if kind:
                     return self._login_required(s) if kind=='login' else self._park(s, kind)
-                self.service.set_login_state(s.payload['account_id'],'valid')
                 self._trace(s,'channels.login_valid',{'identity_matches':True})
                 return AdapterValidation(uid, True)
             try:
@@ -678,6 +700,11 @@ class ChannelsMultiPublishAdapter(ChromiumPublishSessionAdapter):
                 if success:
                     s.submit_ok = True
                     s.receipt = form_contract.receipt_reference(data['data'])
+                    if s.payload['execution_mode'] == 'publish_now' and not s.receipt:
+                        s.submission_ack = {'kind': 'channels_create_ack', 'platform': self.platform_id,
+                            'request_digest': self._key(s.payload), 'http_status': response.status,
+                            'outer_code': data['errCode'], 'inner_code': data['data']['baseResp']['errcode'],
+                            'request_matched': True}
                 elif type(data.get('errCode')) is int and type(data.get('data')) is dict:
                     base = data['data'].get('baseResp')
                     # Explicit creator rejection is distinct from malformed or
@@ -685,6 +712,8 @@ class ChannelsMultiPublishAdapter(ChromiumPublishSessionAdapter):
                     if request_epoch == s.create_epoch and type(base) is dict and type(base.get('errcode')) is int and (
                             data['errCode'] != 0 or base['errcode'] != 0):
                         s.submit_rejected = True
+                        from .submit_feedback import safe_message
+                        s.platform_message = safe_message(base.get('errmsg') or data.get('errMsg'))
         except Exception:
             return  # Changed/malformed contracts are absence of evidence.
 
@@ -913,6 +942,9 @@ class ChannelsMultiPublishAdapter(ChromiumPublishSessionAdapter):
         final = surface.locator(form_contract.FINAL_CONTROL).filter(has_text=re.compile(r'^\s*发表\s*$'))
         if final.count() != 1 or not final.is_enabled():
             raise ValueError('final video-channel control unavailable')
+        from . import submit_feedback
+        s.feedback_surface = surface
+        submit_feedback.install(surface)
         final.click()
 
     def _observe_original_reminder(self, s):
@@ -991,6 +1023,18 @@ class ChannelsMultiPublishAdapter(ChromiumPublishSessionAdapter):
         self._click_final(s, s.page)
         return True
 
+    def reconcile(self, payload, *, context):
+        if not self.inspection_only:
+            live_context = context if context and any(v.handle == context.get('handle') for v in self.sessions.values()) else None
+            s = self._session(payload, live_context)
+            # An ACK without a work ID has nothing safe to correlate against
+            # the management list. Its exact durable fact needs no new page.
+            if s.final and s.page is None and s.context is None and not s.request_id:
+                durable = self._persisted_ack(s)
+                if durable and not durable.receipt_reference:
+                    return self._step(s, query=True)
+        return super().reconcile(payload, context=context)
+
     def _persisted_ack(self, s):
         """Original immutable attempt ACK survives close/restart/login failures."""
         if not s.final:
@@ -1012,7 +1056,8 @@ class ChannelsMultiPublishAdapter(ChromiumPublishSessionAdapter):
                 final = json.loads(attempt.final_json); result = json.loads(attempt.result_json)
                 if (type(final) is not dict or final.get('request_digest') != row.request_digest
                         or type(result) is not dict or result.get('request_digest') != row.request_digest
-                        or result.get('state') not in {'platform_accepted', 'platform_scheduled'}):
+                        or result.get('state') not in {'platform_accepted', 'platform_scheduled'}
+                        or result.get('protocol_violation')):
                     return None
                 if (result['state'] == 'platform_scheduled' and (row.execution_mode != 'platform_schedule'
                         or result.get('scheduled_at') != row.scheduled_at or row.scheduled_at != s.payload['scheduled_at'])):
@@ -1021,9 +1066,14 @@ class ChannelsMultiPublishAdapter(ChromiumPublishSessionAdapter):
                 if type(reference) is not dict or set(reference) - {'work_id'} or any(
                         form_contract.safe_id(v) != v for v in reference.values()):
                     return None
-                if result['state'] == 'platform_accepted' and not reference:
+                outcome = AdapterOutcome(result['state'], scheduled_at=result.get('scheduled_at'), receipt_reference=reference,
+                    error_code=result.get('error_code'), submission_ack=result.get('submission_ack'))
+                evidence = outcome_evidence(outcome, row.request_digest)
+                if result['state'] == 'platform_accepted' and not reference and not has_channels_immediate_ack(
+                        evidence, platform=row.platform, execution_mode=row.execution_mode,
+                        request_digest=row.request_digest, final_started=True):
                     return None
-                return AdapterOutcome(result['state'], scheduled_at=result.get('scheduled_at'), receipt_reference=reference)
+                return outcome
         except (ValueError, TypeError, KeyError):
             return None
 
@@ -1071,6 +1121,15 @@ class ChannelsMultiPublishAdapter(ChromiumPublishSessionAdapter):
         # deadline; no extra platform request is needed to acknowledge it.
         self._refresh_after_receipt(s)
         if not f['effective_time'] and not s.receipt:
+            outcome = AdapterOutcome('platform_accepted', receipt_reference={}, submission_ack=getattr(s, 'submission_ack', None))
+            try:
+                confirmed = has_channels_immediate_ack(outcome_evidence(outcome, self._key(s.payload)),
+                    platform=self.platform_id, execution_mode=s.payload['execution_mode'],
+                    request_digest=self._key(s.payload), final_started=s.final)
+            except ValueError:
+                confirmed = False
+            if confirmed:
+                return outcome
             return AdapterOutcome('result_unknown', context={'handle': s.handle}, error_code='result_unknown')
         return AdapterOutcome('platform_scheduled' if f['effective_time'] else 'platform_accepted',
             scheduled_at=s.payload['scheduled_at'] if f['effective_time'] else None, receipt_reference=s.receipt)
@@ -1130,8 +1189,14 @@ class ChannelsMultiPublishAdapter(ChromiumPublishSessionAdapter):
                 return self._park_identity_mismatch(s, s.phase)
             if not ready:
                 return self._pause_verification_observation(s)
-            if self.service.get(s.payload['account_id']).login_state=='expired':
-                self.service.set_login_state(s.payload['account_id'],'valid')
+            s.browser_login = False
+            if not query and s.final and getattr(s,'feedback_surface',None) is not None:
+                from . import submit_feedback
+                notice = submit_feedback.outcome(s,s.feedback_surface,self.platform_id,self._key(s.payload))
+                if notice and notice.state=='result_unknown':s.platform_message=notice.platform_message
+                elif notice:
+                    if notice.state in {'platform_scheduled','platform_accepted'}:self._refresh_after_receipt(s)
+                    return notice
             if s.phase == 'baseline':
                 s.stage = '正在检查视频号已有作品'
                 if not s.list_seen and time.monotonic() < s.baseline_deadline:
@@ -1168,7 +1233,8 @@ class ChannelsMultiPublishAdapter(ChromiumPublishSessionAdapter):
             else:
                 s.stage = '正在核对视频号原提交结果'
                 if s.submit_rejected and not s.create_pending:
-                    return AdapterOutcome('platform_rejected', error_code='platform_rejected')
+                    return AdapterOutcome('platform_rejected', error_code='platform_rejected',
+                        platform_message=getattr(s,'platform_message',None) or None)
                 verified = form_contract.verified_row(s.list_rows, s.receipt, f)
                 if verified:
                     self._refresh_after_receipt(s)
@@ -1181,7 +1247,16 @@ class ChannelsMultiPublishAdapter(ChromiumPublishSessionAdapter):
             self._record_preparation_timeout(s)
         return durable or AdapterOutcome('result_unknown' if s.final else 'pre_submit_failed',
             context={'handle': s.handle} if s.final else None,
-            error_code='result_unknown' if s.final else 'timeout')
+            error_code='result_unknown' if s.final else 'timeout',
+            platform_message=getattr(s,'platform_message',None) if s.final else None)
+
+    def _result_page_releasable(self, s):
+        if (s.final is not True or s.request_id is not None
+                or getattr(s, 'external_browser', None) is not False
+                or getattr(s, 'create_pending', None)):
+            return False
+        return (getattr(s, 'create_settled', False) is True
+                or getattr(s, 'result_query_read_only', False) is True)
 
     def _prepare_result_query(self, s):
         s.query_wait_unresolved = False
@@ -1191,14 +1266,21 @@ class ChannelsMultiPublishAdapter(ChromiumPublishSessionAdapter):
         if getattr(s, 'verification_observation_pending', False):
             s.query_wait_unresolved = True
             return
-        if not s.uploaded:
+        fresh_query = getattr(s, 'result_query_read_only', False) is True
+        if fresh_query or not s.uploaded:
             # A reopened query has no live upload or request to interrupt.
-            kind, ready = self._verification_read(s, self._challenge)
+            # uploaded records the historical attempt, not this new page.
+            try:kind, ready = self._verification_read(s, self._challenge)
+            except Exception:
+                if fresh_query:
+                    try:self._release_page(s)
+                    except Exception:pass
+                raise
             if not ready:
                 s.query_wait_unresolved = True
                 self._pause_verification_observation(s)
                 return
-            if not kind:
+            if not kind and not fresh_query:
                 s.page.goto(form_contract.MANAGE_URL, wait_until='domcontentloaded')
             return
         s.stage = '正在等待原发布页返回提交结果'
@@ -1233,7 +1315,8 @@ class ChannelsMultiPublishAdapter(ChromiumPublishSessionAdapter):
         try:
             a = self._account(s); uid, name = self._identity(s)
             self.refreshed[a.id] = {'platform_user_id': uid, 'nickname': name,
-                'session_blob': self._capture_session_blob(s.context, uid), 'original_ref': s.original_ref}
+                'session_blob': self._capture_session_blob(s.context, uid), 'original_ref': s.original_ref,
+                'login_observed_at':self._login_valid_at(s)}
         except Exception:
             pass  # Credential refresh never invalidates receipt evidence.
 
@@ -1247,7 +1330,10 @@ class ChannelsMultiPublishAdapter(ChromiumPublishSessionAdapter):
                 db.execute(text('BEGIN IMMEDIATE'))
                 row = db.get(AccountRow, account_id)
                 if (row is not None and row.platform == self.platform_id and row.login_state != 'removed'
-                        and row.platform_user_id == value['platform_user_id'] and row.session_ref == value['original_ref']):
+                        and row.platform_user_id == value['platform_user_id'] and row.session_ref == value['original_ref']
+                        and self._can_refresh_login_session(db,row,value.get('login_observed_at'))):
                     row.session_ref = self.store.put(row.id, value['session_blob'], versioned=True)
-                    row.login_state = 'valid'
+                    if value.get('login_observed_at') is not None:
+                        self.service.record_login_check(db,row,'valid',observed_at=value['login_observed_at'])
+                    else:row.login_state='valid'
             self.refreshed.pop(account_id, None)

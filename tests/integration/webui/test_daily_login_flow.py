@@ -14,6 +14,7 @@ from yijianjifa.features.library.copy_service import CopyRepository
 from yijianjifa.features.library.media_storage import MediaStorageService
 from yijianjifa.features.publish.deliveries import PublishBatchReceiptRow, DeliveryAttemptRow
 from yijianjifa.storage.db import session_scope
+from yijianjifa.storage.models import Setting
 from test_daily_mixing import Adapter, Renderer, call
 
 
@@ -73,6 +74,11 @@ def submit(flow, rid='one-click'):
     return response['data']['id']
 
 
+def legacy_submit(flow, rid='one-click'):
+    from legacy_daily_fixture import legacy_call
+    return legacy_call(flow[0], flow[2], rid)['id']
+
+
 def phase(api, task_id, expected):
     return until(lambda:(value if (value:=api._daily.status(task_id))['phase']==expected else None))
 
@@ -130,7 +136,7 @@ def test_expired_online_login_prompts_and_relogin_keeps_original_batch_copies_an
 
 def test_expiry_during_making_retains_all_outputs_and_hands_off_only_after_relogin(flow):
     api,provider,_,account=flow
-    original=submit(flow);phase(api,original,'making')
+    original=legacy_submit(flow);phase(api,original,'making')
     api._mix.queue._run_single_item(original)
     assert api._mix.queue.get(original).success_count==1
     provider.results[account.id]={'state':'login_required'}
@@ -157,7 +163,7 @@ def test_expiry_during_making_retains_all_outputs_and_hands_off_only_after_relog
 
 def test_partial_making_pause_and_login_resume_never_remakes_completed_item(flow):
     api,provider,_,account=flow
-    original=submit(flow);phase(api,original,'making')
+    original=legacy_submit(flow);phase(api,original,'making')
     renderer=api._mix.executor.renderer
     render=renderer.render
     def pause_in_first_render(request):
@@ -210,7 +216,8 @@ def test_client_close_during_check_preserves_batch_without_starting_after_late_r
     reopened=DesktopApi(api._engine,app_paths,login_provider=provider,publish_adapters={'douyin':Adapter()})
     try:
         overview=call(reopened,'mix.daily.read')['data']
-        assert overview['active_batch'] is None and overview['recent_batch'] is None
+        assert overview['active_batch'] is None and overview['recent_batch']['id'] == original
+        assert overview['recent_batch']['serial']['waiting_reason'] == 'authorization'
         data=call(reopened,'mix.daily.status',{'id':original})['data']
         assert data['id']==original and data['phase']=='needs_attention' and data['can_continue']
         assert reopened._mix.queue.get(original).state=='paused'
@@ -226,15 +233,18 @@ def test_continue_rejects_untrusted_or_extra_parameters_and_never_creates_a_task
     assert api._mix.tasks()==[]
 
 
-def test_all_selected_accounts_must_pass_before_any_item_is_made(flow):
+def test_verified_accounts_can_continue_while_failed_login_account_is_held(flow):
     api,provider,params,account=flow
     second=AccountService(api._engine).create('douyin','222','第二账号')
     with session_scope(api._engine) as s:s.get(AccountRow,second.id).session_ref='second-synthetic-session'
     params['publishing']['targets'].append({'account_id':second.id,'platform':'douyin'})
     provider.results[second.id]={'state':'login_required'}
-    original=submit(flow);status=phase(api,original,'needs_login')
+    original=submit(flow);status=phase(api,original,'making')
     assert provider.calls==[account.id,second.id]
-    assert [a['id'] for a in status['login_accounts']]==[second.id]
+    with session_scope(api._engine) as s:
+        saved=json.loads(s.get(Setting,'mix.daily.status:'+original).value_json)
+    assert [a['account_id'] for a in saved['login_holds']]==[second.id]
+    assert any('第二账号' in row['account_label'] for row in status['execution']['events'])
     assert api._mix.executor.renderer.index==0
 
 
@@ -286,7 +296,7 @@ def test_replaying_a_completed_continue_receipt_never_reauthorizes_after_later_p
 
 def test_relogin_preserves_already_rendered_pending_file_and_resumes_registration_without_rendering_it_again(flow,monkeypatch):
     api,provider,_,account=flow
-    original=submit(flow);phase(api,original,'making')
+    original=legacy_submit(flow);phase(api,original,'making')
     snapshot=copy.deepcopy(api._mix.queue.get(original).snapshot)
     commit=api._mix.executor._commit_success
     def unavailable_once(*args,**kwargs):
@@ -316,7 +326,7 @@ def test_relogin_preserves_already_rendered_pending_file_and_resumes_registratio
 
 def test_new_login_check_revokes_old_proof_before_any_publish_authorization(flow,monkeypatch):
     api,provider,_,_=flow
-    original=submit(flow);phase(api,original,'making')
+    original=legacy_submit(flow);phase(api,original,'making')
     prepared=api._multi_publish.service.prepare
     invalidated=threading.Event()
     def prepare_then_revoke(*args,**kwargs):
@@ -356,7 +366,7 @@ def test_original_after_final_unknown_target_is_never_retried_by_continue(flow):
         from yijianjifa.features.publish.coordinator import AdapterOutcome
         return AdapterOutcome('result_unknown')
     api._multi_publish.catalog.transport_for('douyin').adapter.submit=submit_unknown
-    original=submit(flow);phase(api,original,'making')
+    original=legacy_submit(flow);phase(api,original,'making')
     api._mix.queue.run_once_until_idle();ready=phase(api,original,'publishing')
     child=ready['publish_task_ids'][0];deliveries=api._multi_publish.detail(child)['deliveries']
     api._multi_publish.coordinator.run_once(child,[d['id'] for d in deliveries])
@@ -370,7 +380,7 @@ def test_original_after_final_unknown_target_is_never_retried_by_continue(flow):
 
 def test_restart_after_whole_batch_check_before_handoff_can_continue_without_remaking(flow,app_paths,monkeypatch):
     api,provider,_,_=flow
-    original=submit(flow);phase(api,original,'making')
+    original=legacy_submit(flow);phase(api,original,'making')
     reconcile=api._daily.reconcile
     def hold_handoff(task_id):
         with session_scope(api._engine) as s:

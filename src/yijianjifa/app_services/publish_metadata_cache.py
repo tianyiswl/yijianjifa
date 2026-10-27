@@ -66,7 +66,11 @@ class PublishMetadataCache:
 
     def write(self, account, kind, query, payload, *, now=None):
         now = now or datetime.now(timezone.utc)
-        value = dict(platform=account.platform,owner=[account.id,account.platform,account.platform_user_id],identity=self.identity(account), query=query, observed_at=now.isoformat(), payload=payload)
+        # Ordinary platform labels/places already survive login renewal. This
+        # cache is no login or submission grant, including before first login.
+        identity=(hashlib.sha256(repr((account.id,account.platform,account.platform_user_id)).encode()).hexdigest()
+            if kind in ('locations','declarations-ordinary') else self.identity(account))
+        value = dict(platform=account.platform,owner=[account.id,account.platform,account.platform_user_id],identity=identity, query=query, observed_at=now.isoformat(), payload=payload)
         with session_scope(self.engine) as session:
             key = self.key(account, kind, query)
             row = session.get(Setting, key)

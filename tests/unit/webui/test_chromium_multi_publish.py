@@ -29,6 +29,7 @@ def browser(db_engine,app_paths,tmp_path,monkeypatch):
     class Page:
         def __init__(self):self.url='';self.challenge=None;self.result=False;self.post_challenge=False;self.form=None;self.identity=identity;self.mouse=SimpleNamespace(click=lambda *a:None)
         def is_closed(self):return False
+        def bring_to_front(self):pass
         def goto(self,url,**k):self.url=url
         def add_init_script(self,code):pass
         def locator(self,selector):l=Locator();l.page=self;return l
@@ -37,6 +38,8 @@ def browser(db_engine,app_paths,tmp_path,monkeypatch):
         def screenshot(self,**kwargs):return b'synthetic-frame'
         def evaluate(self,code,args=None):
             assert threading.get_ident()==events[0][2]
+            from yijianjifa.webui import submit_feedback
+            if code in {submit_feedback.READ,submit_feedback.INSTALL}:return None
             if code==old.CHALLENGE:return self.challenge
             if 'return identity;' in code:return self.identity
             if 'p011ResultNeedsSearch' in code:
@@ -84,6 +87,104 @@ def adapter(db_engine,app_paths,payload):
     a=ChromiumMultiPublishAdapter(db_engine,app_paths)
     a.bind_delivery(digest=digest(payload),delivery_id='delivery',task_id='batch')
     return a
+
+
+def test_daily_posting_limit_is_reported_as_platform_rejection(browser,db_engine,app_paths):
+    p,pages,events,_=browser;a=adapter(db_engine,app_paths,p)
+    a.validate_target(p,p,p['execution_mode']);page=pages[0];evaluate=page.evaluate
+    def read(code,args=None):
+        value=evaluate(code,args)
+        if 'p011ResultNeedsSearch' in code and page.result:value['posting_limit']=True
+        return value
+    page.evaluate=read
+    try:
+        outcome=a.submit(p,context=None,before_final=lambda:None)
+        assert outcome.state=='platform_rejected'
+        assert outcome.error_code=='douyin_daily_post_limit'
+        assert sum(e[0]=='final' for e in events)==1
+        assert not a._session(p).locked
+    finally:a.close()
+
+
+def test_final_success_notice_does_not_need_manage_rows(browser,db_engine,app_paths):
+    p,pages,events,_=browser;a=adapter(db_engine,app_paths,p)
+    a.validate_target(p,p,p['execution_mode']);page=pages[0];evaluate=page.evaluate
+    def read(code,args=None):
+        if 'p011SubmitFeedback' in code and 'MutationObserver' not in code:
+            return {'state':'accepted','message':'定时发布成功'} if page.result else None
+        value=evaluate(code,args)
+        if 'p011ResultNeedsSearch' in code and page.result:
+            value.update(ready=False,matches=[])
+        return value
+    page.evaluate=read;a.step_timeout=.04
+    try:
+        outcome=a.submit(p,context=None,before_final=lambda:None)
+        assert outcome.state=='platform_scheduled'
+        assert outcome.scheduled_at==p['scheduled_at']
+        assert sum(e[0]=='final' for e in events)==1
+        assert not a._session(p).locked
+    finally:a.close()
+
+
+def test_unknown_result_keeps_submit_page_but_explicit_query_releases_account(browser,db_engine,app_paths,monkeypatch):
+    p,pages,events,_=browser;a=adapter(db_engine,app_paths,p)
+    a.validate_target(p,p,p['execution_mode']);s=a._session(p);s.final=True;s.uploaded=True
+    pages[0].url='https://creator.douyin.com/creator-micro/content/post/video'
+    monkeypatch.setattr(a,'_advance',lambda *args,**kwargs:AdapterOutcome('result_unknown',error_code='timeout'))
+    try:
+        assert a._step(s).state=='result_unknown'
+        assert s.locked and s.page is not None
+        closes=sum(e[0]=='close' for e in events)
+        assert a.reconcile(p,context=None).state=='result_unknown'
+        assert s.page is None and not s.locked
+        assert sum(e[0]=='close' for e in events)==closes+1
+        assert not any(e[0] in {'upload','final'} for e in events)
+    finally:a.close()
+
+
+@pytest.mark.parametrize('same_time',[True,False])
+def test_existing_schedule_reports_specific_reason_without_upload(browser,db_engine,app_paths,same_time):
+    p,pages,events,_=browser;a=adapter(db_engine,app_paths,p)
+    a.validate_target(p,p,p['execution_mode']);page=pages[0];evaluate=page.evaluate
+    when=datetime.fromisoformat(p['scheduled_at'])+timedelta(days=0 if same_time else 1)
+    expected=when.astimezone(timezone(timedelta(hours=8))).strftime('%Y年%m月%d日 %H:%M')
+    def read(code,args=None):
+        value=evaluate(code,args)
+        if 'p011ResultNeedsSearch' in code and not page.result:value['matches']=[{'time':expected,'review':'定时发布中'}]
+        return value
+    page.evaluate=read
+    try:
+        outcome=a.submit(p,context=None,before_final=lambda:events.append(('journal',None,threading.get_ident())))
+        if same_time:
+            assert outcome.state=='pre_submit_failed'
+            assert outcome.error_code=='adapter_failed'
+            assert outcome.error_category=='existing_scheduled_work'
+            assert outcome.error_stage=='page_preparation'
+            assert not any(e[0] in {'upload','final','journal'} for e in events)
+        else:
+            assert outcome.state=='platform_scheduled'
+            assert [e[0] for e in events if e[0] in {'upload','journal','final'}]==['upload','journal','final']
+    finally:a.close()
+
+
+@pytest.mark.parametrize('correct_uid', [True, False])
+def test_combined_baseline_identity_read_updates_status_without_a_second_identity_request(
+        browser, db_engine, app_paths, monkeypatch, correct_uid):
+    p,pages,events,identity=browser;a=adapter(db_engine,app_paths,p)
+    if not correct_uid:identity.update(uid='222',uid_after='222')
+    def next_phase(*args, **kwargs):raise TimeoutError('synthetic stop before upload')
+    monkeypatch.setattr(a,'_read_identity',next_phase)
+    s=a._session(p)
+    try:
+        if correct_uid:
+            with pytest.raises(TimeoutError,match='synthetic stop before upload'):
+                a._advance(s,before_final=lambda:pytest.fail('baseline cannot publish'))
+        else:
+            assert a._advance(s).error_code=='account_mismatch'
+        service=AccountService(db_engine);account=service.get(p['account_id'])
+        assert service.login_checks([account])[account.id]['state']==('valid' if correct_uid else 'identity_mismatch')
+        assert not any(event[0] in {'upload','final'} for event in events)
+    finally:a.close()
 
 
 def test_new_publish_submission_waits_for_previous_sms_sixty_second_interval(browser,db_engine,app_paths):
@@ -144,7 +245,9 @@ def test_changed_session_requires_explicit_same_identity_authorization_and_audit
     with session_scope(db_engine) as s:s.get(AccountRow,p['account_id']).session_ref='version-2'
     result=a.validate_target(p,p,p['execution_mode'])
     assert isinstance(result,AdapterOutcome) and result.state=='paused_auth'
-    assert not pages
+    assert len(pages)==1
+    assert next(event[1] for event in events if event[0]=='launch') is False
+    assert not a._session(p).resume_authorized and not any(e[0] in {'upload','final'} for e in events)
     with pytest.raises(ValueError):a.resume(p,context=result.context,before_final=lambda:None)
     a.authorize_resume('delivery')
     result=a.resume(p,context=result.context,before_final=lambda:None)

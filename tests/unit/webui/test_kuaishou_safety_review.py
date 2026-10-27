@@ -92,7 +92,8 @@ def test_verification_first_seen_at_final_guard_keeps_original_upload(case,monke
     finally:adapter.close()
 
 
-def test_login_frames_refresh_only_on_original_worker_and_never_recreate_page(case,monkeypatch):
+@pytest.mark.parametrize('kind',['login','complex'])
+def test_uploaded_verification_frames_refresh_only_on_original_worker_and_never_recreate_page(case,monkeypatch,kind):
     from yijianjifa.webui import chromium_publish_session as lifecycle
     adapter,payload,page,events,_=case
     assert adapter.validate_target(payload,payload,payload['execution_mode']).authorized
@@ -103,8 +104,11 @@ def test_login_frames_refresh_only_on_original_worker_and_never_recreate_page(ca
         frames.append(threading.get_ident());return ('frame-'+str(len(frames))).encode()
     page.screenshot=screenshot
     session=adapter._session(payload)
+    # An uploaded form must retain its original page. Only an unused login
+    # page is eligible for the new real-browser handoff.
+    session.uploaded=True
     try:
-        adapter._park(session,'login')
+        adapter._park(session,kind)
         first=adapter.interventions()[0]
         assert first['image']==base64.b64encode(b'frame-1').decode()
         clock[0]=11.0

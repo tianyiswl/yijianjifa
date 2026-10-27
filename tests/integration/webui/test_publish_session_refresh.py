@@ -1,28 +1,31 @@
-from types import SimpleNamespace
 import pytest
 from yijianjifa.webui.douyin_scheduled import persist_refreshed_sessions
 
 
-def test_refresh_only_saves_matching_account_and_original_session(monkeypatch,tmp_path):
-    import yijianjifa.features.accounts.service as accounts
-    import yijianjifa.features.accounts.session_store as stores
-    writes=[]
-    class Service:
-        def __init__(self,engine):pass
-        def get(self,account):return SimpleNamespace(session_ref={'A':'old','B':'newer-login'}[account])
-        def assert_same_identity(self,account,uid):
-            if uid!={'A':'123','B':'456'}[account]:raise ValueError('identity mismatch')
-        def attach_session(self,account,store,blob):writes.append((account,blob))
-    monkeypatch.setattr(accounts,'AccountService',Service)
-    monkeypatch.setattr(stores,'SessionStore',lambda path:object())
-    pending={'A':dict(original_ref='old',platform_user_id='123',session_blob=b'refreshed'),
-             'B':dict(original_ref='old',platform_user_id='456',session_blob=b'stale')}
-    persist_refreshed_sessions(None,SimpleNamespace(data_dir=tmp_path),pending)
-    assert writes==[('A',b'refreshed')]
+def test_refresh_only_saves_matching_account_and_original_session(db_engine,app_paths):
+    from yijianjifa.features.accounts.service import AccountService, AccountIdentityMismatch
+    from yijianjifa.features.accounts.session_store import SessionStore
+    service=AccountService(db_engine);store=SessionStore(app_paths.data_dir/'profiles')
+    a=service.create('douyin','123','合成账号A');b=service.create('douyin','456','合成账号B')
+    original_a=service.attach_session(a.id,store,b'original-a')
+    original_b=service.attach_session(b.id,store,b'original-b')
+    newer_b=service.attach_session(b.id,store,b'newer-login-b')
+    before=set(store.root.rglob('session-*.bin'))
+    pending={a.id:dict(original_ref=original_a,platform_user_id='123',session_blob=b'refreshed-a'),
+             b.id:dict(original_ref=original_b,platform_user_id='456',session_blob=b'stale-b')}
+    persist_refreshed_sessions(db_engine,app_paths,pending)
+    refreshed_a=service.get(a.id).session_ref
+    assert refreshed_a!=original_a and store.get(a.id,ref=refreshed_a)==b'refreshed-a'
+    assert store.get(a.id,ref=original_a)==b'original-a'
+    assert service.get(b.id).session_ref==newer_b and store.get(b.id,ref=newer_b)==b'newer-login-b'
+    after=set(store.root.rglob('session-*.bin'))
+    assert len(after-before)==1
     assert pending=={}
-    with pytest.raises(ValueError):
-        persist_refreshed_sessions(None,SimpleNamespace(data_dir=tmp_path),{'A':dict(original_ref='old',platform_user_id='456',session_blob=b'wrong')})
-    assert len(writes)==1
+    with pytest.raises(AccountIdentityMismatch):
+        persist_refreshed_sessions(db_engine,app_paths,{a.id:dict(original_ref=refreshed_a,platform_user_id='456',session_blob=b'wrong')})
+    assert set(store.root.rglob('session-*.bin'))==after
+    assert service.get(a.id).session_ref==refreshed_a
+    assert service.get(b.id).session_ref==newer_b
 
 
 def test_refresh_flush_occurs_after_failed_batch_without_retry(db_engine,app_paths):

@@ -2,6 +2,8 @@ const test=require('node:test'),assert=require('node:assert/strict');
 const {mount:mountBase,baseData}=require('./support/commerce_view.cjs');
 // Explicit initial V1 compatibility intent for existing Douyin-only behaviors.
 const mount=(handler,name='commerce',incoming,extra)=>mountBase(handler,name,name==='publish'?{...incoming,compatibility:true}:incoming,extra);
+// Per-batch exceptions remain in advanced mode; saved defaults now live in account management.
+async function openAccountDeclaration(view){if(view.find(n=>n.dataset.action==='enter-advanced'||n.dataset.action==='back-quick').dataset.action==='enter-advanced')await view.click('高级设置');await view.click('本账号内容声明');}
 test('ordinary account declaration selection and explicit item clear remain scoped and refresh revokes choices',async()=>{
  const requests=[];let queryCount=0;
  const view=await mount((op,p)=>{
@@ -23,7 +25,7 @@ view.find(n=>n.attrs['aria-label']==='视频分配方式').value='split_across_a
  // Account, schedule and videos now share the same page.
 await view.click('本账号内容声明');await view.click('刷新平台声明');await view.click('取消');// Account, schedule and videos now share the same page.
 await view.click('预览发布安排');
- assert.deepEqual(requests.at(-1).declarations.a,{token:'policy-2',batch:null,items:{}});view.dispose();
+ assert.equal(requests.at(-1).declarations.a,undefined);view.dispose();
 });
 test('ordinary declaration refresh ignores duplicate clicks and a late result cannot reopen a cancelled editor',async()=>{
  let count=0,finish;
@@ -32,7 +34,7 @@ test('ordinary declaration refresh ignores duplicate clicks and a late result ca
   if(op==='account.list')return {items:[{id:'a',nickname:'账号A'}],total:1};
   if(op==='publish.declarations.query'){if(p.cache_only)return {available:false,items:[]};count++;return new Promise(resolve=>finish=resolve);}if(op==='settings.publish.read')return {settings:null};if(op==='settings.publish.save')return {saved:true};if(op==='preset.list')return {items:[],total:0};throw Error(op);
  },'publish');
- await view.click('当前账号内容声明');await view.click('刷新平台声明');await view.click('刷新平台声明');assert.equal(count,1);
+ await openAccountDeclaration(view);await view.click('刷新平台声明');await view.click('刷新平台声明');assert.equal(count,1);
  await view.click('取消');finish({available:true,required:false,token:'late',items:[]});await view.flush();assert.equal(view.ids.get('overlay').hidden,true);view.dispose();
 });
 async function twoAccountDeclarations(options){const requests=[];const view=await mount((op,p)=>{
@@ -75,7 +77,7 @@ test('refreshing one account withdraws the common declaration while preserving a
  const options=[{id:'d',label:'声明D'},{id:'e',label:'声明E'}];const {view,requests,openAccount,common,preview}=await twoAccountDeclarations({a:options,b:options});
  await common('d');await openAccount('账号A');view.find(n=>n.attrs['aria-label']==='本账号批量声明').value='e';await view.click('应用声明');
  await openAccount('账号B');await view.click('刷新平台声明');await view.click('取消');await preview();
- assert.equal(requests.at(-1).declarations.a.batch,'e');assert.equal(requests.at(-1).declarations.b.batch,null);view.dispose();
+ assert.equal(requests.at(-1).declarations.a.batch,'e');assert.equal(requests.at(-1).declarations.b,undefined);view.dispose();
 });
 
 test('stale cached declarations can be selected locally, block preparation, and survive verification',async()=>{
@@ -108,19 +110,19 @@ async function builtinDeclarations({query,accountRows=[{id:'a',nickname:'账号A
  return {view,calls,requests,async preview(){for(const id of ['publish-per-day','publish-days']){const input=view.find(n=>n.id===id);input.value='1';input.oninput();}const cb=view.find(n=>n.attrs['aria-label']==='选择 测试视频');cb.checked=true;cb.onchange();await view.click('预览发布安排');}};
 }
 test('built-in declarations load without a valid login marker and have no read, refresh, steps or update-time controls',async()=>{
- const {view,calls}=await builtinDeclarations();await view.click('当前账号内容声明');const overlay=view.ids.get('overlay'),select=view.find(n=>n.attrs['aria-label']==='本账号批量声明');
+ const {view,calls}=await builtinDeclarations();await openAccountDeclaration(view);const overlay=view.ids.get('overlay'),select=view.find(n=>n.attrs['aria-label']==='本账号批量声明');
  assert.equal(select.disabled,false);assert.equal(select.value,'');assert.equal(select.children.length,7);assert.deepEqual(select.children.slice(1).map(n=>n.textContent),builtinLabels);
  assert.equal(overlay.querySelectorAll('button').some(n=>/读取平台声明|刷新平台声明/.test(n.textContent)),false);assert.equal(overlay.querySelectorAll('.metadata-steps,.metadata-tools').length,0);
  assert(overlay.querySelectorAll('p').some(n=>/不选择.*不添加.*发布/.test(n.textContent)));assert.equal(overlay.querySelectorAll('span').some(n=>n.textContent.includes('上次更新')),false);
  assert.deepEqual(calls.filter(c=>c.op==='publish.declarations.query').map(c=>c.p),[{account_id:'a',refresh:false,cache_only:true}]);assert.equal(calls.some(c=>/account\.(login|capability)|publish\.(execute|confirm)/.test(c.op)),false);await view.click('取消');view.dispose();
 });
 test('applying a built-in declaration keeps its account token and reopening makes no refresh request',async()=>{
- const {view,calls,requests,preview}=await builtinDeclarations();await view.click('当前账号内容声明');view.find(n=>n.attrs['aria-label']==='本账号批量声明').value=builtinRows[0].id;await view.click('应用声明');
+ const {view,calls,requests,preview}=await builtinDeclarations();await openAccountDeclaration(view);view.find(n=>n.attrs['aria-label']==='本账号批量声明').value=builtinRows[0].id;await view.click('应用声明');
  assert.equal(view.find(n=>n.attrs['aria-label']==='已选内容声明').textContent,builtinRows[0].label);await preview();assert.deepEqual(requests.at(-1).declarations,{a:{token:'builtin-a',batch:builtinRows[0].id,items:{}}});
- await view.click('当前账号内容声明');assert.equal(view.find(n=>n.attrs['aria-label']==='本账号批量声明').value,builtinRows[0].id);assert.equal(calls.filter(c=>c.op==='publish.declarations.query').length,1);await view.click('取消');view.dispose();
+ await openAccountDeclaration(view);assert.equal(view.find(n=>n.attrs['aria-label']==='本账号批量声明').value,builtinRows[0].id);assert.equal(calls.filter(c=>c.op==='publish.declarations.query').length,1);await view.click('取消');view.dispose();
 });
 test('leaving built-in declaration unselected explicitly applies no declaration',async()=>{
- const {view,requests,preview}=await builtinDeclarations();await view.click('当前账号内容声明');await view.click('应用声明');await preview();assert.deepEqual(requests.at(-1).declarations.a,{token:'builtin-a',batch:null,items:{}});assert.equal(view.find(n=>n.attrs['aria-label']==='已选内容声明').textContent,'');view.dispose();
+ const {view,requests,preview}=await builtinDeclarations();await openAccountDeclaration(view);await view.click('应用声明');await preview();assert.deepEqual(requests.at(-1).declarations.a,{token:'builtin-a',batch:null,items:{}});assert.equal(view.find(n=>n.attrs['aria-label']==='已选内容声明').textContent,'');view.dispose();
 });
 test('common built-in declarations automatically load each account locally and preserve account and item exceptions',async()=>{
  const {view,calls,requests,preview}=await builtinDeclarations({accountRows:[{id:'a',nickname:'账号A'},{id:'b',nickname:'账号B',login_state:'invalid'}]});await view.click('高级设置');await view.click('全选','发布账号全选');await view.click('统一内容声明');
@@ -137,12 +139,12 @@ test('a local declaration result from a cancelled account editor cannot overwrit
  let finish;const {view}=await builtinDeclarations({accountRows:[{id:'a',nickname:'账号A'},{id:'b',nickname:'账号B'}],query:p=>p.account_id==='a'?new Promise(resolve=>finish=resolve):{available:true,required:false,token:'builtin-b',items:[builtinRows[1]],source:'builtin'}});await view.click('高级设置');await view.click('本账号内容声明');await view.click('取消');const search=view.find(n=>n.attrs['aria-label']==='搜索发布账号');search.value='账号B';search.oninput();await view.click('本账号内容声明');finish({available:true,required:false,token:'late-a',items:[builtinRows[0]],source:'builtin'});await view.flush();const select=view.find(n=>n.attrs['aria-label']==='本账号批量声明');assert.deepEqual(select.children.slice(1).map(n=>n.textContent),[builtinRows[1].label]);assert.equal(view.ids.get('overlay').querySelectorAll('button').some(n=>/刷新平台声明/.test(n.textContent)),false);await view.click('取消');view.dispose();
 });
 test('a pending local declaration lookup presents no platform-read controls or upload instructions and a cancelled error stays silent',async()=>{
- let fail;const {view}=await builtinDeclarations({query:()=>new Promise((_,reject)=>fail=reject)});await view.click('当前账号内容声明');const overlay=view.ids.get('overlay');
+ let fail;const {view}=await builtinDeclarations({query:()=>new Promise((_,reject)=>fail=reject)});await openAccountDeclaration(view);const overlay=view.ids.get('overlay');
  assert.equal(view.find(n=>n.attrs['aria-label']==='本账号批量声明').disabled,true);assert.equal(overlay.querySelectorAll('button').some(n=>/读取平台声明|刷新平台声明/.test(n.textContent)),false);assert.equal(overlay.querySelectorAll('p').some(n=>/上传|扫码|登录|尚未设置/.test(n.textContent)),false);assert.equal(overlay.querySelectorAll('.metadata-steps,.metadata-tools').length,0);
  await view.click('取消');const toast=view.ids.get('toast'),previous=toast.textContent;fail(Error('cancelled late error'));await view.flush();assert.equal(overlay.hidden,true);assert.equal(toast.textContent,previous);view.dispose();
 });
 test('a detached declaration apply action cannot modify declarations after the editor has closed',async()=>{
- const {view,requests,preview}=await builtinDeclarations();await view.click('当前账号内容声明');const select=view.find(n=>n.attrs['aria-label']==='本账号批量声明'),apply=view.find(n=>n.tag==='button'&&n.textContent==='应用声明');select.value=builtinRows[0].id;await view.click('取消');apply.onclick({isTrusted:true});await view.flush();await preview();assert.equal(requests.at(-1).declarations.a.batch,null);view.dispose();
+ const {view,requests,preview}=await builtinDeclarations();await openAccountDeclaration(view);const select=view.find(n=>n.attrs['aria-label']==='本账号批量声明'),apply=view.find(n=>n.tag==='button'&&n.textContent==='应用声明');select.value=builtinRows[0].id;await view.click('取消');apply.onclick({isTrusted:true});await view.flush();await preview();assert.deepEqual(requests.at(-1).declarations,{});view.dispose();
 });
 test('an unavailable account in a common local lookup prevents partial account policies or a declaration apply action',async()=>{
  const {view,requests,preview}=await builtinDeclarations({accountRows:[{id:'a',nickname:'账号A'},{id:'b',nickname:'账号B'}],query:p=>p.account_id==='a'?{available:true,required:false,token:'builtin-a',items:builtinRows,source:'builtin'}:{available:false,items:[]}});await view.click('高级设置');await view.click('全选','发布账号全选');await view.click('统一内容声明');assert.equal(view.ids.get('overlay').querySelectorAll('button').some(n=>n.textContent==='应用统一声明'),false);assert.match(view.find(n=>n.attrs.role==='status').textContent,/暂不可用/);await view.click('取消');await preview();assert.deepEqual(requests.at(-1).declarations,{});view.dispose();

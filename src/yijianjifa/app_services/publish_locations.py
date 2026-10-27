@@ -76,5 +76,14 @@ class PublishLocations:
         # Final publish form performs exact name/address selection and readback.
         return dict(query['rows'][ref['id']])
 
+    def durable_choice(self,account_id,ref):
+        """Save only a choice resolved from this account's trusted query."""
+        if ref is None:return None
+        selected=self.resolve(account_id,ref)
+        with self._lock:
+            query=self._queries.get(ref['token'])
+            if query is None:raise ValueError('location query unavailable')
+            return {**selected,'query':query['query'],'scope':query['scope']}
+
     def close(self):
         with self._lock:self._queries.clear()

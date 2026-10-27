@@ -552,6 +552,10 @@ class DownloadRuntime:
         return existing,active
 
     def _refresh(self,connection,task_id):
+        # SQLite 的旧事务模式不会为 SELECT 加锁；先取得写锁，避免恢复已提交后
+        # 仍按旧暂停原因重发通知。此处保留时间戳，最终状态写入时再更新时间。
+        connection.execute(update(TaskCenterRow).where(TaskCenterRow.id==task_id,TaskCenterRow.kind=='download')
+            .values(updated_at=TaskCenterRow.updated_at))
         summary=self.repository._summary(connection,task_id);control=self._control(connection,task_id)
         with self._lock:active=any(owner==task_id for _,owner in self._active.values())
         pending=[];running=False

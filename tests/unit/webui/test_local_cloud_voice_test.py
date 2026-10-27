@@ -89,9 +89,9 @@ def test_local_test_flag_is_native_only_and_not_a_production_endpoint_change(tmp
     local = CloudVoiceAccess(paths, endpoint='http://127.0.0.1:8768', local_test=True)
     assert local.read()['local_test'] is True
     assert CloudVoiceAccess(paths, endpoint='').read().get('local_test', False) is False
-    # Public source has no paid-service default; native test mode does not
-    # enable one or change an explicitly configured official service.
-    assert CLOUD_VOICE_ENDPOINT == ''
+    # Native test mode must not retarget the public business default or an
+    # explicitly configured service, and never enables billing for test audio.
+    assert CLOUD_VOICE_ENDPOINT == 'https://39.108.82.213'
     official = CloudVoiceAccess(paths, endpoint='https://voice.example.test')
     assert official.endpoint == 'https://voice.example.test'
     assert official.local_test is False

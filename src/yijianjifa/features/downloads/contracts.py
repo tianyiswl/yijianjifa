@@ -3,7 +3,7 @@ from typing import Literal, Protocol
 import math
 import re
 
-ErrorCode = Literal['input_limit', 'unsafe_source', 'redirect_limit', 'size_limit', 'timeout', 'disk_space', 'cancelled', 'network', 'source_missing', 'unsupported_source', 'metadata_missing', 'verification_required', 'account_busy', 'account_unavailable', 'session_missing', 'session_invalid', 'identity_mismatch', 'no_audio', 'media_invalid', 'media_tool_missing', 'media_failed', 'model_required', 'model_invalid', 'model_unknown', 'subtitle_conflict', 'subtitle_invalid', 'no_speech', 'ocr_failed', 'no_text', 'local_format_unsupported', 'local_source_missing', 'local_reselect_required']
+ErrorCode = Literal['input_limit', 'single_category_only', 'unsafe_source', 'redirect_limit', 'size_limit', 'timeout', 'disk_space', 'cancelled', 'network', 'source_missing', 'unsupported_source', 'metadata_missing', 'verification_required', 'account_busy', 'account_unavailable', 'session_missing', 'session_invalid', 'identity_mismatch', 'no_audio', 'media_invalid', 'media_tool_missing', 'media_failed', 'model_required', 'model_invalid', 'model_unknown', 'subtitle_conflict', 'subtitle_invalid', 'no_speech', 'ocr_failed', 'no_text', 'local_format_unsupported', 'local_source_missing', 'local_reselect_required']
 AuxiliaryKind = Literal['resolve', 'cover', 'preview', 'region', 'resource_import', 'resource_preview', 'resource_reveal', 'resource_delete', 'subtitle_export', 'model_download', 'model_import']
 
 class DownloadError(Exception):

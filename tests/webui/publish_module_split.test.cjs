@@ -28,7 +28,7 @@ test('every sidebar exposes one independent distribution route and respects the 
  vm.createContext(context);vm.runInContext(fs.readFileSync(path.join(__dirname,'../../src/yijianjifa/webui/assets/features.js'),'utf8'),context);
  for(const route of ['library','mixing','finished','publish','multi_publish','downloads','accounts','tasks','voices','presets']){
   nav.replaceChildren(new Node('button'));context.P011Router.current=route;vm.runInContext('P011ApplyFeatures()',context);
-  assert.deepEqual(nav.children.map(n=>n.textContent),['混剪制作','资料库','成品库','普通发布','多平台分发','账号管理','任务记录','配音管理','视频下载','常用方案与设置']);
+  assert.deepEqual(nav.children.map(n=>n.textContent),['混剪制作','资料库','成品库','抖音发布','多平台分发','账号管理','任务记录','配音管理','视频下载','常用方案与设置']);
   assert.equal(nav.children.filter(n=>n.disabled).length,1);assert.equal(nav.children.find(n=>n.disabled).dataset.route,route);
   const multi=nav.children.find(n=>n.dataset.route==='multi_publish');if(!multi.disabled)multi.onclick({isTrusted:true});
  }

@@ -29,14 +29,9 @@ async function requestAfterSelectionChange({scenario='video',videoIds=['old-vide
  try{
   if(scenario.startsWith('video')){
    await view.click('预览 / 编辑');
-   if(scenario==='video'){const common=view.find(n=>n.attrs['aria-label']==='本次公共标题');common.value='保留旧视频公共草稿';common.oninput();}
-   await view.click('视频号资料');
-   if(scenario==='video'){const platform=view.find(n=>n.attrs['aria-label']==='本条视频号标题');platform.value='保留旧视频平台草稿';platform.oninput();}
-  }else if(scenario==='platform_dropdown'){
-   const account=view.find(n=>n.attrs['aria-label']==='B站发布账号');account.value='';await account.onchange();
-  }else if(scenario==='platform_clear')await view.click('取消全选','B站账号取消全选');
-  else if(scenario==='platform_toggle'){
-   const account=view.find(n=>n.attrs['aria-label']==='B站账号 合成账号1');account.checked=false;await account.onchange();
+   if(scenario==='video'){const content=view.find(n=>n.attrs['aria-label']==='本条标题');content.value='保留旧视频草稿';content.oninput();}
+  }else if(scenario.startsWith('platform')){
+   const account=view.find(n=>n.dataset.account===accountIds[1]);account.checked=false;await account.onchange({isTrusted:true});
   }else throw Error('Unknown fixture scenario');
   const selected=view.find(n=>n.attrs['aria-label']==='选择 离线视频1');selected.checked=true;selected.onchange();
   await view.flush();await view.click('开始发布');
@@ -48,7 +43,7 @@ async function requestAfterSelectionChange({scenario='video',videoIds=['old-vide
   if(scenario.startsWith('video')){
    const old=view.find(n=>n.attrs['aria-label']==='选择 离线视频0');old.checked=true;old.onchange();
   }else{
-   const account=view.find(n=>n.attrs['aria-label']==='B站发布账号');account.value=accountIds[2];await account.onchange();
+   const account=view.find(n=>n.dataset.account===accountIds[2]);account.checked=true;await account.onchange({isTrusted:true});
   }
   await view.click('预览发布安排');
   return {first,reselected:calls.filter(c=>c.op==='multi_publish.prepare').at(-1).p,saved:calls.filter(c=>c.op==='multi_publish.settings.save').map(c=>c.p.settings),operations:calls.map(c=>c.op)};

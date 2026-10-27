@@ -7,7 +7,7 @@ function P011AddedTime(value){
  return `${parts.year}-${parts.month}-${parts.day} ${parts.hour}:${parts.minute}`;
 }
 const P011Navigation={
- items:[['混剪制作','mixing'],['资料库','library'],['成品库','finished'],['普通发布','publish'],['多平台分发','multi_publish'],['团购带货','commerce'],['账号管理','accounts'],['任务记录','tasks'],['配音管理','voices'],['视频下载','downloads'],['常用方案与设置','presets']],
+ items:[['混剪制作','mixing'],['资料库','library'],['成品库','finished'],['抖音发布','publish'],['多平台分发','multi_publish'],['团购带货','commerce'],['账号管理','accounts'],['任务记录','tasks'],['配音管理','voices'],['视频下载','downloads'],['常用方案与设置','presets']],
  render(nav){
   const buttons=this.items.filter(([,route])=>route!=='commerce'||P011Features.commerce).map(([label,route])=>{
    const button=document.createElement('button'),active=P011Router.current===route;
@@ -24,7 +24,7 @@ function P011ApplyFeatures(){
  document.querySelectorAll('[data-commerce-column]').forEach(n=>n.hidden=!P011Features.commerce);
  if(P011Features.commerce)return;
  [...document.querySelectorAll('nav button'),...document.querySelectorAll('.nav button')].forEach(b=>{if(b.textContent.trim()==='团购带货')b.remove();});
- for(const id of ['commerce-btn','checkSelected']){const node=document.getElementById(id);if(node)node.hidden=true;}
+ const handoff=document.getElementById('commerce-btn');if(handoff)handoff.hidden=true;
 }
 
 function P011NativeVideoPreview(player,result,api,notice){

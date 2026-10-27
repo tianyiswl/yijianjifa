@@ -1,5 +1,5 @@
 #define MyAppName "一剪即发"
-#define MyAppVersion "0.1.42"
+#define MyAppVersion "0.1.48"
 #define MyAppExeName "一剪即发.exe"
 
 [Setup]

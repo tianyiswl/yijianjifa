@@ -4,6 +4,7 @@ from __future__ import annotations
 import hashlib
 import json
 from pathlib import Path
+import struct
 import subprocess
 import sys
 
@@ -16,7 +17,7 @@ SCRIPT = Path(__file__).resolve().parents[2] / "tools" / "prepare_public_source.
 def _write(root: Path, relative: str, content: str = "synthetic fixture\n") -> Path:
     path = root / relative
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(content, encoding="utf-8")
+    path.write_bytes(content.encode("utf-8"))
     return path
 
 
@@ -30,6 +31,21 @@ def source_repo(tmp_path: Path) -> Path:
 
 def _track(root: Path, *paths: str) -> None:
     subprocess.run(["git", "-C", str(root), "add", "--", *paths], check=True)
+
+
+def _track_raw_name(root: Path, name: str) -> None:
+    """构造真实 Git v2 索引，避免宿主文件系统改写或拒绝危险名称。"""
+    blob = subprocess.run(["git", "-C", str(root), "hash-object", "-w", "--stdin"],
+                          input=b"synthetic fixture\n", capture_output=True, check=True).stdout.strip()
+    encoded = name.encode("utf-8")
+    entry = (struct.pack(">10I", 0, 0, 0, 0, 0, 0, 0o100644, 0, 0, 0)
+             + bytes.fromhex(blob.decode("ascii")) + struct.pack(">H", len(encoded)) + encoded + b"\0")
+    entry += bytes(-len(entry) % 8)
+    data = b"DIRC" + struct.pack(">II", 2, 1) + entry
+    (root / ".git/index").write_bytes(data + hashlib.sha1(data).digest())
+    inventory = subprocess.run(["git", "-C", str(root), "ls-files", "--stage", "-z"],
+                               capture_output=True, check=True).stdout
+    assert inventory == b"100644 " + blob + b" 0\t" + encoded + b"\0"
 
 
 def _export(root: Path, output: Path) -> subprocess.CompletedProcess[str]:
@@ -62,18 +78,23 @@ def test_exports_current_tracked_product_server_build_migrations_and_synthetic_t
     build = source_repo / "packaging/macos/build.sh"
     build.chmod(0o755)
     _track(source_repo, *expected)
+    subprocess.run(["git", "-C", str(source_repo), "update-index", "--chmod=+x",
+                    "packaging/macos/build.sh"], check=True)
     content = "# local tracked edit\nprint('synthetic')\n"
-    (source_repo / "src/yijianjifa/main.py").write_text(content, encoding="utf-8")
+    (source_repo / "src/yijianjifa/main.py").write_bytes(content.encode("utf-8"))
 
     output = tmp_path / "candidate"
     result = _export(source_repo, output)
 
     assert result.returncode == 0, result.stderr
     assert (output / "src/yijianjifa/main.py").read_text(encoding="utf-8") == content
-    assert (output / "packaging/macos/build.sh").stat().st_mode & 0o111
+    if sys.platform != "win32":
+        assert (output / "packaging/macos/build.sh").stat().st_mode & 0o111
     manifest = json.loads((output / "PUBLIC_SOURCE_MANIFEST.json").read_text())
     assert {item["path"] for item in manifest["included"]} == set(expected)
     included = {item["path"]: item for item in manifest["included"]}
+    assert included["packaging/macos/build.sh"]["mode"] == "100755"
+    assert included["src/yijianjifa/main.py"]["mode"] == "100644"
     assert included["src/yijianjifa/main.py"]["sha256"] == hashlib.sha256(content.encode()).hexdigest()
     assert manifest["publication_status"] == "not_published"
     assert manifest["release_ready"] is False
@@ -134,10 +155,9 @@ def test_rejects_included_symlink_without_reading_target(source_repo, tmp_path):
 
 @pytest.mark.parametrize("unsafe_name", ["..\\outside.py", "C:outside.py", "line\nbreak.py"], ids=["windows-traversal", "drive-path", "control-character"])
 def test_rejects_unsafe_tracked_source_paths(source_repo, tmp_path, unsafe_name):
-    # Git permits these POSIX filenames; exporting them is unsafe across platforms.
+    # 在真实索引中保留原始名称；不依赖 Windows 创建这些 POSIX 文件名。
     relative = "src/yijianjifa/" + unsafe_name
-    _write(source_repo, relative, "print('synthetic')\n")
-    _track(source_repo, relative)
+    _track_raw_name(source_repo, relative)
     output = tmp_path / "candidate"
 
     result = _export(source_repo, output)

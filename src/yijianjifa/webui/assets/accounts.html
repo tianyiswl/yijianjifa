@@ -43,6 +43,7 @@ input,select{border:1px solid #d8dee9;border-radius:8px;padding:8px 10px;backgro
 .modal{position:fixed;inset:0;background:rgba(15,23,42,.35);display:none;place-items:center;z-index:30}.dialog{width:min(520px,90vw);background:#fff;border-radius:14px;padding:18px;box-shadow:0 25px 70px rgba(15,23,42,.25)}.dialog h3{margin-top:0}.dialog .foot{display:flex;justify-content:flex-end;gap:8px;margin-top:16px}
 @media(max-width:980px){.shell{grid-template-columns:1fr}aside{display:none}.layout{grid-template-columns:1fr}.search{min-width:0;width:100%}.toolbar{flex-wrap:wrap}}
 .account-identity{display:flex;align-items:center;gap:10px}.account-avatar{display:inline-flex;align-items:center;justify-content:center;width:42px;height:42px;flex:0 0 42px;border-radius:50%;background:#e8edff;color:#4159aa;font-size:18px;overflow:hidden}.account-avatar img{width:100%;height:100%;object-fit:cover}.card>.account-avatar{width:54px;height:54px}.line{flex-wrap:wrap}
+.account-settings-dialog{width:min(640px,94vw);max-height:90vh;overflow:auto}.account-settings-body{display:grid;gap:10px}.account-settings-body input:not([type=checkbox]),.account-settings-body select,.account-settings-body textarea{width:100%;max-width:100%}.account-settings-body label:has(>input[type=checkbox]){display:flex;align-items:center;gap:8px;flex-wrap:nowrap}.account-settings-body input[type=checkbox]{width:16px!important;height:16px;flex:0 0 16px;margin:0}.account-settings-body details{border-top:1px solid var(--line);padding-top:10px}.account-settings-body details>*:not(summary){margin-top:8px}.account-settings-body summary{cursor:pointer}.account-publish-settings{margin-top:16px}.account-publish-settings p{margin:6px 0 12px}
 </style>
 </head>
 <body>
@@ -50,13 +51,13 @@ input,select{border:1px solid #d8dee9;border-radius:8px;padding:8px 10px;backgro
 <aside>
   <div class="brand p011-brand"><div class="mark" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M8.5 7.5 21 20M8.5 16.5 21 4M14 12l7-8"/></svg></div><div><b>一剪即发</b><small>一键剪辑 · 一键发布</small></div></div>
   <nav>
-    <button>资料库</button><button>混剪制作</button><button>成品库</button><button>普通发布</button><button>团购带货</button>
+    <button>资料库</button><button>混剪制作</button><button>成品库</button><button>抖音发布</button><button>团购带货</button>
     <button class="on">账号管理</button><button>任务记录</button><button>常用方案与设置</button>
   </nav>
 </aside>
 <main>
   <div class="top">
-    <div><h1>账号管理</h1><div class="hint">统一管理各平台账号、登录状态、平台默认账号和发布能力。</div></div>
+    <div><h1>账号管理</h1><div class="hint">添加账号，保存发布设置。以后制作和发布时自动沿用。</div></div>
     <div class="actions"><button class="btn" id="checkSelected">重新检查已选账号</button><button class="btn primary" id="addAccount">+ 添加账号</button></div>
   </div>
 
@@ -76,7 +77,7 @@ input,select{border:1px solid #d8dee9;border-radius:8px;padding:8px 10px;backgro
     <section class="panel">
       <div class="ph"><h2>账号列表</h2><span class="muted">双击查看详情 · 右键快捷操作</span></div>
       <div class="p011-list-scroll"><table class="table">
-        <thead><tr><th style="width:44px">选择</th><th>平台</th><th>账号</th><th>分组</th><th>登录</th><th>最近登录时间</th><th>普通发布</th><th data-commerce-column hidden>团购带货</th><th>默认</th></tr></thead>
+        <thead><tr><th style="width:44px">选择</th><th>平台</th><th>账号</th><th>分组</th><th>登录</th><th>最近登录时间</th><th>发布状态</th><th data-commerce-column hidden>团购带货</th><th>默认</th></tr></thead>
         <tbody id="rows"></tbody>
       </table></div>
     </section>

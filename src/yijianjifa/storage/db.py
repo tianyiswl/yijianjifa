@@ -36,7 +36,7 @@ def _run_migrations(engine: Engine, revision: str, *, downgrade: bool = False) -
         else:
             planned = scripts.iterate_revisions(revision, current)
         local_copy = connection.dialect.name == "sqlite" and any(
-            step.revision in {"0015_local_video", "0018_image_post_deliveries"} for step in planned
+            step.revision in {"0015_local_video", "0018_image_post_deliveries", "0019_single_category"} for step in planned
         )
         # This is our fresh, exclusively owned connection. Reading the revision
         # can create a SQLAlchemy logical transaction, but has made no writes.

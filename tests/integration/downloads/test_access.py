@@ -69,6 +69,12 @@ def test_import_cancel_or_invalid_categories_do_not_register_media(db_engine, ap
     with pytest.raises(DownloadError) as exc: api.import_video(resource.id, (), cancel=Cancelled())
     assert exc.value.code == 'cancelled'
     with pytest.raises(DownloadError): api.import_video(resource.id, ('missing',), cancel=NeverCancel())
+    from yijianjifa.features.library.copy_service import CategoryRepository
+    cats=CategoryRepository(db_engine)
+    first,second=(cats.create('video',name) for name in ('A','B'))
+    with pytest.raises(DownloadError) as exc:
+        api.import_video(resource.id,(first.id,second.id),cancel=NeverCancel())
+    assert exc.value.code=='single_category_only'
     assert MediaStorageService(db_engine, app_paths, kind='video').list_assets() == []
     media.close()
 

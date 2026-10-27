@@ -22,8 +22,10 @@ def test_finished_categories_are_independent_filter_once_and_delete_only_links(d
         wrong=call(api,'finished.categories',dict(ids=[row.id],category_ids=[video.id],mode='replace'),'wrong');assert not wrong['ok']
         first=call(api,'finished.categories',dict(ids=[row.id],category_ids=[a.id],mode='replace'),'first');assert first['ok'],first
         assert call(api,'finished.categories',dict(ids=[row.id],category_ids=[b.id],mode='append'),'second')['ok']
+        rejected=call(api,'finished.categories',dict(ids=[row.id],category_ids=[a.id,b.id],mode='replace'),'multiple')
+        assert not rejected['ok'] and rejected['error']['code']=='single_category_only'
         result=call(api,'finished.list',dict(params,category_ids=[a.id,b.id]))['data'];assert result['total']==1
-        assert set(result['items'][0]['category_ids'])=={a.id,b.id}
+        assert set(result['items'][0]['category_ids'])=={b.id}
         assert call(api,'finished.list',dict(params,category_ids=['__none__']))['data']['total']==0
         assert call(api,'category.delete',dict(id=a.id),'delete-a')['ok']
         assert core.category_ids(row.id)=={b.id} and source.read_bytes()==b'video'

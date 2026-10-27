@@ -21,6 +21,15 @@ def remove_task(connection,pid):
         if s.get(Setting,'task-hidden:'+pid):return {'id':pid,'deleted':True}
         mix=s.get(MixTask,pid);center=s.get(TaskCenterRow,pid)
         if mix:
+            frozen = json.loads(mix.snapshot_json).get('daily_publish')
+            if (type(frozen) is dict and 'execution_flow' in frozen
+                    and mix.state == 'waiting_publish'):
+                mix.state = 'cancelled'
+                progress = s.get(Setting, 'mix.daily.status:' + pid)
+                if progress:
+                    progress.value_json = json.dumps({**json.loads(progress.value_json),
+                        'automatic_stopped': True, 'auth_phase': '', 'reason_code': 'daily_batch_cancelled',
+                        'reason': '本批已停止，已生成成品和原发布证据保留。'}, ensure_ascii=False)
             if mix.state in {'paused','interrupted','action_required'}:
                 mix.state='cancelled'
                 progress=s.get(Setting,'mix.daily.status:'+pid)

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import asdict
 from datetime import datetime, timezone
+import hashlib
 import json
 import uuid
 
@@ -12,7 +13,7 @@ from sqlalchemy.orm import Mapped, mapped_column
 from yijianjifa.features.accounts.models import Account, CapabilitySnapshot
 from yijianjifa.features.accounts.session_store import SessionStore
 from yijianjifa.storage.db import session_scope
-from yijianjifa.storage.models import Base
+from yijianjifa.storage.models import Base, Setting
 
 
 def _uuid() -> str:
@@ -21,6 +22,61 @@ def _uuid() -> str:
 
 def _utcnow() -> datetime:
     return datetime.now(timezone.utc)
+
+
+_LOGIN_CHECK_PREFIX = 'account-login-check:'
+_LOGIN_CHECK_STATES = {'valid', 'login_required', 'identity_mismatch', 'unavailable'}
+_LOGIN_CHECK_REASONS = {'timeout', 'network_unavailable', 'verification_required', 'identity_unavailable',
+    'session_unavailable', 'cleanup_failed', 'platform_unavailable', 'session_changed', 'invalid_provider_result',
+    'account_busy', 'login_in_progress', 'account_unavailable', 'identity_mismatch', 'login_required',
+    'session_missing', 'provider_unavailable'}
+_LOGIN_CHECK_STAGES = {'session_read', 'profile_read', 'clone', 'driver_start', 'browser_launch',
+    'session_restore', 'navigation_first', 'navigation_second', 'surface', 'identity_first', 'identity_second',
+    'context_close', 'driver_stop', 'cleanup', 'worker_start', 'parent_deadline'}
+
+
+def _check_detail(reason, diagnostic):
+    if reason is not None and (type(reason) is not str or reason not in _LOGIN_CHECK_REASONS):
+        raise ValueError('invalid login check cause')
+    if diagnostic is not None and (type(diagnostic) is not dict or set(diagnostic) != {'stage', 'elapsed_ms'}
+            or type(diagnostic['stage']) is not str or diagnostic['stage'] not in _LOGIN_CHECK_STAGES
+            or type(diagnostic['elapsed_ms']) is not int or not 0 <= diagnostic['elapsed_ms'] <= 120000):
+        raise ValueError('invalid login check detail')
+    return {'reason': reason, 'diagnostic': dict(diagnostic) if diagnostic is not None else None}
+
+
+def _login_check_fingerprint(account) -> str:
+    value = json.dumps([account.platform, account.platform_user_id, account.session_ref],
+                       ensure_ascii=False, separators=(',', ':'))
+    return hashlib.sha256(value.encode('utf-8')).hexdigest()
+
+
+def _observation_time(value=None) -> datetime:
+    value = _utcnow() if value is None else value
+    if not isinstance(value, datetime) or value.tzinfo is None or value.utcoffset() is None:
+        raise ValueError('login observation needs an aware time')
+    return value.astimezone(timezone.utc)
+
+
+def _saved_login_check(account, value_json):
+    try:
+        value = json.loads(value_json)
+        base = {'v', 'fingerprint', 'checked_at', 'state'}
+        if (type(value) is not dict or type(value.get('v')) is not int
+                or not (value['v'] == 1 and set(value) == base or
+                        value['v'] == 2 and set(value) == base | {'reason', 'diagnostic'})
+                or value['fingerprint'] != _login_check_fingerprint(account)
+                or type(value['state']) is not str or value['state'] not in _LOGIN_CHECK_STATES
+                or type(value['checked_at']) is not str):
+            return None
+        checked_at = _observation_time(datetime.fromisoformat(value['checked_at']))
+        result = {'checked_at': checked_at.isoformat(), 'state': value['state']}
+        if value['v'] == 2:
+            detail = _check_detail(value['reason'], value['diagnostic'])
+            result.update({key: item for key, item in detail.items() if item is not None})
+        return result
+    except (ValueError, TypeError, KeyError, OverflowError):
+        return None
 
 
 class AccountRow(Base):
@@ -101,6 +157,83 @@ class AccountService:
                 stmt = stmt.where(AccountRow.platform == platform)
             rows = session.scalars(stmt.order_by(AccountRow.platform, AccountRow.nickname, AccountRow.id)).all()
             return [self._record(row) for row in rows]
+
+    @staticmethod
+    def record_login_check(session, account, state: str, *, observed_at=None, reason=None, diagnostic=None) -> bool:
+        """The native runtime calls this inside its same-version transaction."""
+        missing = state == 'session_missing'
+        state = 'login_required' if missing else state
+        if type(state) is not str or state not in _LOGIN_CHECK_STATES:
+            raise ValueError('invalid login check state')
+        detail = _check_detail(reason, diagnostic)
+        observed_at = _observation_time(observed_at)
+        if state == 'valid' and not account.session_ref:
+            return False
+        key = _LOGIN_CHECK_PREFIX + account.id
+        fingerprint = _login_check_fingerprint(account)
+        row = session.get(Setting, key)
+        if row is not None:
+            previous = _saved_login_check(account, row.value_json)
+            if previous is not None and datetime.fromisoformat(previous['checked_at']) >= observed_at:
+                return False
+        if state == 'valid':
+            account.login_state = 'valid'
+        elif state == 'login_required':
+            account.login_state = 'pending_verification' if missing or not account.session_ref else 'expired'
+        value = {'v': 1, 'fingerprint': fingerprint, 'checked_at': observed_at.isoformat(), 'state': state}
+        if reason is not None or diagnostic is not None:
+            value.update(v=2, **detail)
+        value = json.dumps(value, sort_keys=True)
+        if row is None:
+            session.add(Setting(key=key, value_json=value))
+        else:
+            row.value_json = value
+        return True
+
+    def observe_login_check(self, account_id: str, *, platform_user_id: str, session_ref,
+                           state: str, observed_at=None, reason=None, diagnostic=None) -> bool:
+        """Accept native identity evidence only for its unchanged saved archive.
+
+        The start time of the observation prevents a slow, older request from
+        replacing evidence collected by a newer login or publishing operation.
+        """
+        observed_at = _observation_time(observed_at)
+        if type(state) is not str or state not in _LOGIN_CHECK_STATES | {'session_missing'}:
+            raise ValueError('invalid login check state')
+        with self.engine.connect() as connection:
+            connection.exec_driver_sql('BEGIN IMMEDIATE')
+            try:
+                with session_scope(connection) as session:
+                    account = session.get(AccountRow, account_id)
+                    if (account is None or account.login_state == 'removed'
+                            or account.platform_user_id != platform_user_id or account.session_ref != session_ref):
+                        accepted = False
+                    else:
+                        accepted = self.record_login_check(session, account, state, observed_at=observed_at,
+                                                           reason=reason, diagnostic=diagnostic)
+                connection.commit()
+                return accepted
+            except BaseException:
+                connection.rollback()
+                raise
+
+    def login_checks(self, accounts) -> dict:
+        """Return display-only evidence for the current accepted session versions.
+
+        Account reads never start a browser or refresh online credentials. A new
+        login archive cannot inherit an earlier archive's successful check.
+        """
+        accounts = {account.id: account for account in accounts}
+        result = {account_id: None for account_id in accounts}
+        if not accounts:
+            return result
+        keys = [_LOGIN_CHECK_PREFIX + account_id for account_id in accounts]
+        with session_scope(self.engine) as session:
+            rows = session.scalars(select(Setting).where(Setting.key.in_(keys))).all()
+            for row in rows:
+                account_id = row.key[len(_LOGIN_CHECK_PREFIX):]
+                result[account_id] = _saved_login_check(accounts[account_id], row.value_json)
+        return result
 
     def remove(self, account_id: str):
         """Retain platform identity and historical references; remove local access."""

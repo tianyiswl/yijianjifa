@@ -18,7 +18,7 @@ import uuid
 from yijianjifa.features.mixing.tts.hosted import VoicePaused
 
 
-CLOUD_VOICE_ENDPOINT = ''
+CLOUD_VOICE_ENDPOINT = 'https://39.108.82.213'
 
 
 def _validated_cloud_voice_endpoint(value, *, allow_loopback=False):
@@ -45,11 +45,11 @@ def _validated_cloud_voice_endpoint(value, *, allow_loopback=False):
 
 
 def _configured_cloud_voice_endpoint():
-    """Opt-in service configuration; an invalid optional service stays disabled.
+    """Expose the existing business to source users without automatic billing.
 
-    Public source defaults to local/system voice. Official frozen builds can
-    include an explicitly generated, non-secret service endpoint. Neither path
-    changes existing per-endpoint credential or balance namespaces.
+    Explicit runtime/bundled configuration overrides the public service default.
+    Empty or invalid explicit settings disable cloud rather than retarget it.
+    Existing per-endpoint credential and balance namespaces stay unchanged.
     """
     configured = os.environ.get('P011_CLOUD_VOICE_ENDPOINT')
     if configured is None and getattr(sys, 'frozen', False):
@@ -57,10 +57,16 @@ def _configured_cloud_voice_endpoint():
         try:
             settings = json.loads(resource_path('cloud-voice-service.json').read_text(encoding='utf-8'))
             configured = settings.get('endpoint') if isinstance(settings, dict) else None
+        except FileNotFoundError:
+            return CLOUD_VOICE_ENDPOINT
         except (OSError, ValueError):
-            configured = None
-    if not isinstance(configured, str):
+            return ''
+        if not isinstance(configured, str):
+            return ''
+    if configured is None:
         return CLOUD_VOICE_ENDPOINT
+    if not isinstance(configured, str):
+        return ''
     try:
         return _validated_cloud_voice_endpoint(configured)
     except ValueError:

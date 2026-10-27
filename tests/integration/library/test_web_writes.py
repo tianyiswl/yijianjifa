@@ -90,3 +90,19 @@ def test_active_task_keeps_copy_and_reports_delete_blocked(db_engine):
     assert CopyRepository(db_engine).get(saved['id']) is not None
     with db_engine.connect() as c:
         assert c.execute(text("SELECT count(*) FROM web_command_receipts WHERE request_id='delete-active'")).scalar_one()==0
+
+
+def test_copy_save_rejects_multiple_categories_before_changing_content(db_engine):
+    api=service(db_engine)
+    cats=CategoryRepository(db_engine)
+    first,second=(cats.create('copy',name) for name in ('first','second'))
+    raw=json.loads(request());raw['params']['category_ids']=[first.id]
+    saved=api.dispatch(json.dumps(raw),trusted_origin=True)['data']
+    raw['request_id']='invalid-multiple'
+    raw['params'].update(id=saved['id'],title='must not save',category_ids=[first.id,second.id])
+    result=api.dispatch(json.dumps(raw),trusted_origin=True)
+    assert not result['ok'] and result['error']['code']=='single_category_only'
+    assert result['error']['message']=='每条内容只能选择一个分类。'
+    repo=CopyRepository(db_engine)
+    assert repo.get(saved['id']).title=='title'
+    assert repo.category_ids(saved['id'])=={first.id}

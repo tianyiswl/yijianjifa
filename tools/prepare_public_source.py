@@ -12,7 +12,6 @@ import hashlib
 import json
 from pathlib import Path, PurePosixPath
 import re
-import stat
 import subprocess
 import sys
 
@@ -226,7 +225,8 @@ def prepare_public_source(repo: Path, output: Path) -> dict:
             raise PreparationError(f"Included source must be an existing regular file: {path}")
         data = source.read_bytes()
         _check_content(path, data)
-        executable = bool(source.stat().st_mode & stat.S_IXUSR)
+        # 执行位属于 Git 源码元数据，Windows 文件系统不能可靠表示它。
+        executable = mode == "100755"
         included.append({
             "path": path.as_posix(), "sha256": hashlib.sha256(data).hexdigest(),
             "size_bytes": len(data), "mode": "100755" if executable else "100644",

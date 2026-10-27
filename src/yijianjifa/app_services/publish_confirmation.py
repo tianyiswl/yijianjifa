@@ -25,7 +25,8 @@ class PublishConfirmation:
 
     def _capture_locked(self,connection,params,now):
         from .publish_preparation import PublishPreparation
-        return PublishPreparation(connection,self.paths,declarations=self.preparation.declarations,locations=self.preparation.locations,covers=self.preparation.covers)._capture(params,now)
+        return PublishPreparation(connection,self.paths,declarations=self.preparation.declarations,locations=self.preparation.locations,covers=self.preparation.covers,
+            inherit_account_settings=self.preparation.inherit_account_settings)._capture(params,now)
 
     def _freeze_specific(self,snapshot):
         pass

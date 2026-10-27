@@ -1,5 +1,5 @@
 P011Views.presets=()=>{'use strict';
- const $=id=>document.getElementById(id),types={mix:'制作方案',normal_publish:'普通发布方案',commerce:'团购带货方案',mix_then_publish:'制作后发布方案'};
+ const $=id=>document.getElementById(id),types={mix:'制作方案',normal_publish:'抖音发布方案',commerce:'团购带货方案',mix_then_publish:'制作后发布方案'};
  if(!P011Features.commerce)delete types.commerce;
  let alive=true,rows=[],active='',selected=new Set(),editor=null,busy=false,refs={video:[],copy:[],music:[],tracks:[],accounts:[]},timer;
  function el(tag,text,cls){const n=document.createElement(tag);if(text!==undefined)n.textContent=text;if(cls)n.className=cls;return n;}
@@ -12,7 +12,7 @@ P011Views.presets=()=>{'use strict';
  function modal(title,body,actions){$('dialog').replaceChildren(el('h3',title),...body);const foot=el('div',undefined,'foot');foot.append(...actions);$('dialog').append(foot);$('modal').style.display='grid';}
  function confirm(title,fn){modal(title,[el('p','已确认任务和历史记录不会改变。')],[button('取消',hideModal),button('确认',async()=>{hideModal();await fn();},'btn primary')]);}
  async function leave(fn){if(busy){notice('正在保存，请稍候。');return;}if(editor?.dirty){modal('放弃尚未保存的方案设置？',[],[button('继续编辑',hideModal),button('放弃设置',()=>{hideModal();editor=null;fn();})]);return;}fn();}
- document.querySelector('.nav').replaceChildren(...['资料库','混剪制作','成品库','普通发布','团购带货','账号管理','任务记录','常用方案与设置'].map((name,i)=>{const b=button(name,()=>leave(()=>P011Router.go(i===3?'publish':i===4?'commerce':i===5?'accounts':i===6?'tasks':['library','mixing','finished'][i])),'');b.disabled=i>2&&i!==3&&i!==4&&i!==5&&i!==6;b.classList.toggle('on',i===7);return b;}));
+ document.querySelector('.nav').replaceChildren(...['资料库','混剪制作','成品库','抖音发布','团购带货','账号管理','任务记录','常用方案与设置'].map((name,i)=>{const b=button(name,()=>leave(()=>P011Router.go(i===3?'publish':i===4?'commerce':i===5?'accounts':i===6?'tasks':['library','mixing','finished'][i])),'');b.disabled=i>2&&i!==3&&i!==4&&i!==5&&i!==6;b.classList.toggle('on',i===7);return b;}));
  window.p011Navigate=fn=>leave(fn);
  window.p011BeforeClose=()=>leave(()=>api('app.exit',{}).catch(e=>notice(e.message)));
  $('typeFilter').replaceChildren(new Option('全部类型',''),...Object.entries(types).map(([v,n])=>new Option(n,v)));

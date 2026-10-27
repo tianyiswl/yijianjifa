@@ -8,6 +8,7 @@ from PySide6.QtWebChannel import QWebChannel
 from PySide6.QtWebEngineCore import QWebEnginePage,QWebEngineProfile,QWebEngineScript,QWebEngineUrlScheme,QWebEngineUrlSchemeHandler
 from PySide6.QtWebEngineWidgets import QWebEngineView
 from yijianjifa.app_services.dispatch_worker import DispatchWorker
+from yijianjifa import APP_VERSION
 
 WORLD=42
 class Scheduler(QObject):
@@ -29,7 +30,7 @@ class Page(QWebEnginePage):
 class Window(QMainWindow):
     def __init__(self,scheduler):
         super().__init__();self.scheduler=scheduler;self.allowed_close=threading.Event()
-        self.setWindowTitle('一剪即发 · Windows 测试版');self.resize(1440,900)
+        self.setWindowTitle(f'一剪即发 {APP_VERSION} · Windows 测试版');self.resize(1440,900)
         self.view=QWebEngineView(self);self.setCentralWidget(self.view)
         self.profile=QWebEngineProfile(self) # off the record: no app-world disk state
         self.page=Page(self.profile,self.view);self.view.setPage(self.page)

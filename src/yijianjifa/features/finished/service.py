@@ -149,7 +149,8 @@ class FinishedVideoService:
             return set(session.scalars(select(CategoryLink.category_id).where(CategoryLink.target_type=='finished',CategoryLink.target_id==finished_id)))
 
     def set_categories(self, finished_id, category_ids):
-        ids=set(category_ids)
+        from yijianjifa.features.library.copy_service import single_category_ids
+        ids=set(single_category_ids(category_ids))
         with session_scope(self.engine) as session:
             if session.get(FinishedVideo,finished_id) is None:raise KeyError(finished_id)
             valid=set(session.scalars(select(Category.id).where(Category.kind=='finished')))
@@ -225,7 +226,7 @@ class FinishedVideoService:
             if row.task_locked:
                 raise RuntimeError("finished video is referenced by an active task")
             from yijianjifa.features.library.active_references import ensure_not_referenced
-            ensure_not_referenced(session,[row.id,row.content_hash,row.original_path,row.stored_path])
+            ensure_not_referenced(session,[row.id,row.content_hash,row.original_path,row.stored_path],finished=row)
             if row.origin_type == "generated" and row.stored_path:
                 owned_file = Path(row.stored_path)
             session.query(CategoryLink).filter(CategoryLink.target_type=="finished",CategoryLink.target_id==finished_id).delete(synchronize_session=False)

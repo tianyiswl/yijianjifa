@@ -30,24 +30,16 @@ async function setup({mode='link',items=rows,extra=async()=>undefined,incoming}=
 async function local(v){v.getId('downloadLocalTab').onclick?.();await flush(v);}
 async function choose(v){v.getId('downloadLocalChoose').onclick?.();await flush(v);}
 
-test('local tab uses extraction defaults while restoring the existing link options on return',async()=>{
+test('local audio mode uses fixed MP3 and video action returns to link download',async()=>{
  const {v,calls}=await setup();await local(v);
  assert.equal(v.getId('downloadLinkSource').hidden,true);assert.equal(v.getId('downloadLocalSource').hidden,false);
- assert.equal(v.getId('downloadStart').textContent,'开始处理');assert.equal(v.getId('audioFormat').value,'mp3');
- assert.equal(v.getId('downloadSaveVideoOption').hidden,true);assert.equal(v.getId('downloadPreferCleanOption').hidden,true);
- v.getId('audioFormat').value='wav';v.getId('audioFormat').onchange();await flush(v);
- v.getId('downloadLinkTab').onclick?.();await flush(v);
- assert.equal(v.getId('downloadLocalSource').hidden,true);assert.equal(v.getId('downloadReadVisible').hidden,false);
- assert.equal(v.getId('saveVideo').checked,true);assert.equal(v.getId('preferClean').checked,true);assert.equal(v.getId('audioFormat').value,'');
- await local(v);assert.equal(v.getId('audioFormat').value,'wav');
- assert(calls.some(c=>c.op==='download.settings.save'&&c.p.source_mode==='local'));
+ assert.equal(v.getId('downloadStart').textContent,'开始提取');
+ v.getId('downloadLinkTab').onclick();await flush(v);assert.equal(v.getId('downloadLocalSource').hidden,true);assert.equal(v.getId('downloadReadVisible').hidden,true);
+ v.getId('downloadVideoAction').onclick();await flush(v);assert.equal(v.getId('downloadStart').textContent,'开始下载');
+ assert(calls.some(c=>c.op==='download.settings.save'&&c.p.source_mode==='local'&&c.p.options.audio_format==='mp3'));
  assert(!calls.some(c=>c.op==='download.start'||c.op==='download.resolve.start'));v.dispose();
 });
-test('persisted local mode restores without opening a picker or starting work',async()=>{
- const {v,calls}=await setup({mode:'local'});assert.equal(v.getId('downloadStart').textContent,'开始处理');
- assert.equal(v.getId('downloadReadVisible').hidden,true);assert.equal(v.getId('audioFormat').value,'mp3');
- assert(!calls.some(c=>c.op.startsWith('download.local.')||c.op==='download.start'));v.dispose();
-});
+
 for(const items of [rows.slice(0,1),rows])test('native chooser receives '+items.length+' local videos and selects them without starting',async()=>{
  const {v,calls}=await setup({items});await local(v);await choose(v);
  assert.deepEqual(calls.find(c=>c.op==='download.local.choose')?.p,{});
@@ -65,7 +57,7 @@ test('native drop consumes only an opaque token in the explicit local zone',asyn
 });
 for(const condition of ['link','outside','modal','disposed','nonfinite','bad-token'])test('local drop does not consume token when '+condition,async()=>{
  const {v,calls}=await setup();if(condition!=='link')await local(v);
- if(condition==='modal')v.getId('downloadModels').onclick();
+ if(condition==='modal')v.getId('downloadModal').style.display='grid';
  if(condition==='disposed')v.dispose();
  await v.window.p011Drop?.({token:condition==='bad-token'?'file:///wrong':token,x:condition==='outside'?500:condition==='nonfinite'?NaN:12,y:21});await flush(v);
  assert(!calls.some(c=>c.op==='download.local.drop'));if(condition!=='disposed')v.dispose();
@@ -99,37 +91,23 @@ test('local receive progress, per-file error text and explicit cancellation use 
  assert(!calls.some(c=>c.op==='download.start'));v.dispose();
 });
 test('local start freezes only selected extraction outputs and uses local task labels',async()=>{
- const {v,calls}=await setup({extra:async op=>op==='download.detail'?{state:'interrupted',source_mode:'local',items:[{id:'i',candidate_id:'local-a',title:'甲.MOV',decision_required:true,stages:{video:{state:'succeeded'},audio:{state:'waiting'}}}],verification_required:true}:undefined});
- await local(v);await choose(v);v.getId('asrLanguage').value='zh';v.getId('ocrEnabled').checked=true;v.getId('ocrEnabled').onchange();await flush(v);
+ const {v,calls}=await setup({extra:async op=>op==='download.detail'?{state:'interrupted',source_mode:'local',options:localOptions,items:[{id:'i',candidate_id:'local-a',title:'甲.MOV',decision_required:true,stages:{video:{state:'succeeded'},audio:{state:'waiting'}}}],verification_required:true}:undefined});
+ await local(v);await choose(v);
  v.getId('downloadStart').onclick();await flush(v);
  const start=calls.find(c=>c.op==='download.start');assert(start);assert.deepEqual(start.p.candidate_ids,['local-a','local-b']);
  assert.equal(start.p.options.save_video,false);assert.equal(start.p.options.prefer_clean,false);assert.equal(start.p.options.audio_format,'mp3');
- assert.equal(start.p.options.asr_language,'zh');assert.equal(start.p.options.ocr_enabled,true);
+ assert.equal(start.p.options.asr_language,null);assert.equal(start.p.options.ocr_enabled,false);assert.deepEqual(start.p.options.model_ids,[]);
  assert(v.find(n=>n.textContent.includes('视频接收：已完成')));assert(!v.find(n=>n.tag==='button'&&n.textContent==='继续未完成部分').hidden);
  assert(![...v.ids.values()].flatMap(n=>[n,...n.children.flatMap(function descend(n){return [n,...n.children.flatMap(descend)];})]).some(n=>n.tag==='button'&&['显示登录 / 验证窗口','原样下载','打开验证窗口'].includes(n.textContent)));
  v.dispose();
 });
-test('local start with no extraction output is rejected before any batch request',async()=>{
- const {v,calls}=await setup();await local(v);await choose(v);v.getId('audioFormat').value='';v.getId('audioFormat').onchange();await flush(v);
- v.getId('downloadStart').onclick();await flush(v);
- assert(!calls.some(c=>c.op==='download.start'));assert.match(v.getId('downloadStartStatus').textContent,/至少选择/);v.dispose();
-});
+
 test('local candidate preview opens its received owned source without importing or preparing another source',async()=>{
  const {v,calls}=await setup({extra:async(op,p)=>op==='download.preview'?{resource_id:p.resource_id,kind:'source_video',url:'p011media://asset/received'}:undefined});
  await local(v);await choose(v);assert.equal(v.getId('downloadRows').children.length,2);v.getId('downloadRows').children[0].children[3].children[0].onclick({});await flush(v);
  v.getId('downloadPreparePreview').onclick();await flush(v);assert.equal(v.getId('downloadPlayer').src,'p011media://asset/received');
  assert.deepEqual(calls.find(c=>c.op==='download.preview')?.p,{resource_id:'owned-a'});
  assert(!calls.some(c=>['download.preview.prepare','download.import','download.resolve.start'].includes(c.op)));v.dispose();
-});
-test('unsaved subtitle editing guards local chooser and mode switch before consuming native intake',async()=>{
- const {v,calls}=await setup({mode:'local',incoming:{task_id:'t'},extra:async op=>{
-  if(op==='download.detail')return {state:'completed',source_mode:'local',items:[{id:'i',candidate_id:'local-a',title:'甲.MOV',stages:{},subtitles:[{resource_id:'sub',origin:'asr',version:1}]}]};
-  if(op==='download.subtitle.read')return {revision:0,segments:[{id:'seg',start_ms:0,end_ms:1000,text:'原文'}],next_cursor:null};
- }});await v.click('编辑语音字幕 · 版本 1');await flush(v);
- const text=v.find(n=>n.attrs['aria-label']==='字幕文字');text.value='未保存';text.oninput();await choose(v);
- assert(!calls.some(c=>c.op==='download.local.choose'));assert.equal(v.getId('downloadModal').style.display,'grid');
- await v.click('继续编辑');v.getId('downloadLinkTab').onclick?.();await flush(v);assert.equal(v.getId('downloadLocalSource').hidden,false);
- descendants(v.getId('downloadDialog')).find(n=>n.tag==='button'&&n.textContent==='放弃修改').onclick({});await flush(v);assert.equal(v.getId('downloadLocalSource').hidden,true);v.dispose();
 });
 
 test('local receive selects all 21 files across bounded pages before an explicit start',async()=>{
@@ -152,19 +130,11 @@ test('local repeat confirmation keeps the original frozen selection and uses pro
  assert(v.find(n=>n.tag==='h2'&&n.textContent==='再次处理'));assert(v.find(n=>n.textContent.includes('已有处理结果')));
  const frozen=structuredClone(calls.find(c=>c.op==='download.start').p);
  v.getId('downloadRows').children[1].children[0].children[0].checked=false;v.getId('downloadRows').children[1].children[0].children[0].onchange();
- v.getId('audioFormat').value='';await v.click('确认重新处理');await flush(v);
+ v.getId('downloadVideoAction').onclick();await v.click('确认重新处理');await flush(v);
  const requests=calls.filter(c=>c.op==='download.start');assert.equal(requests.length,2);
  assert.deepEqual(requests[1].p,{...frozen,confirm_existing:true});v.dispose();
 });
-test('guarded drop rechecks source eligibility after unsaved editor is discarded',async()=>{
- const {v,calls}=await setup({mode:'local',incoming:{task_id:'t'},extra:async op=>{
-  if(op==='download.detail')return {state:'completed',source_mode:'local',items:[{id:'i',title:'A',stages:{},subtitles:[{resource_id:'sub',origin:'asr'}]}]};
-  if(op==='download.subtitle.read')return {revision:0,segments:[{id:'seg',start_ms:0,end_ms:1000,text:'原文'}],next_cursor:null};
- }});await v.click('编辑语音字幕 · 版本 1');await flush(v);const text=v.find(n=>n.attrs['aria-label']==='字幕文字');text.value='修改';text.oninput();
- await v.window.p011Drop({token,x:12,y:21});await flush(v);assert(!calls.some(c=>c.op==='download.local.drop'));
- descendants(v.getId('downloadDialog')).find(n=>n.tag==='button'&&n.textContent==='放弃修改').onclick({});await flush(v);
- assert.equal(calls.filter(c=>c.op==='download.local.drop').length,1);v.dispose();
-});
+
 test('default-selection page reply is discarded after switching mode',async()=>{
  let finish,reads=0;const {v,calls}=await setup({extra:async op=>op==='download.resolve.list'&&++reads===2?new Promise(r=>finish=r):undefined});
  await local(v);await choose(v);assert(finish);v.getId('downloadLinkTab').onclick();await flush(v);
@@ -188,7 +158,7 @@ test('new intake clears prior local filtering so received files are all selected
 test('late initial settings cannot reset an explicitly switched local mode',async()=>{
  let finish;const {v}=await setup({extra:async op=>op==='download.settings.read'?new Promise(r=>finish=r):undefined});
  await local(v);finish({source_mode:'link',options:linkOptions,filter:{query:'old',state:''}});await flush(v);
- assert.equal(v.getId('downloadLocalSource').hidden,false);assert.equal(v.getId('audioFormat').value,'mp3');assert.equal(v.getId('downloadSearch').value,'');v.dispose();
+ assert.equal(v.getId('downloadLocalSource').hidden,false);assert.equal(v.getId('downloadStart').textContent,'开始提取');assert.equal(v.getId('downloadSearch').value,'');v.dispose();
 });
 test('local processed and interrupted catalog states use truthful local labels',async()=>{
  const {v}=await setup({items:[{...rows[0],state:'processed'},{...rows[1],state:'interrupted',source_resource_id:null}]});
@@ -244,7 +214,7 @@ test('unconfirmed local start retries frozen payload and request ID after live o
  await local(v);await choose(v);const endpoint=v.window.webkit.messageHandlers.p011App,post=endpoint.postMessage,wire=[];
  endpoint.postMessage=raw=>{wire.push(JSON.parse(raw));return post(raw);};
  v.getId('downloadStart').onclick();await flush(v);
- v.getId('audioFormat').value='';v.getId('audioFormat').onchange();await flush(v);
+ v.getId('downloadVideoAction').onclick();await flush(v);
  v.getId('downloadStart').onclick();await flush(v);const requests=wire.filter(c=>c.operation==='download.start');
  assert.equal(requests.length,2);assert.deepEqual(requests[1],requests[0]);assert.equal(requests[1].params.options.audio_format,'mp3');
  assert.equal(calls.filter(c=>c.op==='download.local.choose').length,1);v.dispose();
@@ -261,11 +231,4 @@ test('local state filters send received processed interrupted values and restore
   assert.equal(v.getId('downloadRows').children.length,1);assert.match(descendants(v.getId('downloadRows')).map(n=>n.textContent).join(' '),value==='received'?/已接收 · 本地视频/:value==='processed'?/已处理 · 本地视频/:/视频副本不可用，请重新选择视频/);
  }
  v.getId('downloadLinkTab').onclick();await flush(v);assert.deepEqual(state.options.filter(o=>!o.hidden).map(o=>o.value),['','not_downloaded','downloaded']);assert.equal(state.options[3].disabled,true);v.dispose();
-});
-for(const [legacy,expected] of [['downloaded','processed'],['not_downloaded','received'],['interrupted','interrupted']])test('restored local legacy state '+legacy+' maps to its current candidate state',async()=>{
- let finish;const {v,calls}=await setup({extra:async op=>op==='download.settings.read'?new Promise(r=>finish=r):undefined});
- const state=v.getId('downloadState');state.options=[{value:'',textContent:'全部状态'},{value:'not_downloaded',textContent:'未下载'},{value:'downloaded',textContent:'已下载'},{value:'interrupted',textContent:'需重新选择',hidden:true,disabled:true}];
- finish({source_mode:'local',options:localOptions,filter:{query:'',state:legacy}});await flush(v);
- assert.equal(state.value,expected);assert(state.options.some(o=>o.value===expected&&!o.hidden&&!o.disabled));state.onchange();await flush(v);
- assert.equal(calls.filter(c=>c.op==='download.settings.save').at(-1).p.filter.state,expected);v.dispose();
 });

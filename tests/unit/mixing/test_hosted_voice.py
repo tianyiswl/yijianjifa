@@ -362,11 +362,11 @@ def test_first_use_policy_is_versioned_and_account_scoped(tmp_path):
     assert reopened.read()['policy_notice_required'] is True
 
 
-def test_public_source_default_does_not_connect_to_the_operator_service(tmp_path, monkeypatch):
+def test_source_default_makes_operator_service_available_without_synthesis(tmp_path, monkeypatch):
     from yijianjifa.app_services.cloud_voice_access import CLOUD_VOICE_ENDPOINT
     monkeypatch.delenv('P011_CLOUD_VOICE_ENDPOINT', raising=False)
-    assert CLOUD_VOICE_ENDPOINT == ''
+    assert CLOUD_VOICE_ENDPOINT == 'https://39.108.82.213'
     service = CloudVoiceAccess(paths(tmp_path), opener=Mock(), vault=Vault())
-    assert service.endpoint == ''
-    assert service.read()['enabled'] is False
+    assert service.endpoint == CLOUD_VOICE_ENDPOINT
+    assert service.read()['enabled'] is True
     service.opener.assert_not_called()

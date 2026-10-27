@@ -13,8 +13,9 @@ import os
 import re
 from yijianjifa.os_integration.background_process import run_hidden
 import subprocess
+import shutil
 import time
-from urllib.parse import urlsplit
+from urllib.parse import parse_qs,urlsplit
 from sqlalchemy import text
 
 from yijianjifa.features.accounts.service import AccountRow,AccountIdentityMismatch
@@ -114,7 +115,7 @@ class BilibiliMultiPublishAdapter(ChromiumPublishSessionAdapter):
         if stage=='session_restore':return 'session_unavailable'
         if type(error) is ValueError:
             if message=='existing B站 draft must be handled first':return 'existing_draft'
-            if message in {'frozen video changed','frozen video changed before cover','frozen video changed during cover'}:
+            if message in {'frozen video changed','frozen video changed before cover','frozen video changed during cover','frozen cover copy changed'}:
                 return 'resource_unavailable'
             if message in {'ambiguous B站投稿页','B站标题输入框不唯一','B站简介输入框不唯一','B站分区控件不唯一',
                 'B站一级分区不唯一','B站分区选项不唯一','B站声明控件不唯一','B站声明选项不存在或不唯一',
@@ -142,7 +143,7 @@ class BilibiliMultiPublishAdapter(ChromiumPublishSessionAdapter):
             elif 'TypeError:' in message:js='type_error'
             else:js='other_browser_error'
         methods={'_advance_steps','_open','_account','_frame','_challenge','_identity','_upload','_one',
-                 '_select_fields','_select_statement_option','_schedule_candidates','_schedule_click','_set_schedule','_prepare_cover','_prepare_form','_click_final'}
+                 '_select_fields','_select_statement_option','_schedule_candidates','_schedule_click','_set_schedule','_dismiss_cover_sync','_confirm_cover','_prepare_cover','_prepare_form','_click_final'}
         frames=[];frame=error.__traceback__
         while frame:
             code=frame.tb_frame.f_code
@@ -171,9 +172,11 @@ class BilibiliMultiPublishAdapter(ChromiumPublishSessionAdapter):
     def _init_observations(self,s):
         s.pre=None;s.human=None;s.options=None;s.options_at=None;s.form_filled=False;s.cover_uploaded=False
         s.file_selection_returned=False
-        s.cover_ready=False;s.cover_path=None;s.final_form=None;s.resolved_form=None;s.final_spec=None;s.list_rows=[];s.submit_ok=False;s.submit_rejected=False
+        s.cover_ready=False;s.cover_confirm_clicked=False;s.cover_path=None;s.cover_opened=False;s.cover_uploaded_ratios=set();s.final_form=None;s.resolved_form=None;s.final_spec=None;s.list_rows=[];s.submit_ok=False;s.submit_rejected=False
+        s.cover_wait_started=None;s.cover_retry_count=0;s.cover_wait_expired=False;s.cover_sync_dismissed=False
         s.receipt=dict(s.payload.get('receipt_reference') or getattr(s,'receipt',{}))
         s.identity_nav=None
+        s.pending_tag=None;s.tag_requires_topic=False
 
     def _open(self,s,*,query=False):
         if s.page is not None:return
@@ -186,6 +189,7 @@ class BilibiliMultiPublishAdapter(ChromiumPublishSessionAdapter):
         else:
             with session_scope(self.engine) as db:
                 setting=db.get(Setting,'publish.browser_mode');mode=json.loads(setting.value_json) if setting else 'background'
+        if getattr(s,'browser_login_visible',False):mode='visible'
         # The driver inherits bundled-browser environment at start. Preparing
         # options inside launch arguments would update only the parent process.
         s.external_browser = mode == 'visible'
@@ -195,11 +199,14 @@ class BilibiliMultiPublishAdapter(ChromiumPublishSessionAdapter):
             self.driver=acquire_playwright()
         profile=creator_auth.chromium_profile(auth.SPEC,self.store,account.platform_user_id)
         s.context=self.driver.chromium.launch_persistent_context(str(profile),**options)
+        s.browser_login_context_headed=mode=='visible'
         if getattr(s,'options_only',False):self._install_write_guard(s.context)
         else:self._install_publish_guard(s)
         s.context.set_default_timeout(10000)
         self._preparation_stage='session_restore'
-        creator_auth.restore_session(auth.SPEC,s.context,self.store,account,profile);s.original_ref=account.session_ref
+        if not getattr(s,'browser_login_preserve_profile',False):
+            creator_auth.restore_session(auth.SPEC,s.context,self.store,account,profile)
+        s.original_ref=account.session_ref
         s.page=s.context.pages[0] if s.context.pages else s.context.new_page()
         self._init_observations(s);s.page.on('response',lambda response:self._response(s,response))
         self._preparation_stage='page_navigation'
@@ -218,27 +225,28 @@ class BilibiliMultiPublishAdapter(ChromiumPublishSessionAdapter):
             'Frame was detached','Frame has been detached','because of a navigation'))
 
     def _identity(self,s):
-        try:value=s.page.evaluate(auth.IDENTITY_SCRIPT)
-        except Exception as error:
-            if not self._navigation_observation_error(error):raise
-            raise ValueError('identity observation unavailable during navigation') from None
-        uid,name=auth.verified_identity(value,s.payload['platform_user_id'])
-        nav=getattr(s,'identity_nav',None)
-        if nav is not None:
-            if nav.get('logged_in') is not True:raise ValueError('normal nav identity unavailable')
-            if nav.get('uid')!=uid:raise AccountIdentityMismatch('normal nav account identity mismatch')
-        return uid,name
+        def read():
+            try:value=s.page.evaluate(auth.IDENTITY_SCRIPT)
+            except Exception as error:
+                if not self._navigation_observation_error(error):raise
+                raise ValueError('identity observation unavailable during navigation') from None
+            uid,name=auth.verified_identity(value,s.payload['platform_user_id'])
+            nav=getattr(s,'identity_nav',None)
+            if nav is not None:
+                if nav.get('logged_in') is not True:raise ValueError('normal nav identity unavailable')
+                if nav.get('uid')!=uid:raise AccountIdentityMismatch('normal nav account identity mismatch')
+            return uid,name
+        return self._login_read(s,read)
 
     def _challenge(self,s):
         surfaces=[s.page];frame=self._frame(s)
         if frame is not s.page:surfaces.append(frame)
         for surface in surfaces:
-            try:observation=surface.evaluate(BILIBILI_CHALLENGE) or {}
+            try:kind=self._login_challenge(s,lambda:browser.challenge_kind(surface.evaluate(BILIBILI_CHALLENGE) or {}))
             except Exception as error:
                 if not self._navigation_observation_error(error):raise
                 # An in-flight route change is not a login/captcha observation.
                 continue
-            kind=browser.challenge_kind(observation)
             if kind:return kind
         return None
 
@@ -289,7 +297,18 @@ class BilibiliMultiPublishAdapter(ChromiumPublishSessionAdapter):
             data=response.json()
             if type(data) is not dict or type(data.get('code')) is not int:return
             body=data.get('data');path=url.path
-            if path=='/x/web-interface/nav':
+            if path=='/x/vupre/web/topic/tag/check':
+                pending=getattr(s,'pending_tag',None)
+                if (s.final or s.phase!='prepare' or type(pending) is not str or not pending
+                    or response.request.method!='GET' or data['code']!=0
+                    or parse_qs(url.query,keep_blank_values=True).get('tag')!=[pending]):return
+                surface=self._frame(s)
+                posting_frame=s.page.main_frame if surface is s.page else surface
+                if response.request.frame is not posting_frame:return
+                if (type(body) is dict and type(body.get('code')) is int and body['code']==-1
+                    and body.get('content')=='当前tag为话题专用，不允许自定义添加，可在话题搜索页进行搜索'):
+                    s.tag_requires_topic=True
+            elif path=='/x/web-interface/nav':
                 # Observe only the original top page's natural GET. Never use
                 # this response alone, nor let an unrelated frame grant identity.
                 if response.request.method!='GET' or response.request.frame is not s.page.main_frame:return
@@ -317,7 +336,10 @@ class BilibiliMultiPublishAdapter(ChromiumPublishSessionAdapter):
                 if data['code']==0:
                     reference=form_contract.receipt_reference(body)
                     if reference:s.submit_ok=True;s.receipt=reference
-                else:s.submit_rejected=True
+                else:
+                    s.submit_rejected=True
+                    from .submit_feedback import safe_message
+                    s.platform_message=safe_message(data.get('message'))
         except Exception:return
 
     def _options_key(self,account):return 'publish.bilibili.options:'+account.platform_user_id
@@ -575,16 +597,20 @@ class BilibiliMultiPublishAdapter(ChromiumPublishSessionAdapter):
             chip.click()
         field=self._one(frame.locator(form_contract.TAGS),'B站标签输入框不唯一')
         for tag in f['tags']:
-            field.fill(tag);field.press('Enter')
-            # B站 validates each tag asynchronously; do not overwrite the
-            # input with the next tag while its previous validation is pending.
-            deadline=time.monotonic()+min(15,self.step_timeout)
-            while time.monotonic()<deadline:
-                observed=frame.evaluate(form_contract.READ_FORM)
-                if tag in observed.get('tags',[]):break
-                if self.cancel.is_set():raise ValueError('tag preparation cancelled')
-                s.page.wait_for_timeout(100)
-            else:raise ValueError('B站标签未完成确认')
+            s.pending_tag=tag;s.tag_requires_topic=False
+            try:
+                field.fill(tag);field.press('Enter')
+                # Observe the native check for this exact tag; never retry a
+                # rejected word, silently omit it, or enroll in a topic.
+                deadline=time.monotonic()+min(15,self.step_timeout)
+                while time.monotonic()<deadline:
+                    observed=frame.evaluate(form_contract.READ_FORM)
+                    if s.tag_requires_topic:raise ValueError('bilibili_tag_requires_topic')
+                    if tag in observed.get('tags',[]):break
+                    if self.cancel.is_set():raise ValueError('tag preparation cancelled')
+                    s.page.wait_for_timeout(100)
+                else:raise ValueError('B站标签未完成确认')
+            finally:s.pending_tag=None
 
     def _schedule_candidates(self,s,locator,expected,message,control):
         deadline=time.monotonic()+min(10,self.step_timeout)
@@ -644,9 +670,85 @@ class BilibiliMultiPublishAdapter(ChromiumPublishSessionAdapter):
             self._schedule_click(s,panel.locator('.time-picker-panel-select-item:visible:not(.time-select-disabled)').filter(has_text=re.compile(r'^'+value+r'$')),'B站时分不可选','hour' if index==0 else 'minute')
         self._schedule_click(s,frame.locator(form_contract.TITLE+':visible'),'B站标题输入框不唯一','close')
 
+    def _dismiss_cover_sync(self,s,frame):
+        """保持已经选好的两个比例，不让原生同步确认挡住保存。"""
+        from playwright.sync_api import TimeoutError as BrowserTimeout
+        if s.final or self.cancel.is_set() or s.cover_sync_dismissed:return False
+        control=frame.locator(form_contract.COVER_SYNC_CANCEL)
+        if control.count()!=1:return False
+        now=time.monotonic();budget=min(1.0,self.step_timeout,30-(now-s.cover_wait_started))
+        deadline=getattr(self,'_preparation_deadline',None)
+        if deadline is not None:budget=min(budget,deadline-now)
+        if budget<=0:return False
+        try:control.click(trial=True,timeout=max(1,budget*1000))
+        except BrowserTimeout:return False
+        budget-=time.monotonic()-now
+        if budget<=0 or self.cancel.is_set():return False
+        s.cover_sync_dismissed=True
+        try:control.click(timeout=max(1,budget*1000))
+        except BrowserTimeout:return False
+        self._trace(s,'bilibili.cover_sync',{'state':'kept_independent','final_started':False})
+        return True
+
+    def _confirm_cover(self,s,frame,*,retry=False):
+        """只确认原任务封面；遮挡时短暂等待，不消耗补救次数或点击最终投稿。"""
+        from playwright.sync_api import TimeoutError as BrowserTimeout
+        if s.final or self.cancel.is_set():return False
+        done=frame.locator(form_contract.COVER_DONE+':visible')
+        if done.count()!=1:return False
+        now=time.monotonic();budget=min(1.0,self.step_timeout)
+        deadline=getattr(self,'_preparation_deadline',None)
+        if deadline is not None:budget=min(budget,deadline-now)
+        if s.cover_wait_started is not None:budget=min(budget,30-(now-s.cover_wait_started))
+        if budget<=0:return False
+        try:done.click(trial=True,timeout=max(1,budget*1000))
+        except BrowserTimeout:
+            s.stage='等待B站封面确认按钮可操作，尚未投稿'
+            return False
+        budget-=time.monotonic()-now
+        if budget<=0 or self.cancel.is_set():return False
+        if retry:s.cover_retry_count=1
+        s.cover_confirm_clicked=True
+        if s.cover_wait_started is None:s.cover_wait_started=time.monotonic()
+        self._trace(s,'bilibili.cover_confirm',{'state':'started'})
+        try:done.click(timeout=max(1,budget*1000))
+        except BrowserTimeout:
+            # 动作可能已发生；先回读，不把点击超时当成最终投稿失败。
+            s.stage='等待B站保存并回读封面，尚未投稿'
+            return False
+        self._trace(s,'bilibili.cover_confirm',{'state':'completed'})
+        return True
+
     def _prepare_cover(self,s,frame):
-        if s.cover_ready:return True
-        if not s.cover_uploaded:
+        if s.final:return bool(s.cover_ready)
+        if s.cover_ready or getattr(s,'cover_confirm_clicked',False):
+            # 点击完成仅表示执行了动作，必须读回平台当前任务的封面。
+            s.cover_confirm_clicked=True
+            raw=frame.evaluate(form_contract.READ_FORM)
+            s.cover_ready=bool(raw.get('cover_reference'))
+            self._trace(s,'bilibili.cover_readback',{'confirm_clicked':True,'cover_present':s.cover_ready})
+            if not s.cover_ready:
+                s.stage='等待B站保存并回读封面，尚未投稿'
+                if getattr(s,'cover_wait_started',None) is None:s.cover_wait_started=time.monotonic()
+                elapsed=time.monotonic()-s.cover_wait_started
+                if elapsed>=30:s.cover_wait_expired=True;return False
+                observed=frame.evaluate(form_contract.READ_COVER_EDITOR)
+                self._trace(s,'bilibili.cover_editor',observed)
+                if observed.get('sync_prompt') is True:
+                    self._dismiss_cover_sync(s,frame)
+                    return False
+                if (elapsed>=15 or s.cover_sync_dismissed) and not getattr(s,'cover_retry_count',0):
+                    if (observed.get('editor_count')==1 and observed.get('observed') is True and observed.get('main_slot') is True
+                            and observed.get('task_matches') is True and observed.get('submit_enabled') is True
+                            and observed.get('sixteen_nine_ready') is True and
+                            (observed.get('needs_four_three') is not True or observed.get('four_three_ready') is True)):
+                        self._confirm_cover(s,frame,retry=True)
+                    elif observed.get('editor_count')==0:
+                        s.cover_retry_count=1
+                        s.cover_confirm_clicked=False;s.cover_opened=False;s.cover_uploaded=False;s.cover_uploaded_ratios=set()
+                    if s.cover_retry_count:self._trace(s,'bilibili.cover_retry',{'attempt':1,'final_started':False})
+            return s.cover_ready
+        if s.cover_path is None:
             from yijianjifa.os_integration.resources import ffmpeg_path
             video=Path(s.payload['video_path'])
             if not video.is_file() or sha256_file(video)!=s.payload['video_hash']:raise ValueError('frozen video changed before cover')
@@ -655,12 +757,36 @@ class BilibiliMultiPublishAdapter(ChromiumPublishSessionAdapter):
             run_hidden([str(ffmpeg_path()),'-nostdin','-v','error','-y','-i',str(video),'-vf','scale=1280:720:force_original_aspect_ratio=decrease,pad=1280:720:(ow-iw)/2:(oh-ih)/2','-frames:v','1','-q:v','2',str(path)],check=True,capture_output=True,timeout=30)
             if sha256_file(video)!=s.payload['video_hash']:raise ValueError('frozen video changed during cover')
             s.cover_path=path
+        if not getattr(s,'cover_opened',False):
             self._one(frame.locator(form_contract.COVER_OPEN),'B站主封面入口不唯一').click()
-            self._one(frame.locator(form_contract.COVER_FILE),'B站封面上传输入框不唯一').set_input_files(str(path));s.cover_uploaded=True
-            return False
-        done=frame.locator(form_contract.COVER_DONE)
-        if done.count()!=1:return False
-        done.click();s.cover_ready=True;return False
+            s.cover_opened=True;return False
+        observed=frame.evaluate(form_contract.READ_COVER_EDITOR)
+        self._trace(s,'bilibili.cover_editor',observed)
+        if not (observed.get('editor_count')==1 and observed.get('observed') is True
+                and observed.get('main_slot') is True and observed.get('task_matches') is True):return False
+        ratios=['four_three','sixteen_nine'] if observed.get('needs_four_three') is True else ['sixteen_nine']
+        uploaded=getattr(s,'cover_uploaded_ratios',set());s.cover_uploaded_ratios=uploaded
+        for ratio in ratios:
+            if ratio not in uploaded:
+                if observed.get('active_ratio')!=ratio:
+                    title=frame.locator(form_contract.COVER_ASPECT_TITLE).filter(has_text=re.compile(r'4[:：]3' if ratio=='four_three' else r'16[:：]9'))
+                    self._one(title,'B站封面比例入口不唯一').click()
+                    self._trace(s,'bilibili.cover_aspect',{'ratio':ratio,'state':'selected'})
+                    return False
+                # 两个比例使用同一冻结视频帧的独立文件名；重复选择同一路径不会触发原生change事件。
+                selection=s.cover_path.with_name(s.cover_path.stem+'-'+ratio+s.cover_path.suffix)
+                if not selection.exists():shutil.copyfile(s.cover_path,selection)
+                if sha256_file(selection)!=sha256_file(s.cover_path):raise ValueError('frozen cover copy changed')
+                self._one(frame.locator(form_contract.COVER_FILE),'B站封面上传输入框不唯一').set_input_files(str(selection))
+                uploaded.add(ratio)
+                self._trace(s,'bilibili.cover_aspect',{'ratio':ratio,'state':'file_selected'})
+                return False
+            if observed.get(ratio+'_ready') is not True:
+                s.stage='等待B站封面编辑器完成图片加载';return False
+        s.cover_uploaded=True
+        if observed.get('submit_enabled') is not True:return False
+        self._confirm_cover(s,frame)
+        return False
 
     def _prepare_form(self,s,frame,f):
         raw=frame.evaluate(form_contract.READ_FORM)
@@ -697,13 +823,21 @@ class BilibiliMultiPublishAdapter(ChromiumPublishSessionAdapter):
         f=form_contract.validate_form(s.payload,options=s.options)
         if f!=s.resolved_form or not form_contract.verify_form(raw,f):raise ValueError('final B站 form changed')
         button=self._one(frame.locator(form_contract.FINAL).filter(has_text=re.compile(r'^立即投稿$')),'B站最终投稿控件不唯一')
-        s.final_form=raw;s.final_spec=f;button.click()
+        from . import submit_feedback
+        s.final_form=raw;s.final_spec=f;s.feedback_surface=frame
+        submit_feedback.install(frame)
+        button.click()
 
     def _advance(self,s,*,before_final=None,query=False):
         self._preparation_stage='page_preparation';self._preparation_failure=None;self._preparation_diagnostic=None;self._upload_entry_kind='unobserved'
         self._statement_diagnostic=None;self._schedule_diagnostic=None;self._upload_diagnostic=None;self._preparation_deadline=None
         try:return self._advance_steps(s,before_final=before_final,query=query)
         except Exception as error:
+            # Only the proved rejection of the current ordinary tag is public.
+            # A query or an attempt that crossed final keeps its original guard.
+            if (not s.final and not query and type(error) is ValueError
+                    and error.args==('bilibili_tag_requires_topic',)):
+                return AdapterOutcome('pre_submit_failed',error_code='bilibili_tag_requires_topic')
             if not s.final and not query:
                 self._preparation_failure={'error_stage':self._preparation_stage,
                     'error_category':self._preparation_category(error,self._preparation_stage)}
@@ -734,6 +868,14 @@ class BilibiliMultiPublishAdapter(ChromiumPublishSessionAdapter):
                 if identity_deadline is None:identity_deadline=min(deadline,time.monotonic()+10)
                 if time.monotonic()>=identity_deadline:return self._park(s,'login','程序暂未读取到所选B站账号身份。请重新核对原账号，再继续原任务。',reason='identity_unavailable')
                 s.page.wait_for_timeout(200);continue
+            s.browser_login=False
+            if not query and s.final and getattr(s,'feedback_surface',None) is not None:
+                from . import submit_feedback
+                notice=submit_feedback.outcome(s,s.feedback_surface,self.platform_id,self._key(s.payload))
+                if notice and notice.state=='result_unknown':s.platform_message=notice.platform_message
+                elif notice:
+                    if notice.state in {'platform_scheduled','platform_accepted'}:self._refresh_after_receipt(s)
+                    return notice
             if s.phase=='baseline':
                 s.phase='prepare';s.stage='正在读取B站分区和创作声明';self._preparation_stage='page_navigation'
                 s.page.goto(form_contract.UPLOAD_URL,wait_until='domcontentloaded')
@@ -749,7 +891,10 @@ class BilibiliMultiPublishAdapter(ChromiumPublishSessionAdapter):
                 self._preparation_stage='upload_preparation';frame=self._frame(s);s.stage='正在上传B站视频'
                 if not s.uploaded and self._upload(s,frame) is False:s.page.wait_for_timeout(200);continue
                 s.stage='正在填写并核对B站资料与封面';self._preparation_stage='form_preparation'
-                if self._prepare_form(s,frame,f):
+                prepared=self._prepare_form(s,frame,f)
+                if getattr(s,'cover_wait_expired',False):
+                    return AdapterOutcome('pre_submit_failed',error_code='adapter_failed',error_stage='form_preparation',error_category='cover_unconfirmed')
+                if prepared:
                     try:current=form_contract.validate_form(s.payload,options=s.options)
                     except (ValueError,TypeError,KeyError):return AdapterOutcome('pre_submit_failed',error_code='configuration_required')
                     if current!=f:return AdapterOutcome('pre_submit_failed',error_code='configuration_required')
@@ -768,7 +913,8 @@ class BilibiliMultiPublishAdapter(ChromiumPublishSessionAdapter):
                     s.final_spec=f;s.final=True;s.phase='result';s.stage='正在等待B站投稿回执';self._click_final(s,frame)
             else:
                 s.stage='正在核对B站原稿件结果'
-                if s.submit_rejected:return AdapterOutcome('platform_rejected',error_code='platform_rejected')
+                if s.submit_rejected:return AdapterOutcome('platform_rejected',error_code='platform_rejected',
+                    platform_message=getattr(s,'platform_message',None) or None)
                 found=form_contract.verified_row(s.list_rows,s.receipt,f)
                 if found:
                     self._refresh_after_receipt(s)
@@ -777,10 +923,13 @@ class BilibiliMultiPublishAdapter(ChromiumPublishSessionAdapter):
         if not query and not s.final and not self.cancel.is_set():
             self._record_preparation_failure(TimeoutError())
             self._trace(s,'bilibili.preparation_timeout',{'stage':self._preparation_stage,'file_selected':bool(getattr(s,'file_selection_returned',False)),
-                'form_filled':bool(s.form_filled),'cover_ready':bool(s.cover_ready),'final_started':False})
+                'form_filled':bool(s.form_filled),'cover_ready':bool(s.cover_ready),
+                'cover_confirm_clicked':bool(getattr(s,'cover_confirm_clicked',False)),'final_started':False})
             stage=self._preparation_stage if self._preparation_stage in ERROR_STAGES else 'page_preparation'
-            return AdapterOutcome('pre_submit_failed',error_code='adapter_failed',error_stage=stage,error_category='timeout')
-        return AdapterOutcome('result_unknown' if s.final else 'pre_submit_failed',context={'handle':s.handle} if s.final else None,error_code='result_unknown' if s.final else 'timeout')
+            category='cover_unconfirmed' if getattr(s,'cover_confirm_clicked',False) and not s.cover_ready else 'timeout'
+            return AdapterOutcome('pre_submit_failed',error_code='adapter_failed',error_stage=stage,error_category=category)
+        return AdapterOutcome('result_unknown' if s.final else 'pre_submit_failed',context={'handle':s.handle} if s.final else None,
+            error_code='result_unknown' if s.final else 'timeout',platform_message=getattr(s,'platform_message',None) if s.final else None)
 
     def _prepare_result_query(self,s):
         if not self._challenge(s):s.page.goto(form_contract.MANAGE_URL,wait_until='domcontentloaded')
@@ -788,7 +937,8 @@ class BilibiliMultiPublishAdapter(ChromiumPublishSessionAdapter):
     def _refresh_after_receipt(self,s):
         try:
             a=self._account(s);uid,name=self._identity(s)
-            self.refreshed[a.id]=dict(platform_user_id=uid,nickname=name,session_blob=self._capture_session_blob(s.context,uid),original_ref=s.original_ref)
+            self.refreshed[a.id]=dict(platform_user_id=uid,nickname=name,session_blob=self._capture_session_blob(s.context,uid),original_ref=s.original_ref,
+                                      login_observed_at=self._login_valid_at(s))
         except Exception:pass
 
     def _capture_session_blob(self,context,uid):
@@ -799,6 +949,10 @@ class BilibiliMultiPublishAdapter(ChromiumPublishSessionAdapter):
             creator_auth.decode_session(auth.SPEC,value['session_blob'],value['platform_user_id'])
             with session_scope(self.engine) as db:
                 db.execute(text('BEGIN IMMEDIATE'));row=db.get(AccountRow,account_id)
-                if row is not None and row.platform==self.platform_id and row.login_state!='removed' and row.platform_user_id==value['platform_user_id'] and row.session_ref==value['original_ref']:
-                    row.session_ref=self.store.put(row.id,value['session_blob'],versioned=True);row.login_state='valid'
+                if (row is not None and row.platform==self.platform_id and row.login_state!='removed' and row.platform_user_id==value['platform_user_id']
+                        and row.session_ref==value['original_ref'] and self._can_refresh_login_session(db,row,value.get('login_observed_at'))):
+                    row.session_ref=self.store.put(row.id,value['session_blob'],versioned=True)
+                    if value.get('login_observed_at') is not None:
+                        self.service.record_login_check(db,row,'valid',observed_at=value['login_observed_at'])
+                    else:row.login_state='valid'
             self.refreshed.pop(account_id,None)

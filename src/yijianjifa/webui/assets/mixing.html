@@ -11,7 +11,7 @@
 :root{--blue:#3d60e8;--pale:#edf2ff;--ink:#202938;--muted:#748092}
 [hidden]{display:none!important}.advanced-view{display:flex;flex-direction:column;flex:1;min-height:0;overflow:hidden}
 .quick-home{flex:1;min-height:0;overflow:auto;padding:42px 40px 28px}.quick-inner{max-width:1050px;margin:0 auto}
-.quick-heading{margin:6px 0 27px}.quick-heading .eyebrow{font-size:12px;letter-spacing:2px;color:var(--blue);font-weight:700;margin-bottom:11px}.quick-heading h2{font-size:29px;line-height:1.35;margin:0 0 10px;letter-spacing:-.8px}.quick-heading p{color:var(--muted);margin:0;line-height:1.8;font-size:14px}
+.quick-heading{margin:6px 0 27px}.quick-heading h2{font-size:29px;line-height:1.35;margin:0 0 10px;letter-spacing:-.8px}.quick-heading p{color:var(--muted);margin:0;line-height:1.8;font-size:14px}
 .quick-card{background:#fff;border:1px solid var(--line);border-radius:18px;padding:30px;box-shadow:0 8px 28px rgba(29,47,88,.035)}
 .quick-card-header{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:25px}.quick-card-header h3{margin:0;font-size:18px;display:flex;align-items:center;gap:10px}.quick-card-header i{width:21px;height:21px;display:inline-flex;color:var(--blue)}
 .quick-fields{display:grid;grid-template-columns:1.2fr 1.2fr .8fr 1.1fr;gap:18px}.quick-fields .field{margin:0;min-width:0}.quick-fields .label{font-size:13px;margin:0 0 9px}.quick-fields input,.quick-fields select{height:46px;background:#fcfdff}
@@ -42,7 +42,7 @@
 #quick-home .daily-section-head{display:flex;align-items:center;gap:12px;margin-bottom:10px}#quick-home .daily-section-head .label{margin:0}#quick-home .daily-section-head button{margin-left:auto}
 #quick-home .daily-accounts{display:flex;flex-wrap:wrap;gap:12px}#quick-home .daily-account-group{border:1px solid var(--line);border-radius:10px;padding:10px 12px;min-width:190px;margin:0}#quick-home .daily-account-group legend{font-size:12px;color:var(--muted);padding:0 5px}#quick-home .daily-account-choice{display:flex;align-items:center;gap:8px;padding:4px 0}#quick-home .daily-account-choice small{color:var(--amber)}
 #quick-home .daily-platform-settings{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:12px;color:var(--muted);margin-top:8px}#quick-home .daily-timing{display:flex;gap:14px;align-items:flex-start;margin-top:20px}#quick-home .daily-timing>.field{min-width:145px}#quick-home .daily-schedule{display:grid;grid-template-columns:72px 100px 90px 126px 110px;gap:10px}#quick-home .daily-timing .field{margin:0}#quick-home .daily-schedule-brief{margin:12px 0 0;font-size:12px;color:var(--muted);line-height:1.8}
-#quick-home .daily-effects{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:22px}#quick-home .daily-effects .quick-tags{margin:0;flex:1}#quick-home .daily-effects button{white-space:nowrap}#quick-home .daily-effects .tag{font-size:11px}#quick-home .quick-action{margin-top:20px;padding-top:20px}#quick-home #daily-save-state{display:block;font-size:12px;font-weight:500;color:var(--green)}#quick-home .daily-progress{margin-top:18px;background:#f3f6ff;border-radius:10px;padding:14px;line-height:1.8;font-size:13px}#quick-home .daily-progress button{margin-left:12px}
+#quick-home .daily-effects{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:22px}#quick-home .daily-effects .quick-tags{margin:0;flex:1}#quick-home .daily-effects button{white-space:nowrap}#quick-home .daily-effects .tag{font-size:11px}#quick-home .quick-action{margin-top:20px;padding-top:20px}#quick-home #daily-save-state{display:block;font-size:12px;font-weight:500;color:var(--green)}
 @media(max-width:1180px){#quick-home{padding-top:22px}#quick-home .quick-heading{margin-bottom:18px}#quick-home .quick-card{padding:22px}#quick-home .quick-card-header{margin-bottom:18px}#quick-home .daily-publishing{margin-top:18px;padding-top:18px}#quick-home .quick-action{align-items:flex-start;gap:14px}}
 @media(max-width:1180px){#quick-home .daily-timing{flex-wrap:wrap}#quick-home .daily-schedule{grid-template-columns:repeat(5,minmax(70px,1fr));width:100%}}
 @media(max-width:850px){#quick-home .quick-fields{grid-template-columns:1fr 1fr}#quick-home .daily-timing{flex-wrap:wrap}#quick-home .quick-action{flex-direction:column}#quick-home .quick-actions{width:100%;justify-content:flex-end}#quick-home .daily-schedule{grid-template-columns:repeat(3,minmax(80px,1fr))}}
@@ -53,6 +53,10 @@
 /* Compact selectors and a single effects editor. */
 .mix-select{position:relative}.mix-select-button{width:100%;height:42px;text-align:left;padding:10px 34px 10px 12px;background:#fff;border:1px solid var(--line);border-radius:9px;color:var(--ink);font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;position:relative}.mix-select-button:after{content:"";position:absolute;right:13px;top:18px;border:5px solid transparent;border-top-color:#7a879d}.mix-select-button[aria-expanded="true"]{border-color:var(--blue);box-shadow:0 0 0 2px #4461ff18}.mix-select-menu{position:absolute;top:calc(100% + 6px);left:0;right:0;z-index:30;max-height:280px;overflow:auto;background:#fff;border:1px solid var(--line);border-radius:10px;box-shadow:0 10px 30px #17203320;padding:8px}.mix-select-menu label{display:flex;align-items:center;gap:8px;padding:9px 10px;cursor:pointer;border-radius:6px;font-size:13px}.mix-select-menu label:hover{background:#f1f4ff}.mix-select-menu input[type="checkbox"]{width:16px;height:16px;margin:0;flex-shrink:0}.mix-select-menu .daily-account-group{margin:0 0 6px;padding:4px;border:0;border-bottom:1px solid var(--line)}.mix-select-menu .daily-account-group legend{padding:0 8px;font-size:11px;color:var(--muted)}#quick-home .daily-account-picker{max-width:560px}#quick-home #daily-accounts{display:block;min-width:0;width:100%;box-sizing:border-box}#quick-home #daily-accounts.hide{display:none}.daily-schedule input[type="date"]{min-width:140px;width:100%;height:40px;border:1px solid var(--line);border-radius:8px;background:#fff;color:var(--ink);padding:8px;font:inherit}#advanced-view .steps{display:flex;gap:8px;background:none;border:0;padding:0 0 16px}#advanced-view .step{flex:0 0 96px;justify-content:center;min-height:38px;border:1px solid var(--line);border-radius:8px}#advanced-view .step.active{background:#edf1ff;border-color:#9caeff;color:var(--blue)}#advanced-view .workspace{padding-top:0}.effect-more{margin:12px 0;padding:12px 14px;border:1px solid var(--line);border-radius:9px;background:#fbfcff}.effect-more>summary{cursor:pointer;font-size:13px;color:#536580;font-weight:600}.effect-more[open]>summary{margin-bottom:14px}.effect-more .card{margin:12px 0 0;box-shadow:none}.effect-more .field{margin-top:12px}#advanced-view .bottom-bar{justify-content:space-between}#advanced-view .bottom-bar p{margin:0}#advanced-view .fields.three{grid-template-columns:repeat(3,minmax(0,1fr))}#advanced-view .fields.three .effect-more{grid-column:1/-1}#advanced-view .titlebar{margin-bottom:16px}#advanced-view .card-head{margin-bottom:14px}#advanced-view .card{padding:20px}#advanced-view .optioncard small{font-size:11px}#advanced-view .summary-mini{display:none}
 
+
+/* Keep the mixing account selector aligned with the other single-line selectors. */
+.mix-select-button.p011-account-picker-button{display:block;padding:10px 34px 10px 12px;line-height:20px}
+.mix-select-button.p011-account-picker-button:after{content:"";width:0;height:0;top:50%;border-bottom:0;transform:translateY(-50%)}
 
 #quick-home .daily-schedule{grid-template-columns:72px 100px 156px 118px 112px;gap:12px}#quick-home .daily-schedule input[type="date"]{min-width:0;box-sizing:border-box}#quick-home .daily-schedule .field{min-width:0}.mix-menu-section{border-bottom:1px solid var(--line);padding-bottom:5px;margin-bottom:5px}#quick-home .mix-select-menu .chip{border:0;background:none;border-radius:6px;display:flex}.mix-select-menu.hide{display:none}
 @media(max-width:1180px){#quick-home .daily-schedule{grid-template-columns:minmax(70px,1fr) minmax(98px,1fr) minmax(150px,1.5fr) minmax(112px,1fr) minmax(110px,1fr)}}@media(max-width:850px){#quick-home .daily-schedule{grid-template-columns:1fr 1fr;max-width:100%}}
@@ -124,48 +128,6 @@
 #quick-home .daily-only-field .only-make-inline button{height:42px;padding:8px;min-width:0;font-size:12px}
 #quick-home .daily-schedule{grid-template-columns:minmax(140px,1.3fr) minmax(74px,.7fr) minmax(86px,.8fr) minmax(144px,1.3fr) minmax(100px,1fr);gap:12px}
 #quick-home .daily-plan-heading{flex-wrap:wrap;gap:5px 12px}
-#quick-home .mixing-execution-panel{display:flex;flex-direction:column;min-width:0;height:auto;min-height:0;overflow:hidden;background:#fff;border:1px solid var(--line);border-radius:14px;padding:18px}
-#quick-home .mixing-execution-panel>h3{font-size:16px;line-height:1.5;margin:0 0 16px}
-#quick-home .mixing-execution-panel .daily-progress{display:flex;flex-direction:column;flex:1;min-height:0;margin:0;padding:0;background:none;font-size:13px;line-height:1.7}
-#quick-home .mixing-execution-phase{font-weight:650;color:var(--ink);font-size:15px;margin:0}
-#quick-home .mixing-execution-hint{color:var(--muted);margin:6px 0 12px;white-space:pre-line;overflow-wrap:anywhere;max-height:84px;overflow:auto;flex-shrink:0}
-#quick-home .mixing-execution-making,#quick-home .mixing-execution-publishing{color:#52627b;margin:3px 0}
-#quick-home .mixing-execution-current{padding:10px 12px;background:#f6f8fd;border-radius:8px;margin:10px 0 0;white-space:pre-line;overflow-wrap:anywhere;max-height:84px;overflow:auto;flex-shrink:0}
-#quick-home .mixing-execution-reason{color:#b33434;background:#fff4f3;border-radius:8px;margin:10px 0 0;padding:10px 12px;white-space:pre-line;overflow-wrap:anywhere;max-height:112px;overflow:auto;flex-shrink:0}
-#quick-home .mixing-execution-reason.is-verification{color:#52627b;background:#f3f6fc}
-#quick-home .mixing-execution-results{margin-top:10px;padding-top:8px;border-top:1px solid var(--line);font-size:12px;line-height:1.7}
-#quick-home .mixing-execution-result-groups{display:grid;gap:6px}
-#quick-home .mixing-execution-platform-row{display:grid;grid-template-columns:140px minmax(0,1fr);gap:8px 16px;align-items:start;min-width:0}
-#quick-home .mixing-execution-platform{font-weight:500;color:#52627b;white-space:nowrap}
-#quick-home .mixing-execution-result-accounts{display:flex;flex-wrap:wrap;gap:4px 16px;min-width:0;color:#52627b}
-#quick-home .mixing-execution-account{display:inline-flex;max-width:100%;min-width:0;white-space:nowrap;font-variant-numeric:tabular-nums}
-#quick-home .mixing-execution-account-label{min-width:0;overflow:hidden;text-overflow:ellipsis}
-#quick-home .mixing-execution-account-counts{flex-shrink:0;margin-left:4px}
-#quick-home .mixing-execution-results-notice{font-size:11px;color:#8b5e21;margin:4px 0 0}
-#quick-home .mixing-execution-events{min-height:0;max-height:320px;flex:1;overflow:auto;margin-top:14px;padding-top:10px;border-top:1px solid var(--line);overscroll-behavior:contain;scrollbar-width:thin;overflow-wrap:anywhere}
-#quick-home .mixing-execution-events ol{margin:0;padding:0;list-style:none}
-#quick-home .mixing-execution-events li{padding:7px 0;border-bottom:1px solid #f0f2f6;font-size:12px;white-space:pre-line}
-#quick-home .mixing-execution-events time{font-variant-numeric:tabular-nums;color:var(--muted);margin-right:6px}
-#quick-home .mixing-execution-account-help{flex-shrink:0;margin:12px 0 0;padding:12px;background:#f5f7ff;border:1px solid #e0e5ff;border-radius:8px}
-#quick-home .mixing-execution-account-help p{margin:0 0 10px;color:#5f6c84;font-size:13px;line-height:1.6}
-#quick-home .mixing-execution-account-actions{display:flex;flex-wrap:wrap;gap:8px}
-#quick-home .daily-progress .mixing-execution-account-actions button{margin:0;white-space:nowrap;font-size:13px;padding:8px 10px}
-#quick-home .mixing-execution-actions{display:flex;flex-wrap:nowrap;gap:5px;padding-top:14px;margin-top:auto;flex-shrink:0;overflow-x:auto}
-#quick-home .daily-progress .mixing-execution-actions button{margin:0;max-width:none;white-space:nowrap;flex-shrink:0;font-size:12px;padding:7px 5px}
-#quick-home .mixing-batch-progress{margin-top:18px;padding:14px 16px;border:1px solid var(--line);border-radius:10px;background:#f8faff;font-size:12px;line-height:1.7}
-#quick-home .batch-progress-phase{display:block;font-size:13px;color:var(--ink)}
-#quick-home [data-run-state]>.mixing-execution-phase,#quick-home [data-run-state]>.batch-progress-phase{padding:8px 10px;border-radius:8px;line-height:1.6;overflow-wrap:anywhere}
-#quick-home [data-run-state="running"]>.mixing-execution-phase,#quick-home [data-run-state="running"]>.batch-progress-phase{color:#3549bf;background:#eef1ff}
-#quick-home [data-run-state="verification"]>.mixing-execution-phase,#quick-home [data-run-state="verification"]>.batch-progress-phase{color:#466385;background:#eef5ff}
-#quick-home [data-run-state="completed"]>.mixing-execution-phase,#quick-home [data-run-state="completed"]>.batch-progress-phase{color:#20755a;background:#eaf7f0}
-#quick-home [data-run-state="attention"]>.mixing-execution-phase,#quick-home [data-run-state="attention"]>.batch-progress-phase{color:#9a4b13;background:#fff1e3}
-#quick-home [data-run-state="paused"]>.mixing-execution-phase,#quick-home [data-run-state="paused"]>.batch-progress-phase,#quick-home [data-run-state="waiting"]>.mixing-execution-phase,#quick-home [data-run-state="waiting"]>.batch-progress-phase{color:#59667a;background:#f0f2f6}
-#quick-home .batch-progress-counts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin-top:8px}
-#quick-home .batch-progress-counts.only-making{grid-template-columns:minmax(0,1fr)}
-#quick-home .batch-progress-counts p{margin:0 0 5px;color:#52627b;overflow-wrap:anywhere}
-#quick-home .batch-progress-counts progress{display:block;width:100%;height:8px;accent-color:var(--blue)}
-#quick-home .batch-progress-time{display:flex;flex-wrap:wrap;gap:4px 18px;margin-top:10px;color:var(--muted);font-variant-numeric:tabular-nums}
-@media(max-width:600px){#quick-home .batch-progress-counts{grid-template-columns:minmax(0,1fr);gap:10px}}
 @media(min-width:1101px) and (min-height:741px){#quick-home{display:flex;flex-direction:column}#quick-home .quick-inner{display:flex;flex-direction:column;flex:1;min-height:0;width:100%}#quick-home .quick-heading{flex:none}#quick-home .mixing-workspace{flex:1;min-height:0}#quick-home .mixing-settings>.quick-card{min-height:0;overflow:auto}#quick-home .mixing-execution-events{max-height:none}}
 @media(min-width:1800px){#quick-home .mixing-workspace{grid-template-columns:minmax(0,1fr) 360px}}
 @media(max-width:1299px){#quick-home .quick-fields{grid-template-columns:repeat(2,minmax(0,1fr))}#quick-home .daily-only-field{grid-column:1/-1;max-width:280px}#quick-home .daily-schedule{grid-template-columns:repeat(3,minmax(0,1fr))}}
@@ -177,9 +139,9 @@
 <div class="shell"><aside class="sidebar"><div class="brand p011-brand"><div class="mark" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M8.5 7.5 21 20M8.5 16.5 21 4M14 12l7-8"/></svg></div><div><b>一剪即发</b><small>一键剪辑 · 一键发布</small></div></div><div class="navcap">工作空间</div><nav id="nav"></nav><div class="side-foot"><strong>Mac 开发版</strong>本机制作 · 资料保存在本机</div></aside><main class="main">
 <header class="topbar"><div class="breadcrumb"><span>混剪制作</span><span>›</span><b id="breadcrumb-mode">快速制作</b></div><div class="top-actions"><span>资料保存在本机</span></div></header>
 
-<section aria-label="快速制作" class="quick-home" id="quick-home">
+<section aria-label="快速制作" class="quick-home p011-execution-scope" id="quick-home">
 <div class="quick-inner">
-<div class="quick-heading"><div class="eyebrow">混剪制作</div><h2>每天一键，制作并发布。</h2><p>选好素材、文案、账号和时间，设置自动记住。以后打开就能直接开始。</p></div>
+<div class="quick-heading"><h2>每天一键，制作并发布。</h2><p>选好素材、文案、账号和时间，设置自动记住。以后打开就能直接开始。</p></div>
 <div class="mixing-workspace"><div class="mixing-settings">
 <div class="quick-card">
 <div class="quick-card-header"><h3><i data-icon="scissors"></i>今天的制作与发布</h3><span class="tag">使用本机资料</span></div>
@@ -189,11 +151,13 @@
 <div class="field daily-account-field"><label class="label" for="daily-account-select">发布账号</label><div class="mix-select daily-account-picker"><button aria-controls="daily-accounts" aria-expanded="false" aria-haspopup="true" class="mix-select-button" id="daily-account-select" type="button">选择发布账号</button><div aria-label="选择发布账号" class="daily-accounts mix-select-menu hide" id="daily-accounts">正在读取已保存的账号…</div></div><small class="muted" id="daily-account-summary"></small><button class="small soft hide" id="daily-login-account" type="button">登录发布账号</button></div>
 <div class="field"><label class="label" for="quick-preset">使用方案</label><select id="quick-preset"><option value="default">默认方案</option></select><small>可继续使用已保存的制作方案</small></div>
 <div class="field daily-only-field"><label class="label" for="quick-quantity">生成数量</label><div class="only-make-inline"><input aria-label="生成数量" id="quick-quantity" min="1" readonly="" step="1" type="number" value="10"/><button disabled="" id="quick-only-generate">只生成视频</button></div><small id="daily-quantity-rule">5天 × 每天2条</small></div></div>
+<p class="quiet" id="quick-scope-rule">每条视频会覆盖所选的全部素材分类；文案分类与素材分类不会自动配对，同名分类也不会关联。不同产品请分批制作。</p>
 <div class="daily-publishing">
 <div class="daily-platform-settings hide" hidden=""><button class="small ghost" id="daily-manage-accounts">管理账号</button><button class="small ghost" id="daily-platform-settings">平台发布设置</button><span>分区、声明等只需设置一次。</span></div>
 <div class="daily-plan-heading"><h3>定时发布</h3><span>开始日期可选明天至第13天，最后一条须在14天内</span></div><div class="daily-timing"><div class="daily-fixed-mode hide" hidden=""><label class="label" for="daily-publish-mode">定时发布</label><select hidden="" id="daily-publish-mode"><option value="platform_schedule">定时发布</option></select></div>
 <div class="daily-schedule" id="daily-schedule"><div class="field"><label class="label" for="daily-publish-day">开始日期</label><input aria-label="开始日期" data-date-window="daily-start" id="daily-publish-day" type="date"/></div><div class="field"><label class="label" for="daily-publish-days">发布天数</label><input id="daily-publish-days" max="10000" min="1" step="1" type="number" value="5"/></div><div class="field"><label class="label" for="daily-publish-per-day">每天发布条数</label><input id="daily-publish-per-day" max="10000" min="1" step="1" type="number" value="2"/></div><div class="field"><label class="label" for="daily-publish-hour" id="daily-first-clock-label">每天首条时间</label><div class="daily-first-clock" role="group" aria-labelledby="daily-first-clock-label"><select aria-label="首条时间：小时" id="daily-publish-hour"></select><span aria-hidden="true">:</span><select aria-label="首条时间：分钟" id="daily-publish-minute"></select><input id="daily-publish-time" type="hidden" value="12:00"/></div></div><div class="field"><label class="label" for="daily-publish-interval">两条间隔</label><div class="unit-input"><input id="daily-publish-interval" min="0.5" step="0.5" type="number" value="3"/><span>小时</span></div></div></div></div>
 <p class="daily-schedule-brief" id="schedule-brief"></p>
+<p class="quiet">每次制作一条视频，再向所选账号提交发布。达到投稿上限的账号会跳过，其他账号继续。</p>
 </div>
 <div class="daily-effects"><div class="quick-tags" id="quick-tags"></div><div class="daily-effect-buttons"><button class="daily-effect-button" data-action="open-advanced">调整制作效果</button><button class="daily-effect-button" id="quick-save-preset">保存制作方案</button><button class="daily-effect-button soft" id="quick-existing-publish">已有成品，直接发布</button><button class="daily-effect-button primary" data-action="quick-generate" disabled="" id="quick-generate"><i data-icon="play"></i>一键制作并发布</button></div></div>
 <div class="daily-save-feedback" id="daily-save-feedback"><strong id="daily-save-state" role="status">正在读取已保存的设置…</strong><button class="small soft hide" id="daily-retry-save">重试保存</button></div>

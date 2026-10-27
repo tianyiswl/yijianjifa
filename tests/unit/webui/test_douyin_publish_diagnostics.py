@@ -262,7 +262,7 @@ def test_normal_baseline_reuses_its_complete_identity_inside_the_unchanged_thirt
                         'ready': len(baseline_reads) >= 4, 'matches': []}
             clock[0] += .05
             if 'p011FinalClicked=true' in code: final_reads.append(code)
-            elif 'p011ResultNeedsSearch' not in code: form_reads.append(code)
+            elif 'p011ResultNeedsSearch' not in code and 'p011SubmitFeedback' not in code: form_reads.append(code)
             return original(code, args)
         monkeypatch.setattr(page, 'evaluate', evaluate)
         monkeypatch.setattr(module, 'time', SimpleNamespace(monotonic=lambda: clock[0]))
@@ -365,4 +365,5 @@ def test_real_local_dom_result_gates_are_finite_and_do_not_claim_readiness(local
         'const identity={uid:"111",uid_after:"111",status:0,after_status:0,profile_status:0,nickname:"合成账号"};')
     result = legacy.evaluate_script(local_page, code, {'expected_uid': '111', 'title_text': '合成标题', 'body_text': ''})
     assert result['ready'] is ready
-    assert result['diagnostic'] == {'search_count': count, 'search_matches': count == 1, 'loading': loading}
+    assert result['diagnostic'] == {'search_count': count, 'search_matches': count == 1, 'loading': loading,
+                                    **({'text_match_count': 0} if ready else {})}

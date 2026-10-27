@@ -26,6 +26,11 @@ def test_transient_initial_navigation_recovers_one_upload_and_one_final(channels
 def test_persistent_initial_navigation_retains_page_without_granting_resume(channels, db_engine, monkeypatch):
     api, _, _, adapter, events, _ = channels
     original = adapter._challenge
+    original_open, pages = adapter._open, []
+    def track_open(session, **kwargs):
+        original_open(session, **kwargs)
+        if session.page not in pages: pages.append(session.page)
+    monkeypatch.setattr(adapter, '_open', track_open)
     def moving(session): raise PlaywrightError('Execution context was destroyed because of a navigation SECRET')
     monkeypatch.setattr(adapter, '_challenge', moving)
     monkeypatch.setattr(api._multi_publish, 'enqueue', lambda *args: None)
@@ -34,7 +39,10 @@ def test_persistent_initial_navigation_retains_page_without_granting_resume(chan
     assert coordinator.run_once(batch, [did]) == 'paused_auth'
     session = next(iter(adapter.sessions.values()));page = session.page
     assert page is not None and not session.final and not session.resume_authorized
-    assert not any(event in {'upload', 'final', 'close'} for event in events)
+    assert len(pages) == 2 and pages[0].headless and pages[0].closed
+    assert page is pages[1] and not page.headless and not page.closed
+    assert events.count('close') == events.count('open_background') == events.count('open_headed') == 1
+    assert not any(event in {'upload', 'final'} for event in events)
     assert coordinator.run_once(batch, [did]) is None
     with session_scope(db_engine) as db:
         attempt = db.scalar(select(DeliveryAttemptRow).where(DeliveryAttemptRow.delivery_id == did))

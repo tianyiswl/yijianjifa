@@ -219,6 +219,9 @@ def test_production_without_bounded_address_configuration_never_calls_dns(monkey
 def test_numeric_production_connection_uses_no_dns_and_keeps_hostname_tls(monkeypatch):
     http=module('official_http');assert 'resolved_addresses' in __import__('inspect').signature(http.HttpExecutor).parameters
     import io,ssl
+    from types import SimpleNamespace
+    # 模拟套接字没有真实耗时，隔离时钟以避免 Windows 浮点相减放大 20 毫秒边界。
+    monkeypatch.setattr(http,'time',SimpleNamespace(monotonic=lambda:0.0))
     events=[];sent=[]
     class Socket:
         def settimeout(self,value):events.append(('timeout',value))
@@ -233,7 +236,7 @@ def test_numeric_production_connection_uses_no_dns_and_keeps_hostname_tls(monkey
     monkeypatch.setattr(http.socket,'getaddrinfo',no_dns)
     monkeypatch.setattr(http.socket,'socket',lambda *a,**k:Socket())
     monkeypatch.setattr(http.ssl,'create_default_context',lambda:Context())
-    result=http.HttpExecutor(resolved_addresses={'member.bilibili.com':'192.0.2.1'}).execute(http.Request('GET','member.bilibili.com','/arcopen/fn/archive/view'),deadline=time.monotonic()+.020)
+    result=http.HttpExecutor(resolved_addresses={'member.bilibili.com':'192.0.2.1'}).execute(http.Request('GET','member.bilibili.com','/arcopen/fn/archive/view'),deadline=.020)
     assert result=={'code':0}
     assert ('connect',('192.0.2.1',443)) in events and ('tls','member.bilibili.com') in events
     assert all(0<t<=.020 for event,t in events if event=='timeout')
@@ -242,6 +245,8 @@ def test_numeric_production_connection_uses_no_dns_and_keeps_hostname_tls(monkey
 
 def test_numeric_connection_timeout_is_bounded_and_socket_closed(monkeypatch):
     http=module('official_http');assert 'resolved_addresses' in __import__('inspect').signature(http.HttpExecutor).parameters
+    from types import SimpleNamespace
+    monkeypatch.setattr(http,'time',SimpleNamespace(monotonic=lambda:0.0))
     events=[]
     class Socket:
         def settimeout(self,value):events.append(('timeout',value))
@@ -250,7 +255,7 @@ def test_numeric_connection_timeout_is_bounded_and_socket_closed(monkeypatch):
     monkeypatch.setattr(http.socket,'getaddrinfo',lambda *a,**k:pytest.fail('no DNS'))
     monkeypatch.setattr(http.socket,'socket',lambda *a,**k:Socket())
     with pytest.raises(http.ProtocolError) as caught:
-        http.HttpExecutor(resolved_addresses={'member.bilibili.com':'192.0.2.1'}).execute(http.Request('GET','member.bilibili.com','/arcopen/fn/archive/view'),deadline=time.monotonic()+.020)
+        http.HttpExecutor(resolved_addresses={'member.bilibili.com':'192.0.2.1'}).execute(http.Request('GET','member.bilibili.com','/arcopen/fn/archive/view'),deadline=.020)
     assert str(caught.value)=='timeout' and events[-1]==('closed',True)
     assert 0<events[0][1]<=.020
 

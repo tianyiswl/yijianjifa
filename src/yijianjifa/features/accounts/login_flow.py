@@ -93,6 +93,7 @@ class LoginFlow:
                         if ordinary_available:capabilities['ordinary']='available'
                     else:capabilities={'ordinary':'available' if ordinary_available else 'pending','commerce':'pending','location_scope':'pending'}
                     row.capability_json=json.dumps(capabilities)
+                    AccountService.record_login_check(session,row,'valid')
                     session.flush();saved_id=row.id
                 job.update(state='completed',account_id=saved_id)
             except Exception:

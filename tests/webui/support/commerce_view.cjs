@@ -27,7 +27,8 @@ const flush=()=>new Promise(resolve=>setImmediate(resolve));
 async function mount(handler,viewName='commerce',incoming,extra={}){
  const ids=new Map(),selectors=new Map();
  const get=(map,key)=>{if(!map.has(key))map.set(key,new Node('container'));return map.get(key);};
- const document={addEventListener(){},removeEventListener(){},body:new Node('body'),createElement:tag=>new Node(tag),getElementById:id=>get(ids,id),querySelector:s=>get(selectors,s),querySelectorAll:()=>[]};
+ const documentEvents=new Map();
+ const document={addEventListener(kind,fn){const set=documentEvents.get(kind)||new Set();set.add(fn);documentEvents.set(kind,set);},removeEventListener(kind,fn){documentEvents.get(kind)?.delete(fn);},emit(kind,event={}){for(const fn of documentEvents.get(kind)||[])fn({isTrusted:true,target:document.body,...event});},listenerCount(kind){return documentEvents.get(kind)?.size||0;},body:new Node('body'),createElement:tag=>new Node(tag),getElementById:id=>get(ids,id),querySelector:s=>get(selectors,s),querySelectorAll:()=>[]};
  document.getElementById('overlay').hidden=true;
  if(viewName==='accounts'){for(const id of ['platform','state'])document.getElementById(id).options=[new Node('option'),new Node('option')];document.addEventListener=()=>{};document.removeEventListener=()=>{};}
  const timers=[];
@@ -42,8 +43,8 @@ async function mount(handler,viewName='commerce',incoming,extra={}){
  for(const script of ['image_posts.js','image_publish.js']){const file=path.join(__dirname,'../../../src/yijianjifa/webui/assets/'+script);if(fs.existsSync(file))vm.runInNewContext(fs.readFileSync(file,'utf8'),context);}
  if(viewName==='voices')vm.runInNewContext(fs.readFileSync(path.join(__dirname,'../../../src/yijianjifa/webui/assets/cloud_voice.js'),'utf8'),context);
  if(viewName==='downloads')vm.runInNewContext(fs.readFileSync(path.join(__dirname,'../../../src/yijianjifa/webui/assets/download_subtitles.js'),'utf8'),context);
- if(viewName==='mixing')for(const script of ['mixing_publish.js','mixing_execution.js'])vm.runInNewContext(fs.readFileSync(path.join(__dirname,'../../../src/yijianjifa/webui/assets/'+script),'utf8'),context);
- for(const script of ['multi_publish_client.js','multi_publish_platform_fields.js','multi_publish_ui.js','multi_publish_targets.js']){const file=path.join(__dirname,'../../../src/yijianjifa/webui/assets/'+script);if(fs.existsSync(file))vm.runInNewContext(fs.readFileSync(file,'utf8'),context);}
+ if(viewName==='mixing')for(const script of ['account_picker.js','mixing_publish.js','mixing_execution.js'])vm.runInNewContext(fs.readFileSync(path.join(__dirname,'../../../src/yijianjifa/webui/assets/'+script),'utf8'),context);
+ for(const script of ['account_picker.js','multi_publish_client.js','multi_publish_platform_fields.js','account_publish_settings.js','publish_daily_schedule.js','mixing_execution.js','publish_execution.js','multi_publish_ui.js','multi_publish_targets.js']){const file=path.join(__dirname,'../../../src/yijianjifa/webui/assets/'+script);if(fs.existsSync(file))vm.runInNewContext(fs.readFileSync(file,'utf8'),context);}
  if(viewName==='multi_publish')vm.runInNewContext(fs.readFileSync(path.join(__dirname,'../../../src/yijianjifa/webui/assets/publish.js'),'utf8'),context);
  if(viewName!=='globals')vm.runInNewContext(fs.readFileSync(path.join(__dirname,'../../../src/yijianjifa/webui/assets/'+viewName+'.js'),'utf8'),context);
  let dispose;if(viewName==='globals'){const stops=[];for(const script of incoming){vm.runInNewContext(fs.readFileSync(path.join(__dirname,'../../../src/yijianjifa/webui/assets/'+script+'.js'),'utf8'),context);stops.push(context[script==='publish_progress'?'P011PublishProgress':'P011PublishIntervention']());}dispose=()=>stops.forEach(fn=>fn());}else dispose=context.P011Views[viewName](incoming);await flush();

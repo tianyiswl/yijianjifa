@@ -5,10 +5,10 @@ test('shelved commerce route cannot dispose current view or mount commerce',()=>
  vm.runInContext("P011Router.current='publish';P011Router.dispose=()=>{throw Error('disposed')};P011Views.commerce=()=>{throw Error('mounted')};P011Router.go('commerce');",context);
  assert.equal(vm.runInContext('P011Router.current',context),'publish');
 });
-test('shared visibility removes commerce navigation and hides handoff and probe',()=>{
- let removed=false;const handoff={},probe={},header={};const context={document:{querySelectorAll:s=>s==='nav button'?[{textContent:'普通发布',remove(){throw Error('ordinary removed')}},{textContent:'团购带货',remove(){removed=true}}]:s==='[data-commerce-column]'?[header]:[],getElementById:id=>id==='commerce-btn'?handoff:probe}};
+test('shared visibility removes commerce navigation and handoff while keeping readonly login checks visible',()=>{
+ let removed=false;const handoff={},check={hidden:false},header={};const context={document:{querySelectorAll:s=>s==='nav button'?[{textContent:'抖音发布',remove(){throw Error('ordinary removed')}},{textContent:'团购带货',remove(){removed=true}}]:s==='[data-commerce-column]'?[header]:[],getElementById:id=>id==='commerce-btn'?handoff:check}};
  vm.runInNewContext(asset('features.js')+';P011ApplyFeatures();',context);
- assert.equal(removed,true);assert.equal(handoff.hidden,true);assert.equal(probe.hidden,true);assert.equal(header.hidden,true);
+ assert.equal(removed,true);assert.equal(handoff.hidden,true);assert.equal(check.hidden,false);assert.equal(header.hidden,true);
 });
 test('navigation has exactly one download entry through repeated module switches',()=>{
  const {Node}=require('./support/commerce_view.cjs'),nav=new Node('nav');

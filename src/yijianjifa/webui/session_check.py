@@ -136,7 +136,8 @@ def _readonly_websocket(_socket):
 
 
 def make_session_checker(engine, paths, *, platform, home, origins, profile_for, restore, expression, verify,
-                         expired=None, readonly_posts=frozenset(), identity_timeout_ms=4000):
+                         expired=None, readonly_posts=frozenset(), identity_timeout_ms=4000,
+                         return_home_origins=frozenset()):
     """Bind trusted host functions; no page-supplied scripts or URLs exist."""
     def probe(account, temp, cancel, deadline, progress=None):
         """Child-only browser work; the host owns the lock and hard deadline."""
@@ -175,12 +176,22 @@ def make_session_checker(engine, paths, *, platform, home, origins, profile_for,
             observe('navigation_first', lambda: page.goto(home, wait_until='commit', timeout=_remaining(cancel, deadline, 8000)))
             previous = None
             first_verified_load = False
+            returns = 0
             # SPA account stores hydrate asynchronously after navigation commits.
             # Poll for at most 8 seconds of idle waits, within the overall bound.
             for _ in range(40):
                 _remaining(cancel, deadline)
                 if page.is_closed(): raise _Unavailable('identity_unavailable')
                 surface = observe('surface', lambda: _evaluate(page, SURFACE, cancel, deadline))
+                if type(surface) is dict and surface.get('origin') in return_home_origins and returns < 3:
+                    # Some normal Bili authentication redirects land on its
+                    # public home. That page proves nothing; return only to the
+                    # fixed creator URL, under the same deadline and write guard.
+                    returns += 1
+                    previous = None
+                    observe('navigation_second' if first_verified_load else 'navigation_first',
+                            lambda: page.goto(home, wait_until='commit', timeout=_remaining(cancel, deadline, 8000)))
+                    continue
                 if type(surface) is not dict or surface.get('origin') not in origins:
                     raise _Unavailable('identity_unavailable')
                 if surface.get('challenge') is True: raise _Unavailable('verification_required')

@@ -78,6 +78,136 @@ def submitted(daily, rid='daily-click'):
     return response['data']
 
 
+def legacy_submitted(daily, rid='daily-click'):
+    from legacy_daily_fixture import legacy_call
+    return legacy_call(daily[0], daily[1], rid)
+
+
+def _daily_with_observed_retained_account(daily, db_engine, monkeypatch, *, quantity=3, accepted=0):
+    """正式每日派发保留 True 标志，只有平台会话占用由离线适配器模拟。"""
+    api, params, _, _ = daily
+    params['mix']['quantity'] = quantity
+    transport = api._multi_publish.service.catalog.transport_for('douyin')
+    adapter = getattr(transport, 'adapter', transport)
+    original_submit = adapter.submit
+    observed = {'submissions': 0, 'retained': False}
+    def submit(payload, *, context, before_final):
+        observed['submissions'] += 1
+        if observed['submissions'] <= accepted:
+            return original_submit(payload, context=context, before_final=before_final)
+        before_final()
+        observed['retained'] = True
+        return AdapterOutcome('result_unknown', error_code='timeout')
+    monkeypatch.setattr(adapter, 'submit', submit)
+    monkeypatch.setattr(adapter, 'account_available', lambda target: not observed['retained'], raising=False)
+    make_id = legacy_submitted(daily, 'observed-daily')['id']
+    api._mix.queue.run_once_until_idle()
+    progress = call(api, 'mix.daily.status', {'id': make_id})['data']
+    publish_id = progress['publish_task_ids'][0]
+    for _ in range(accepted+1):
+        api._multi_publish.coordinator.run_once(publish_id)
+    assert api._multi_publish.coordinator.run_once(publish_id) is None
+    with session_scope(db_engine) as session:
+        rows = list(session.scalars(select(PublishDeliveryRow).where(PublishDeliveryRow.task_id==publish_id).order_by(PublishDeliveryRow.position)))
+        assert all(json.loads(row.snapshot_json)['allow_new_request'] is True for row in rows)
+    return SimpleNamespace(api=api, make_id=make_id, publish_id=publish_id,
+        original_id=rows[accepted].id, waiting_ids=[row.id for row in rows[accepted+1:]], observed=observed)
+
+
+def test_real_daily_allow_new_request_explains_7_received_1_unknown_16_observed_waits_without_changing_authority(daily,db_engine,monkeypatch):
+    from yijianjifa.app_services.mix_execution import read_execution
+    from yijianjifa.app_services.task_center_access import TaskCenterAccess
+    from yijianjifa.features.publish.deliveries import DeliveryAttemptRow
+    case = _daily_with_observed_retained_account(daily,db_engine,monkeypatch,quantity=24,accepted=7)
+    service = case.api._multi_publish.service
+    before = service.get_task(case.publish_id)
+    with session_scope(db_engine) as session:
+        attempt = session.scalar(select(DeliveryAttemptRow).where(DeliveryAttemptRow.delivery_id==case.original_id))
+        protected = (attempt.owner_hash,attempt.final_json,attempt.result_json)
+        assert service.deliveries.workers.stopped(attempt.owner_hash) is True
+    assert all(child['can_submit'] and child['readiness_reason'] is None for child in before['deliveries'][8:])
+    public = case.api._multi_publish.detail(case.publish_id)
+    for child in public['deliveries'][8:]:
+        assert child['blocked_by']=={'delivery_id':case.original_id,'state':'result_unknown'}
+        assert child['can_submit'] is True and child['readiness_reason'] is None
+        assert 'start' in child['allowed_actions']
+        assert child['reason_message'].startswith('最近一次处理在等待账号空闲；')
+    copied = TaskCenterAccess(db_engine).detail(case.publish_id)
+    assert copied['task']['status_label']=='等待核对发布结果，16项暂缓'
+    assert all(child.get('blocked_by') for child in copied['deliveries'][8:])
+    execution = read_execution(db_engine,case.make_id)
+    assert execution['timing']['active'] is False
+    assert execution['current']['label']=='等待核对原结果，16项暂缓'
+    assert all(target.get('blocked_by') for target in execution['publishing']['targets'][8:])
+    assert '最近一次处理在等待账号空闲；' in TaskCenterAccess(db_engine).execution_log_text(case.make_id)
+    after = service.get_task(case.publish_id)
+    assert [(c['state'],c['can_submit'],c['readiness_reason']) for c in after['deliveries']]==[(c['state'],c['can_submit'],c['readiness_reason']) for c in before['deliveries']]
+    with session_scope(db_engine) as session:
+        attempt = session.scalar(select(DeliveryAttemptRow).where(DeliveryAttemptRow.delivery_id==case.original_id))
+        assert (attempt.owner_hash,attempt.final_json,attempt.result_json)==protected
+    assert case.api._multi_publish.coordinator.run_once(case.publish_id) is None
+    assert case.observed=={'submissions':8,'retained':True}
+
+
+@pytest.mark.parametrize('change', ['missing_wait','not_latest_wait','busy_false','busy_string','malformed_last','old_attempt_wait','other_platform','other_uid','other_account_row','no_final','successful_close','settled_original','cancelled_wait','paused_target','paused_batch'])
+def test_daily_observed_wait_projection_rejects_unproven_or_explicitly_stopped_causes(daily,db_engine,monkeypatch,change):
+    from yijianjifa.app_services.mix_execution import read_execution
+    from yijianjifa.features.publish.deliveries import DeliveryAttemptRow
+    from yijianjifa.features.tasks.service import TaskCenterRow,TaskItemRow
+    case = _daily_with_observed_retained_account(daily,db_engine,monkeypatch)
+    other_account = AccountService(db_engine).create('douyin','another-account-user','其他账号') if change=='other_account_row' else None
+    with session_scope(db_engine) as session:
+        waiting = session.get(PublishDeliveryRow,case.waiting_ids[0])
+        original = session.get(PublishDeliveryRow,case.original_id)
+        attempt = session.scalar(select(DeliveryAttemptRow).where(DeliveryAttemptRow.delivery_id==original.id))
+        log = session.get(Setting,f'publish.execution:{waiting.id}:{waiting.attempt}')
+        events = json.loads(log.value_json)
+        if change=='missing_wait':session.delete(log)
+        if change=='not_latest_wait':events.append({'step':'execution.start','checks':{'query':False}})
+        if change=='busy_false':events[-1]['checks']={'busy':False}
+        if change=='busy_string':events[-1]['checks']={'busy':'true'}
+        if change=='malformed_last':events.append('invalid event')
+        if change=='old_attempt_wait':log.key=f'publish.execution:{waiting.id}:99'
+        if change=='other_platform':original.platform='bilibili'
+        if change=='other_uid':original.platform_user_id='unrelated-user'
+        if change=='other_account_row':original.account_id=other_account.id
+        if change=='no_final':attempt.final_json=None
+        if change=='successful_close':
+            original_log=session.get(Setting,f'publish.execution:{original.id}:{original.attempt}')
+            value=json.dumps((json.loads(original_log.value_json) if original_log else [])+[{'step':'browser.close','checks':{'closed':True}}])
+            if original_log:original_log.value_json=value
+            else:session.add(Setting(key=f'publish.execution:{original.id}:{original.attempt}',value_json=value))
+        if change=='settled_original':session.get(TaskItemRow,original.item_id).state='platform_scheduled'
+        if change=='cancelled_wait':waiting.cancel_requested=True
+        if change=='paused_target':session.add(Setting(key='multi_publish.target_pause:'+waiting.id,value_json='true'))
+        if change=='paused_batch':session.get(TaskCenterRow,waiting.task_id).state='paused'
+        if change not in {'missing_wait','old_attempt_wait'}:log.value_json=json.dumps(events)
+    raw = case.api._multi_publish.service.get_task(case.publish_id)
+    public = case.api._multi_publish.detail(case.publish_id)
+    child = next(child for child in public['deliveries'] if child['id']==case.waiting_ids[0])
+    assert 'blocked_by' not in child
+    assert '最近一次处理在等待账号空闲；' not in child['reason_message']
+    assert child['can_submit']==(False if change=='paused_target' else next(child for child in raw['deliveries'] if child['id']==case.waiting_ids[0])['can_submit'])
+    projected = next(target for target in read_execution(db_engine,case.make_id)['publishing']['targets'] if target['id']==case.waiting_ids[0])
+    assert 'blocked_by' not in projected
+
+
+@pytest.mark.parametrize('reopen_step',['douyin.browser_launch','submission.authorized','douyin.final_click'])
+def test_daily_observed_wait_uses_last_window_lifecycle_not_an_older_successful_close(daily,db_engine,monkeypatch,reopen_step):
+    case = _daily_with_observed_retained_account(daily,db_engine,monkeypatch)
+    with session_scope(db_engine) as session:
+        original = session.get(PublishDeliveryRow,case.original_id)
+        log=session.get(Setting,f'publish.execution:{original.id}:{original.attempt}')
+        value=json.dumps((json.loads(log.value_json) if log else [])+[
+            {'step':'browser.close','checks':{'closed':True}},
+            {'step':reopen_step,'checks':{'state':'completed','final_started':True}}])
+        if log:log.value_json=value
+        else:session.add(Setting(key=f'publish.execution:{original.id}:{original.attempt}',value_json=value))
+    child=case.api._multi_publish.detail(case.publish_id)['deliveries'][1]
+    assert child['blocked_by']['delivery_id']==case.original_id
+    assert child['reason_message'].startswith('最近一次处理在等待账号空闲；')
+
+
 @pytest.mark.parametrize('operation', ['mix.submit', 'mix.daily.submit'])
 def test_transient_submit_service_freezes_live_voice_identity(daily, operation):
     api, params, _, _ = daily
@@ -111,7 +241,7 @@ def test_missing_cloud_login_is_actionable_before_creating_task(daily, operation
 def test_cloud_pause_can_continue_and_old_message_clears_after_login_check(daily, db_engine, monkeypatch):
     from yijianjifa.features.mixing.tts.hosted import VoicePaused
     api, _, _, _ = daily
-    identity = submitted(daily)['id']
+    identity = legacy_submitted(daily)['id']
     def blocked(*args):
         raise VoicePaused('insufficient_credit', '本批需要 20 字，剩余 10 字。')
     monkeypatch.setattr(api._mix.executor, 'render_item', blocked)
@@ -203,7 +333,7 @@ def test_real_success_receipts_create_only_this_batch_v2_targets_and_exact_attem
     outsider.write_bytes(b'unrelated')
     unrelated = FinishedVideoService(db_engine).import_external(outsider, duration_ms=1000, title='别的成品')
     renderer.fail = {1}
-    first = submitted(daily)
+    first = legacy_submitted(daily)
     api._mix.queue._run_single_item(first['id'])
     api._runtime.handoff(first['id'])
     assert batches(db_engine) == []  # The current batch has not settled.
@@ -244,7 +374,7 @@ def test_paused_or_cancelled_batch_never_creates_a_publish_batch(daily, db_engin
 def test_all_failed_batch_keeps_specific_reason_and_creates_no_publish_batch(daily, db_engine):
     api, _, renderer, _ = daily
     renderer.fail = {0, 1, 2}
-    task = submitted(daily)
+    task = legacy_submitted(daily)
     api._mix.queue.run_once_until_idle()
     status = call(api, 'mix.daily.status', {'id': task['id']})['data']
     assert status['phase'] == 'needs_attention' and status['failed'] == 3
@@ -287,7 +417,7 @@ def test_changed_account_identity_during_making_is_not_auto_authorized(daily, db
 
 def test_reopen_revokes_daily_waiting_grants_without_changing_ordinary_v2_grants(daily, db_engine, app_paths):
     api, params, _, _ = daily
-    task = submitted(daily)
+    task = legacy_submitted(daily)
     api._mix.queue.run_once_until_idle()
     batch = batches(db_engine)[0].task_id
     with session_scope(db_engine) as s:
@@ -307,7 +437,7 @@ def test_reopen_revokes_daily_waiting_grants_without_changing_ordinary_v2_grants
 
 def test_runtime_close_before_settlement_cannot_save_or_authorize_new_publish_work(daily, db_engine):
     api = daily[0]
-    task = submitted(daily)
+    task = legacy_submitted(daily)
     assert api._multi_publish.close(1)
     api._mix.queue.run_once_until_idle()
     assert batches(db_engine) == []
@@ -322,7 +452,7 @@ def test_platform_defaults_are_frozen_for_this_intent_without_changing_original_
     defaults['fields_by_platform'] = {'douyin': {'title': '旧标题', 'body': '第一次默认正文', 'tags': '旧标签'}}
     multi_publish_settings.write(db_engine, defaults)
     CopyRepository(db_engine).create(id='C-second', title='第二条作品', voice='', body='第二条正文', tags='第二条标签', full='')
-    submitted(daily)
+    legacy_submitted(daily)
     defaults['fields_by_platform']['douyin']['body'] = '中途改过的默认正文'
     multi_publish_settings.write(db_engine, defaults)
     api._mix.queue.run_once_until_idle()
@@ -384,7 +514,7 @@ def test_local_platform_field_preflight_rejects_before_rendering_and_returns_act
 
 def test_daily_schedule_uses_v2_and_reports_accepted_only_after_actual_receipts(daily, db_engine):
     api, params, _, _ = daily
-    task = submitted(daily)
+    task = legacy_submitted(daily)
     assert task['resolved_start'] is not None
     api._mix.queue.run_once_until_idle()
     status = call(api, 'mix.daily.status', {'id': task['id']})['data']
@@ -428,7 +558,7 @@ def test_control_between_completion_and_final_grant_cannot_be_overwritten(daily,
 
 def test_finished_metadata_edited_while_making_does_not_replace_frozen_copy(daily, db_engine):
     api = daily[0]
-    task = submitted(daily)
+    task = legacy_submitted(daily)
     api._mix.queue._run_single_item(task['id'])
     with session_scope(db_engine) as s:
         finished_id = json.loads(s.get(Setting, 'mix-success:' + task['id'] + ':0').value_json)['finished_id']
@@ -462,7 +592,7 @@ def test_real_douyin_local_preflight_supports_scheduled_intent_and_exposes_actua
 
 def test_excluded_unresolved_target_remains_visible_in_daily_failure_total(daily, db_engine):
     api, params, _, account = daily
-    task = submitted(daily)
+    task = legacy_submitted(daily)
     api._mix.queue._run_single_item(task['id'])
     with session_scope(db_engine) as s:
         first_id = json.loads(s.get(Setting, 'mix-success:' + task['id'] + ':0').value_json)['finished_id']
@@ -476,7 +606,8 @@ def test_excluded_unresolved_target_remains_visible_in_daily_failure_total(daily
     for _ in range(2): api._multi_publish.coordinator.run_once(pid, ids)
     status = call(api, 'mix.daily.status', {'id': task['id']})['data']
     assert status['phase'] == 'needs_attention' and status['total'] == 3
-    assert status['accepted'] == 2 and status['published'] == 0 and status['failed'] == 1 and status['excluded_count'] == 1
+    assert status['accepted'] == 2 and status['published'] == 0 and status['failed'] == 0 and status['excluded_count'] == 1
+    assert status['pending'] == 1 and status['needs_action_count'] == 1
     assert status['reason_code'] == 'existing_target_unresolved' and status['reason']
 
 
@@ -572,7 +703,7 @@ def test_daily_rule_keeps_failed_item_original_day_and_slot_when_handed_to_v2(da
     api, params, renderer, _ = daily
     params['publishing'].update(days=3, per_day=2)
     renderer.fail = {1, 2}
-    task = submitted(daily)
+    task = legacy_submitted(daily)
     api._mix.queue.run_once_until_idle()
     status = call(api, 'mix.daily.status', {'id': task['id']})['data']
     assert len(status['publish_task_ids']) == 1
@@ -600,8 +731,8 @@ def test_legacy_term_allows_daily_making_and_synthetic_publish_handoff(daily, db
     from yijianjifa.app_services.use_term import UseTerm
     with session_scope(db_engine) as session:
         session.add(Setting(key=UseTerm.KEY, value_json=legacy))
-    result = call(api, 'mix.daily.submit', params, 'free-daily-intent')
-    assert result['ok'], result
+    from legacy_daily_fixture import legacy_call
+    result = {'ok': True, 'data': legacy_call(api, params, 'free-daily-intent')}
     api._mix.queue.run_once_until_idle()
     task = api._mix.queue.get(result['data']['id'])
     assert task.success_count == 3 and renderer.index == 3

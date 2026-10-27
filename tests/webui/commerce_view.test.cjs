@@ -26,10 +26,10 @@ test('ordinary publishing revokes the old preparation while rechecking and after
  view.find(n=>n.id==='publish-per-day').value='1';view.find(n=>n.id==='publish-days').value='1';
  const cb=view.find(n=>n.attrs['aria-label']==='选择 测试视频');cb.checked=true;cb.onchange();
  await view.click('预览发布安排');
- const submit=view.find(n=>n.tag==='button'&&n.textContent==='保存待执行任务');assert.equal(submit.disabled,false);
+ const submit=view.find(n=>n.tag==='button'&&n.textContent==='开始发布'&&n.className==='primary');assert.equal(submit.disabled,false);
  await view.click('预览发布安排');assert.equal(submit.disabled,true);
  reject(Error('资料已变化'));await view.flush();assert.equal(submit.disabled,true);
- await view.click('保存待执行任务');assert.equal(view.ids.get('overlay').hidden,true);view.dispose();
+ submit.onclick({isTrusted:true});await view.flush();assert.equal(view.ids.get('overlay').hidden,true);view.dispose();
 });
 test('commerce save requires explicit confirmation and suppresses duplicate clicks',async()=>{
  let writes=0,finish;

@@ -15,11 +15,12 @@ from yijianjifa.features.publish.schedule import ScheduleRule, PlatformLimits, b
 
 
 class PublishPlanning:
-    def __init__(self, engine, *, declarations=None, locations=None, covers=None):
+    def __init__(self, engine, *, declarations=None, locations=None, covers=None,inherit_account_settings=True):
         self.covers=covers
         self.locations=locations
         self.declarations=declarations
         self.engine = engine
+        self.inherit_account_settings=inherit_account_settings
         self.accounts = AccountService(engine)
         self.history = PublishHistoryRepository(engine)
 
@@ -97,6 +98,11 @@ class PublishPlanning:
         account_rules={k:parse_rule(v) for k,v in exceptions.items()}
         accounts={pid:self.accounts.get(pid) for pid in p['account_ids']}
         if any(a.platform!='douyin' for a in accounts.values()):raise ValueError('unsupported platform')
+        if capability=='ordinary' and self.inherit_account_settings:
+            from .account_publish_settings import AccountPublishSettings
+            defaults=AccountPublishSettings(self.engine,declarations=self.declarations,locations=self.locations)
+            p=defaults.ordinary_params(p)
+            self.declarations=defaults.declarations;self.locations=defaults.locations
         assignments=distribute(p['video_ids'],p['account_ids'],mode=p['distribution'])
         moves=p.get('moves',{})
         if type(moves) is not dict or len(moves)>200 or any(k not in p['video_ids'] or type(v) is not str or v not in accounts for k,v in moves.items()):raise ValueError('invalid manual assignment')
@@ -138,7 +144,8 @@ class PublishPlanning:
             if rule.mode=='daily':
                 capacity=rule.daily_count*rule.days
                 if count>capacity:issues.append(dict(account_id=pid,code='schedule_overfilled',expected=capacity,actual=count))
-                if count<capacity:issues.append(dict(account_id=pid,code='schedule_underfilled',expected=capacity,actual=count))
+                if capability=='commerce' and count<capacity:issues.append(dict(account_id=pid,code='schedule_underfilled',expected=capacity,actual=count))
+                if capability=='ordinary' and not count:issues.append(dict(account_id=pid,code='account_has_no_videos'))
                 last=rule.start+timedelta(hours=(rule.daily_count-1)*rule.interval_hours)
                 if rule.daily_times is None and rule.days>1 and last>=rule.start+timedelta(days=1):issues.append(dict(account_id=pid,code='daily_groups_overlap'))
             elif not count:issues.append(dict(account_id=pid,code='account_has_no_videos'))

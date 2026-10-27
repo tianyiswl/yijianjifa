@@ -7,7 +7,7 @@ P011Views.commerce=(incoming)=>{'use strict';
  function notice(t){if(alive){$('toast').textContent=t;$('toast').hidden=false;}}
  function button(text,fn,cls=''){const b=el('button',text,cls);b.onclick=e=>{if(e.isTrusted)Promise.resolve(fn()).catch(e=>notice(e.message));};return b;}
  const routes=['library','mixing','finished','publish','commerce','accounts','tasks','presets'];
- $('nav').replaceChildren(...['资料库','混剪制作','成品库','普通发布','团购带货','账号管理','任务记录','常用方案与设置'].map((t,i)=>{const b=button(t,()=>window.p011Navigate(()=>P011Router.go(routes[i])),i===4?'active':'');b.disabled=i===4;return b;}));
+ $('nav').replaceChildren(...['资料库','混剪制作','成品库','抖音发布','团购带货','账号管理','任务记录','常用方案与设置'].map((t,i)=>{const b=button(t,()=>window.p011Navigate(()=>P011Router.go(routes[i])),i===4?'active':'');b.disabled=i===4;return b;}));
  document.querySelector('.sidefoot').textContent='Mac 开发版 · 本机资料';document.querySelector('.top-actions').replaceChildren(el('span','本地发布准备'));document.querySelector('.titlebar .toolbar').replaceChildren(button('保存为常用方案',savePublishPreset));$('steps').replaceChildren();$('crumb-page').textContent='单账号发布准备';
  function card(title){const c=el('section',undefined,'card'),head=el('div',undefined,'card-head');head.append(el('h3',title,'card-title'));c.append(head);return c;}
  const root=$('workspace'),top=card('账号与排期'),fields=el('div',undefined,'fields'),account=el('select');account.setAttribute('aria-label','团购发布账号');top.append(el('label','本次发布账号'),account,fields);root.replaceChildren(top);

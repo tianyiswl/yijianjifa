@@ -128,6 +128,7 @@ class LibraryQueries:
             'platform_not_integrated': '此平台的登录和发布通道尚未接入。',
             'app_closing': '客户端正在退出，请稍候。',
             'empty_copy_selection': '当前没有可用文案，请在文案范围选择“不使用文案”，或添加文案后重试。',
+            'single_category_only': '每条内容只能选择一个分类。',
         }
         return {'v': 1, 'request_id': request_id, 'ok': False,
                 'error': {'code': code, 'message': messages[code],
@@ -184,6 +185,8 @@ class LibraryCommands(LibraryQueries):
                 return super().dispatch(raw, trusted_origin=True)
             self._validate(op, params)
             digest = hashlib.sha256(json.dumps({'v':1, 'operation':op, 'params':params}, sort_keys=True, ensure_ascii=False).encode('utf-8')).hexdigest()
+        except CommandRejected as exc:
+            return self._error(str(exc), rid)
         except (ValueError, TypeError, UnicodeError, RecursionError):
             return self._error('invalid_request', rid)
         try:
@@ -228,6 +231,8 @@ class LibraryCommands(LibraryQueries):
             ids = p['category_ids']
             if type(ids) is not list or len(ids) > 100 or not all(identity(x) for x in ids):
                 raise InvalidRequest()
+            if len(ids) > 1:
+                raise CommandRejected('single_category_only')
         elif op == 'category.create':
             if set(p) != {'kind','name'} or p['kind'] not in ('video','audio','music','copy','finished'):
                 raise InvalidRequest()

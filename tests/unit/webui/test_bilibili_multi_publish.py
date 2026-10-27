@@ -32,8 +32,10 @@ def resolved_payload(payload,options):
     return result
 
 
-def test_static_user_intent_resolves_current_ids_before_upload_and_binds_one_final(case,monkeypatch):
+@pytest.mark.parametrize('official_ai_label', ['该内容使用人工智能合成技术', '含AI生成内容'])
+def test_static_user_intent_resolves_current_ids_before_upload_and_binds_one_final(case,monkeypatch,official_ai_label):
     adapter,payload,_,events,_=case;session=use_builtin_intent(case,'ai_generated');frozen=deepcopy(payload)
+    session.options['statements'][1]['name']=official_ai_label
     def click(s,frame):
         actual=resolved_payload(payload,s.options)
         assert s.final_spec['category_id']==901 and s.final_spec['creation_statement_id']==67

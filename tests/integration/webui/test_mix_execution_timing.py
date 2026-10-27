@@ -106,12 +106,12 @@ def publishing(engine, paths, tmp_path, identity, states, *, authorized=True):
 
 
 @pytest.mark.parametrize(('state', 'authorized', 'active'), [
-    ('waiting', True, True), ('waiting', False, False), ('running', False, True),
+    ('waiting', True, False), ('waiting', False, False), ('running', False, True),
     ('paused_auth', True, False), ('interrupted', True, False), ('result_unknown', True, False),
     ('pre_submit_failed', True, False), ('platform_rejected', True, False),
     ('platform_accepted', True, False), ('platform_scheduled', True, False),
     ('processing', True, False), ('reviewing', True, False), ('published', True, False), ('cancelled', True, False)])
-def test_publish_timing_only_runs_for_running_or_authorized_waiting_targets(
+def test_publish_timing_only_runs_for_processing_targets_not_queued_authorization(
         timed, db_engine, app_paths, tmp_path, state, authorized, active):
     publishing(db_engine, app_paths, tmp_path, timed, [state], authorized=authorized)
     assert read_execution(db_engine, timed)['timing']['active'] is active
@@ -128,11 +128,65 @@ def test_authorized_waiting_target_does_not_run_when_stopped(timed, db_engine, a
     assert read_execution(db_engine, timed)['timing']['active'] is False
 
 
-def test_one_parked_target_does_not_stop_another_authorized_waiting_target(timed, db_engine, app_paths, tmp_path):
-    publishing(db_engine, app_paths, tmp_path, timed, ['paused_auth', 'waiting'])
-    assert read_execution(db_engine, timed)['timing']['active'] is True
+@pytest.mark.parametrize('blocked_state', ['paused_auth', 'result_unknown', 'interrupted'])
+def test_parked_target_explains_same_account_queue_without_claiming_active_work(timed, db_engine, app_paths, tmp_path, blocked_state):
+    _, deliveries = publishing(db_engine, app_paths, tmp_path, timed, [blocked_state, 'waiting'])
+    result = read_execution(db_engine, timed)
+    assert result['timing']['active'] is False
+    waiting = next(target for target in result['publishing']['targets'] if target['id'] == deliveries[1])
+    assert waiting['blocked_by'] == {'delivery_id': deliveries[0], 'state': blocked_state}
+    assert '同一账号' in waiting['reason'] and '暂缓' in waiting['reason']
+    if blocked_state != 'paused_auth':
+        assert result['current']['label'] == '等待核对原结果，1项暂缓'
     daily_progress(db_engine, timed, auth_phase='needs_login')
     assert read_execution(db_engine, timed)['timing']['active'] is False
+
+
+def test_other_account_running_is_kept_active_with_only_its_scope(timed, db_engine, app_paths, tmp_path):
+    _, deliveries = publishing(db_engine, app_paths, tmp_path, timed, ['result_unknown', 'waiting', 'running'])
+    account = AccountService(db_engine).create('douyin', 'another-user', '另一个账号')
+    with session_scope(db_engine) as session:
+        row = session.get(PublishDeliveryRow, deliveries[2])
+        row.account_id = account.id; row.platform_user_id = 'another-user'
+    result = read_execution(db_engine, timed)
+    assert result['timing']['active'] is True
+    assert '另一个账号' in result['current']['account_label']
+    assert result['publishing']['targets'][1]['blocked_by']['delivery_id'] == deliveries[0]
+    assert 'blocked_by' not in result['publishing']['targets'][2]
+
+
+def test_final_readback_is_active_until_unknown_result_is_recorded(timed, db_engine, app_paths, tmp_path):
+    from yijianjifa.features.publish.coordinator import AdapterOutcome
+    _, deliveries = publishing(db_engine, app_paths, tmp_path, timed, ['waiting', 'waiting'])
+    from yijianjifa.features.publish.history import PublishHistoryRow
+    with session_scope(db_engine) as session:
+        for delivery in session.scalars(select(PublishDeliveryRow)):
+            session.get(PublishHistoryRow, delivery.history_id).state = 'waiting'
+    service = MultiPublishService(db_engine, app_paths)
+    claim = service.deliveries.claim(deliveries[0])
+    service.deliveries.mark_before_final(deliveries[0], claim['digest'], owner_token=claim['owner_token'])
+    reading = read_execution(db_engine, timed)
+    assert reading['timing']['active'] is True
+    assert reading['publishing']['targets'][0]['execution_active'] is True
+    assert reading['current']['label'] == '正在核对提交结果'
+    service.deliveries.record(deliveries[0], claim['digest'], owner_token=claim['owner_token'],
+        outcome=AdapterOutcome('result_unknown', error_code='timeout'))
+    unknown = read_execution(db_engine, timed)
+    assert unknown['timing']['active'] is False
+    assert unknown['publishing']['targets'][0]['execution_active'] is False
+    assert unknown['current']['label'] == '等待核对原结果，1项暂缓'
+
+
+@pytest.mark.parametrize('stopped', ['batch-paused', 'target-paused', 'cancel-requested'])
+def test_explicitly_stopped_waiting_targets_are_not_counted_as_account_deferred(timed,db_engine,app_paths,tmp_path,stopped):
+    child, deliveries = publishing(db_engine,app_paths,tmp_path,timed,['result_unknown','waiting'])
+    with session_scope(db_engine) as session:
+        if stopped=='batch-paused':session.get(TaskCenterRow,child).state='paused'
+        if stopped=='target-paused':session.add(Setting(key='multi_publish.target_pause:'+deliveries[1],value_json='true'))
+        if stopped=='cancel-requested':session.get(PublishDeliveryRow,deliveries[1]).cancel_requested=True
+    result=read_execution(db_engine,timed)
+    assert 'blocked_by' not in result['publishing']['targets'][1]
+    assert '1项暂缓' not in result['current']['label']
 
 
 def test_last_activity_uses_saved_events_and_never_setting_update_time(timed, db_engine, app_paths, tmp_path):

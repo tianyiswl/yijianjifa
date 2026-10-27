@@ -143,3 +143,44 @@ def test_reopening_an_ended_batch_exposes_history_without_reauthorizing(recent, 
             assert session.get(MixTask, identity).state == 'completed_with_errors'
             assert not list(session.query(Setting).filter(Setting.key.startswith('multi_publish.authorization:')))
     finally: reopened.close(.1)
+
+
+@pytest.mark.parametrize('state', ['result_unknown', 'interrupted'])
+def test_ended_batch_with_unresolved_publishing_is_recent_read_only(recent, db_engine, monkeypatch, state):
+    """重开可看到原结果和账号暂缓，不把显示记录当成继续授权。"""
+    api, make = recent
+    identity = make(1, state='completed')
+    saved = {**api._daily.status(identity), 'can_continue': False, 'execution': {
+        'publishing': {'targets': [{'id': 'unknown', 'state': state},
+                                  {'id': 'waiting', 'state': 'waiting',
+                                   'blocked_by': {'delivery_id': 'unknown', 'state': state}}]},
+        'timing': {'active': False}}}
+    monkeypatch.setattr(api._daily, 'status', lambda task_id: saved)
+    statements = []
+    def observe(connection, cursor, statement, parameters, context, many):
+        statements.append(statement.lstrip().upper())
+    event.listen(db_engine, 'before_cursor_execute', observe)
+    try: data = api._daily.read()
+    finally: event.remove(db_engine, 'before_cursor_execute', observe)
+    assert data['active_batch'] is None
+    assert data['recent_batch'] == saved
+    assert not data['recent_batch']['can_continue']
+    assert not data['recent_batch']['execution']['timing']['active']
+    assert not any(statement.startswith(('INSERT', 'UPDATE', 'DELETE', 'REPLACE')) for statement in statements)
+
+
+def test_cleared_latest_does_not_restore_older_completed_batch(recent, app_paths):
+    api, make = recent
+    make(1, state='completed')
+    latest = make(2, state='completed')
+    from yijianjifa.app_services.task_removal import remove_task
+    remove_task(api._daily.engine, latest)
+    assert api._daily.read()['recent_batch'] is None
+    assert api._daily.read()['active_batch'] is None
+    # 用新的服务实例读取同一测试库，验证持久化而非页面内存隐藏。
+    reopened = DesktopApi(api._daily.engine, app_paths)
+    try:
+        assert reopened._daily.read()['recent_batch'] is None
+        assert reopened._daily.read()['active_batch'] is None
+    finally:
+        reopened.close(.1)

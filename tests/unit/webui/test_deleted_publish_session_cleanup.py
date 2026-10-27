@@ -30,8 +30,9 @@ def wait_for(predicate, timeout=4):
 
 
 @pytest.mark.parametrize('fail_close_once', [False, True])
+@pytest.mark.parametrize('cancel_operation',['task.delete','multi_publish.target.cancel'])
 def test_user_deletes_final_parked_task_releases_page_on_owner_and_can_publish_next_task(
-        browser, db_engine, app_paths, monkeypatch, tmp_path, fail_close_once):
+        browser, db_engine, app_paths, monkeypatch, tmp_path, fail_close_once,cancel_operation):
     from yijianjifa.webui import chromium_publish as legacy
     payload, pages, events, _ = browser
     contexts, close_attempts = [], []
@@ -116,7 +117,8 @@ def test_user_deletes_final_parked_task_releases_page_on_owner_and_can_publish_n
         assert close_attempts == [] and len(pages) == 1  # No user deletion means keep original page.
         original_session = next(iter(bridge.sessions.values()))
 
-        deleted = call('task.delete', {'id': task_id}, 'delete-first')
+        params={'id':task_id} if cancel_operation=='task.delete' else {'delivery_id':delivery_id}
+        deleted = call(cancel_operation, params, 'delete-first')
         assert deleted['ok'], deleted
         # Cleanup retries must run even without a new publish job to drive them.
         wait_for(lambda: not account_lock(payload['account_id']).locked())
@@ -128,11 +130,13 @@ def test_user_deletes_final_parked_task_releases_page_on_owner_and_can_publish_n
         with session_scope(db_engine) as session:
             row = session.get(PublishDeliveryRow, delivery_id)
             attempt = session.scalar(select(DeliveryAttemptRow).where(DeliveryAttemptRow.delivery_id == delivery_id))
-            assert row.hidden and row.cancel_requested
+            assert row.hidden==(cancel_operation=='task.delete') and row.cancel_requested
             assert attempt.final_json == original_final and attempt.request_digest == original_digest
             assert session.get(TaskItemRow, row.item_id).state == 'result_unknown'
             assert session.get(PublishHistoryRow, row.history_id).state == 'result_unknown'
         assert len([event for event in events if event[0] == 'final']) == 1
+
+        if cancel_operation!='task.delete':return
 
         source = tmp_path / 'next-owned.mp4'
         source.write_bytes(b'separate-synthetic-video')

@@ -22,6 +22,18 @@ def wait(event):
     assert event.wait(2), 'native login job did not reach the expected boundary'
 
 
+def test_account_on_hold_is_not_opened_or_reported_as_verified():
+    done=threading.Event();calls=[];observed=[]
+    def check(account_id,cancel):calls.append(account_id);return {'state':'valid','platform_user_id':'111'}
+    runtime=runtime_type()(SimpleNamespace(check_session=check),lambda task:[{**target('a'),'deferred_reason':'原结果待核对'},target('b')],
+        lambda task,**data:(observed.extend(data['login_accounts']),done.set()),lambda *args:pytest.fail('暂缓账号不能冒充全部验证成功'),lambda task:True)
+    try:
+        runtime.start('batch');wait(done)
+        assert calls==['b']
+        assert [o['state'] for o in observed]==['deferred','valid']
+    finally:assert runtime.close(2)
+
+
 def test_all_accounts_are_checked_serially_and_only_complete_valid_results_are_accepted():
     entered, release, done = threading.Event(), threading.Event(), threading.Event()
     calls, accepted, updates = [], [], []

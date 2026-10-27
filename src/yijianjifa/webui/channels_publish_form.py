@@ -67,6 +67,11 @@ def normalize_short_title(value):
     return re.sub(r'"([^"]*)"', r'“\1”', value.replace(':', '：', 1).replace('?', '？', 1))
 
 
+def valid_short_title(value):
+    return type(value) is str and (not value or (6 <= utf16_length(value) <= 16 and re.fullmatch(
+        r'[\u2103\u4E00-\u9FA5A-Za-z0-9《》"“”:：+?？%\s]+', value) is not None))
+
+
 def validate_form(payload, *, query=False, now=None):
     fields = payload['fields']
     if type(fields) is not dict or set(fields) - {'title', 'body', 'tags', 'cover', 'location', 'declaration', 'channels_short_title', 'content_declaration_choice', 'channels_original'}:
@@ -86,8 +91,7 @@ def validate_form(payload, *, query=False, now=None):
         raise ValueError('invalid channels caption')
     if '\u200b' in title + body + tags + short:
         raise ValueError('unsupported editor sentinel')
-    if short and (not 6 <= utf16_length(short) <= 16 or not re.fullmatch(
-            r'[\u2103\u4E00-\u9FA5A-Za-z0-9《》"“”:：+?？%\s]+', short)):
+    if not valid_short_title(short):
         raise ValueError('channels short title must contain 6 to 16 supported characters')
     names = [v.lstrip('#') for v in tags.split()]
     if (len(names) > 20 or len(names) != len(set(names))

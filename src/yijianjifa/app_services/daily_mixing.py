@@ -26,6 +26,7 @@ from yijianjifa.features.mixing.output_names import output_filename
 from yijianjifa.features.mixing.queue import MixTask
 from yijianjifa.features.publish.deliveries import PublishDeliveryRow, DeliveryAttemptRow, canonical, digest
 from yijianjifa.features.publish.platforms.catalog import PlatformCatalog
+from yijianjifa.features.publish.outcomes import COMPLETED_DELIVERY_STATES
 from yijianjifa.features.tasks.service import TaskItemRow
 from .account_access import public_account
 from .library_queries import InvalidRequest, CommandRejected
@@ -37,10 +38,11 @@ SETTINGS = 'mix.daily.settings.v1'
 STATUS = 'mix.daily.status:'
 SOURCE = 'multi_publish.daily_source:'
 LOCAL = timezone(timedelta(hours=8))
-ACCEPTED = {'published', 'platform_scheduled', 'platform_accepted', 'processing', 'reviewing'}
+ACCEPTED = COMPLETED_DELIVERY_STATES
 ATTENTION = {'paused_auth', 'result_unknown', 'interrupted', 'waiting_adapter', 'waiting_configuration',
              'pre_submit_failed', 'missed_schedule', 'platform_rejected'}
 MESSAGES = {
+    'daily_flow_invalid': '原批次流程版本尚不能核实，请查看配置；不会继续制作或派发。',
     'daily_authorization_required': '客户端已重新打开，请继续本批检查登录；已完成的视频会保留。',
     'daily_target_changed': '制作期间所选账号身份或登录资料已改变，请核对原账号后重新安排。',
     'daily_success_receipt_invalid': '本批成功成品与制作回执不一致，已停止自动发布，请核对任务记录。',
@@ -91,6 +93,15 @@ def _put(session, key, value):
 def _json(session, key, default=None):
     row = session.get(Setting, key)
     return json.loads(row.value_json) if row else default
+
+
+def _frozen_account_fields(frozen, target):
+    # V1 batches predate per-account defaults. Their stored platform choices
+    # remain the authority; neither form reads today's mutable preferences.
+    by_account=frozen.get('fields_by_account')
+    if by_account is not None:
+        return copy.deepcopy(by_account[target['account_id']])
+    return copy.deepcopy(frozen['fields_by_platform'][target['platform']])
 
 
 _LOGIN_CHECK_STEPS = {
@@ -158,7 +169,8 @@ def _login_repair_accounts(session, frozen, observations):
     from .daily_login_runtime import _PROGRESS_REASONS
     if type(observations) is not list:
         return []
-    targets = {target['account_id']: target for target in frozen['targets']}
+    raw = frozen.get('targets') if type(frozen.get('targets')) is list else []
+    targets = {target['account_id']: target for target in raw if type(target) is dict and type(target.get('account_id')) is str}
     result, seen = [], set()
     for observation in observations[:200]:
         if type(observation) is not dict:
@@ -189,17 +201,21 @@ def read_status(engine, task_id):
         task = s.get(MixTask, task_id)
         if task is None:
             raise KeyError(task_id)
-        frozen = json.loads(task.snapshot_json).get('daily_publish')
+        snapshot = json.loads(task.snapshot_json)
+        frozen = snapshot.get('daily_publish')
         if not frozen:
             raise KeyError(task_id)
         progress = _json(s, STATUS + task_id, {})
         publish_ids = list(progress.get('publish_task_ids', []))
-        platforms = len({t['platform'] for t in frozen['targets']})
+        from yijianjifa.features.mixing.serial_gate import has_flow_marker, valid_snapshot
+        serial_mode = has_flow_marker(snapshot)
+        targets = frozen.get('targets') if type(frozen.get('targets')) is list else []
+        platforms = len(targets) if serial_mode else len({t['platform'] for t in targets})
         total = task.quantity * platforms
         excluded_count = progress.get('excluded_count', 0)
         result = dict(id=task_id, mix_task_id=task_id, phase='making', publish_task_ids=publish_ids,
                       accepted=0, published=0, pending=total - task.failure_count * platforms,
-                      failed=task.failure_count * platforms + excluded_count, total=total, reason='', reason_code='',
+                      failed=task.failure_count * platforms, total=total, reason='', reason_code='',
                       making_failed=task.failure_count, resolved_start=frozen['resolved_start'], submitted=False)
         result.update(excluded_count=excluded_count, excluded_targets=progress.get('excluded_targets', []))
         children = []
@@ -215,8 +231,9 @@ def read_status(engine, task_id):
         if children:
             result['accepted'] = sum(c['state'] in ACCEPTED for c in children)
             result['published'] = sum(c['state'] == 'published' for c in children)
-            result['failed'] += sum(c['state'] in ATTENTION for c in children)
-            result['pending'] = sum(c['state'] not in ACCEPTED | ATTENTION | {'cancelled'} for c in children)
+            actual_errors = {'pre_submit_failed', 'platform_rejected', 'failed'}
+            result['failed'] += sum(c['state'] in actual_errors for c in children)
+            result['pending'] = excluded_count + sum(c['state'] not in ACCEPTED | actual_errors | {'cancelled'} for c in children)
             result['submitted'] = any(c['submitted'] for c in children)
             if all(c['state'] == 'cancelled' for c in children):
                 result['phase'] = 'cancelled'
@@ -244,6 +261,8 @@ def read_status(engine, task_id):
             result['reason_code'] = progress['reason_code']
         if result['failed'] and result['phase'] in {'completed', 'accepted'}:
             result.update(phase='needs_attention', reason_code='existing_target_unresolved' if excluded_count else 'daily_making_failed')
+        if excluded_count and result['phase'] != 'cancelled':
+            result.update(phase='needs_attention', reason_code='existing_target_unresolved')
         if progress.get('automatic_stopped'):
             cancelled = progress.get('reason_code') == 'daily_batch_cancelled'
             result.update(phase='cancelled' if cancelled else 'needs_attention', reason_code=progress['reason_code'])
@@ -273,8 +292,36 @@ def read_status(engine, task_id):
             pause = _json(s, 'mix-voice-pause:' + task_id, {})
             if pause.get('message'):
                 result.update(phase='needs_attention', reason_code='cloud_voice_paused', reason=pause['message'], can_continue=True)
+        states = {c['state'] for c in children}
+        unverified_result = any(c['state'] in {'result_unknown', 'interrupted'} and c['reason'] != 'verification_required' for c in children)
+        verification = any(c['state'] == 'paused_auth' or c['state'] in {'result_unknown', 'interrupted'} and c['reason'] == 'verification_required' for c in children)
+        waiting_reason = ('result' if unverified_result else 'verification' if verification
+                          else 'configuration' if states & {'waiting_adapter', 'waiting_configuration'} else 'receipt' if result['pending'] else 'none')
+        result.update(waiting_reason=waiting_reason,
+                      needs_action_count=excluded_count + sum(c['state'] in ATTENTION for c in children),
+                      needs_action=bool(states & ATTENTION) or bool(excluded_count) or result.get('can_continue', False))
+        if serial_mode:
+            from .daily_serial_flow import read_serial_progress
+            serial = read_serial_progress(s, task)
+            result.update(serial=serial, total=serial['targets_total'], accepted=serial['targets_received'],
+                pending=serial['waiting_count'], failed=serial['error_count'],
+                waiting_reason=serial['waiting_reason'], needs_action=serial['needs_action'],
+                needs_action_count=serial['needs_action_count'], reason=serial['reason'])
+            result['phase'] = {'making': 'making', 'publishing': 'publishing', 'waiting_schedule': 'publishing',
+                               'needs_attention': 'needs_attention', 'paused': 'needs_attention', 'completed': 'accepted'}[serial['stage']]
+            if auth_phase and valid_snapshot(snapshot, task.quantity): result['phase'] = auth_phase
+            cancelled = task.state in {'cancelled', 'cancelling'} or progress.get('reason_code') == 'daily_batch_cancelled'
+            if cancelled: result['phase'] = 'cancelled'
+            result['can_continue'] = (not cancelled and valid_snapshot(snapshot, task.quantity) and
+                (serial['waiting_reason'] == 'authorization' or serial['stage'] == 'paused'
+                 or task.state in {'paused', 'interrupted'} and task.failure_count > 0))
         from .mix_execution import read_execution
         result['execution'] = read_execution(engine, task_id, task=task)
+        if result['execution'].get('closed_report'):
+            report=result['execution']['report']
+            result.update(phase='accepted',serial=None,total=report['total'],accepted=report['accepted'],
+                failed=len(report['missed']),pending=0,can_continue=False,reason='',waiting_reason='none',
+                needs_action=bool(report['missed']),needs_action_count=len(report['missed']))
         return result
 
 
@@ -292,7 +339,16 @@ class DailyMixingService:
         # Ordinary V2 recovery is unchanged. Only this feature's old per-click
         # grants are withdrawn before the host's publishing worker can start.
         with session_scope(engine) as s:
+            finished_serial = set()
             for task in s.scalars(select(MixTask)):
+                from yijianjifa.features.mixing.serial_gate import has_flow_marker, can_claim_next
+                if (task.state == 'completed' and has_flow_marker(json.loads(task.snapshot_json))
+                        and task.current_index >= task.quantity and can_claim_next(s, task)):
+                    finished_serial.add(task.id)
+                    progress = _json(s, STATUS + task.id, {})
+                    if progress.get('reason_code') == 'daily_authorization_required':
+                        _put(s, STATUS + task.id, {**progress, 'auth_phase': '', 'reason_code': '', 'reason': ''})
+                    continue
                 frozen = json.loads(task.snapshot_json).get('daily_publish')
                 if (not frozen or frozen.get('host_session') == self.session_id
                         or task.state in {'cancelled', 'cancelling'} or s.get(Setting, 'task-hidden:' + task.id)):
@@ -302,6 +358,7 @@ class DailyMixingService:
                     _put(s, STATUS + task.id, {**progress, 'auth_phase': 'needs_attention',
                         'reason_code': 'daily_authorization_required', 'reason': MESSAGES['daily_authorization_required']})
             for row in s.scalars(select(Setting).where(Setting.key.startswith(STATUS))):
+                if row.key[len(STATUS):] in finished_serial: continue
                 progress = json.loads(row.value_json)
                 if progress.get('auth_phase') and progress.get('auth_host') != self.session_id and not progress.get('automatic_stopped'):
                     progress.update(auth_phase='needs_attention', reason_code='daily_authorization_required',
@@ -314,6 +371,7 @@ class DailyMixingService:
                 authorization = s.get(Setting, AUTH + row.key[len(SOURCE):])
                 if authorization is not None:
                     s.delete(authorization)
+                if source['mix_task_id'] in finished_serial: continue
                 _put(s, STATUS + source['mix_task_id'], {
                     **_json(s, STATUS + source['mix_task_id'], {}),
                     'reason_code': 'daily_authorization_required', 'reason': MESSAGES['daily_authorization_required']})
@@ -384,13 +442,24 @@ class DailyMixingService:
             active_id = next((t.id for t in visible
                 if _json(s, STATUS + t.id, {}).get('auth_phase') not in {'needs_login','needs_attention'}
                 and (t.state in {'waiting', 'running'} or
+                     t.state == 'waiting_publish' and _json(s, STATUS + t.id, {}).get('auth_host') == self.session_id or
                      _json(s, STATUS + t.id, {}).get('auth_phase') == 'checking_login')), None)
-            recent_id = visible[0].id if visible and not active_id else None
+            # 清掉最近一批后保持空白，不用更早的历史补位。
+            latest = next((t for t in candidates if json.loads(t.snapshot_json).get('daily_publish')), None)
+            recent_id = (latest.id if latest and not active_id
+                and latest.state not in {'cancelled', 'cancelling'}
+                and not s.get(Setting, 'task-hidden:' + latest.id) else None)
+            recent_ended = bool(recent_id and latest.state in {'completed', 'completed_with_errors'})
         active = self.status(active_id) if active_id else None
         recent = self.status(recent_id) if recent_id else None
         # A history result is display-only. Never turn it into an active batch
         # or expose a continue action through the recent-results fallback.
-        if recent and recent.get('phase') not in {'accepted', 'completed'}:
+        # 结果未知的发布批次只恢复进度显示，不恢复原会话授权或账号操作。
+        unresolved_recent = (recent_ended and recent and recent.get('phase') == 'needs_attention'
+            and not recent.get('can_continue')
+            and any(target.get('state') in {'result_unknown', 'interrupted'} or target.get('blocked_by')
+                    for target in recent.get('execution', {}).get('publishing', {}).get('targets', [])))
+        if recent and recent.get('phase') not in {'accepted', 'completed'} and not unresolved_recent and not recent.get('serial'):
             recent = None
         return {'settings': settings, 'accounts': accounts, 'has_saved_settings': settings is not None,
                 'capabilities': capabilities, 'active_batch': active, 'recent_batch': recent}
@@ -469,11 +538,15 @@ class DailyMixingService:
         deadline = submit_now + timedelta(days=14)
         if any(slot is not None and datetime.fromisoformat(slot) > deadline for slot in slots):
             raise DailyMixingError('daily_end_out_of_range')
-        frozen = {'version': 1, 'host_session': self.session_id, 'targets': targets,
+        frozen = {'version': 1, 'execution_flow': 'per_item_v1', 'host_session': self.session_id, 'targets': targets,
                   'fields_by_platform': {t['platform']: {k: copy.deepcopy(v) for k, v in defaults.get(t['platform'], {}).items()
                                                        if k not in {'title', 'body', 'tags'}} for t in targets},
                   'mode': p['mode'], 'resolved_start': start,
                   'slots': slots}
+        from .account_publish_settings import AccountPublishSettings
+        configured=getattr(self.runtime.service,'account_publish_settings',None)
+        account_defaults=configured.for_engine(connection) if configured is not None else AccountPublishSettings(connection,catalog=self.runtime.catalog)
+        frozen['fields_by_account']={t['account_id']:account_defaults.resolve_fields(t['account_id']) for t in targets}
         if 'days' in p:
             frozen['daily_rule'] = {k: p[k] for k in ('days', 'per_day', 'time', 'interval_hours')}
         try:
@@ -505,7 +578,7 @@ class DailyMixingService:
                     context += f'，定时{clock}'
                 fields = {k: item.get(k, '') for k in ('title', 'body', 'tags')}
                 fields['cover'] = {'kind': 'first_frame', 'frame_ms': 0}
-                fields.update(frozen['fields_by_platform'][target['platform']])
+                fields.update(_frozen_account_fields(frozen,target))
                 if target['platform'] == 'bilibili':
                     try: schema = self.runtime.catalog.transport_for('bilibili').public_field_schema
                     except (ValueError, AttributeError): schema = {}
@@ -523,6 +596,65 @@ class DailyMixingService:
     def status(self, task_id):
         return read_status(self.engine, task_id)
 
+    def _mix_task(self, task_id):
+        return DesktopMixService(self.engine, self.paths).queue.get(task_id)
+
+    _serial_fields = staticmethod(_frozen_account_fields)
+
+    @staticmethod
+    def _notify_serial_completed(session, task):
+        from yijianjifa.features.mixing.queue import MixQueue
+        MixQueue._notify_completed(session, task)
+
+    def recheck_serial(self):
+        """仅已授权运行时定期补偿丢通知；不从任何只读接口调用。"""
+        from yijianjifa.features.mixing.serial_gate import is_serial
+        with session_scope(self.engine) as s:
+            ids = [t.id for t in s.scalars(select(MixTask).where(MixTask.state == 'waiting_publish')).all()
+                   if is_serial(json.loads(t.snapshot_json)) and _json(s, STATUS + t.id, {}).get('auth_host') == self.session_id
+                   and not _json(s, STATUS + t.id, {}).get('automatic_stopped')][:100]
+        assertion = False
+        for identity in ids:
+            if self.closing.is_set() or self.runtime.closed.is_set(): break
+            try: self.reconcile(identity)
+            except Exception as error:
+                self._stop_serial_error(identity, error, step='daily.serial_recheck_failed')
+                assertion = assertion or isinstance(error, AssertionError)
+        if assertion:
+            raise AssertionError('逐条流程不变量检查失败，后续制作已停止；详见本地执行记录。')
+
+    def _stop_serial_error(self, task_id, error, *, step='daily.serial_dispatch_failed'):
+        """原始异常文字不出本机边界；每批只保存有限、可见的错误类型和固定说明。"""
+        name = type(error).__name__
+        name = name if re.fullmatch(r'[A-Za-z][A-Za-z0-9_]{0,63}', name) else 'InternalError'
+        reason = f'逐条流程检查异常（{name}），已停止后续制作，请查看本条任务记录。'
+        with self.engine.connect() as c:
+            c.exec_driver_sql('BEGIN IMMEDIATE')
+            with session_scope(c) as s:
+                row = s.get(MixTask, task_id)
+                if row is None: return
+                history = _json(s, 'mix.daily.diagnostics:' + task_id, [])
+                history = history if type(history) is list else []
+                event = {'time': utcnow().isoformat(), 'step': step, 'error_type': name, 'reason': reason}
+                _put(s, 'mix.daily.diagnostics:' + task_id, [*history[-19:], event])
+                proof = _json(s, STATUS + task_id, {})
+                if not proof.get('automatic_stopped') and row.state not in {'cancelled', 'cancelling'}:
+                    _put(s, STATUS + task_id, {**proof, 'automatic_stopped': True, 'serial_error': True,
+                        'auth_phase': '', 'reason_code': 'daily_serial_runtime_error', 'reason': reason})
+                    row.state = 'paused'
+                    row.last_error = reason
+            c.commit()
+
+    def record_serial_runtime_error(self, error):
+        """发布runtime本身的检查失败同样落到有关批次，不静默重试。"""
+        from yijianjifa.features.mixing.serial_gate import is_serial
+        with session_scope(self.engine) as s:
+            ids = [t.id for t in s.scalars(select(MixTask))
+                   if is_serial(json.loads(t.snapshot_json)) and _json(s, STATUS + t.id, {}).get('auth_host') == self.session_id
+                   and t.state in {'waiting_publish', 'waiting', 'running'}][:100]
+        for identity in ids:
+            self._stop_serial_error(identity, error, step='daily.serial_runtime_failed')
+
     def auth_current(self, task_id):
         if self.runtime.closed.is_set():
             return False
@@ -531,6 +663,10 @@ class DailyMixingService:
 
     def _auth_guard(self, s, task_id):
         task = s.get(MixTask, task_id)
+        from yijianjifa.features.mixing.serial_gate import has_flow_marker, is_serial
+        if task is not None:
+            snapshot = json.loads(task.snapshot_json)
+            if has_flow_marker(snapshot) and not is_serial(snapshot): return None
         progress = _json(s, STATUS + task_id, {})
         if (task is None or task.state in {'cancelled', 'cancelling', 'running'}
                 or s.get(Setting, 'task-hidden:' + task_id) or progress.get('automatic_stopped')
@@ -559,7 +695,10 @@ class DailyMixingService:
                     (t['account_id'], t['platform'], t['platform_user_id']) for t in frozen['targets']]:
                 raise DailyMixingError('daily_target_changed')
             self._auth_baselines[task_id] = copy.deepcopy(targets)
-            return [{**t, 'nickname': AccountService(self.engine).get(t['account_id']).nickname} for t in targets]
+            from yijianjifa.features.mixing.serial_gate import account_holds, is_serial
+            holds=account_holds(s,task) if is_serial(json.loads(task.snapshot_json)) else {}
+            return [{**t, 'nickname': AccountService(self.engine).get(t['account_id']).nickname,
+                     **({'deferred_reason':holds[t['account_id']]['reason']} if t['account_id'] in holds else {})} for t in targets]
 
     def auth_progress(self, task_id, *, index, total, account_id, stage, state='', reason='', diagnostic=None, guard):
         """A short guarded write of actual check boundaries, without credentials."""
@@ -621,6 +760,13 @@ class DailyMixingService:
         from .daily_login_runtime import _PROGRESS_REASONS
         if phase == 'checking_login':
             return
+        if (any(t.get('state')=='valid' for t in login_accounts)
+                and all(t.get('state') in {'valid','deferred','login_required','unavailable','identity_mismatch'} for t in login_accounts)):
+            with session_scope(self.engine) as s:
+                guarded=self._auth_guard(s,task_id)
+                from yijianjifa.features.mixing.serial_gate import is_serial
+                partial_allowed=guarded is not None and is_serial(json.loads(guarded[0].snapshot_json))
+            if partial_allowed:return self.auth_accept(task_id,login_accounts)
         interactive = [t for t in login_accounts if t.get('state') == 'login_required' or
                        t.get('state') == 'unavailable' and t.get('reason') == 'verification_required']
         if interactive and all(t.get('state') == 'valid' or t in interactive for t in login_accounts):
@@ -702,26 +848,50 @@ class DailyMixingService:
                     task, progress = guarded
                     snapshot = json.loads(task.snapshot_json)
                     frozen = copy.deepcopy(snapshot['daily_publish'])
-                    actual = self._targets(c, [{k: t[k] for k in ('account_id', 'platform')} for t in frozen['targets']], require_login=True)
+                    from yijianjifa.features.mixing.serial_gate import account_holds, is_serial
+                    holds=account_holds(s,task) if is_serial(snapshot) else {}
+                    actual = self._targets(c, [{k: t[k] for k in ('account_id', 'platform')} for t in frozen['targets']])
                     baseline = self._auth_baselines.get(task_id)
+                    partial=is_serial(snapshot) and any(o.get('state')=='valid' for o in observations)
+                    login_holds=[held for held in progress.get('login_holds',[]) if any(o.get('account_id')==held.get('account_id') and o.get('state')=='deferred' for o in observations)]
+                    login_failures=list(progress.get('login_failures',[])) if login_holds else []
                     if (not baseline or actual != baseline or len(observations) != len(actual)
-                            or any(o.get('state') != 'valid' or o.get('platform_user_id') != t['platform_user_id']
+                            or any((o.get('state') != 'valid' and not(o.get('state')=='deferred' and t['account_id'] in holds) and not(partial and o.get('state') in {'login_required','unavailable','identity_mismatch'})) or o.get('state') in {'valid','deferred'} and o.get('platform_user_id') != t['platform_user_id']
                                    or o.get('account_id') != t['account_id'] for o, t in zip(observations, actual))):
                         raise DailyMixingError('daily_login_check_failed')
+                    for account_index,(observation,target) in enumerate(zip(observations,actual),1):
+                        if partial and observation.get('state') in {'login_required','unavailable','identity_mismatch'}:
+                            diagnostic=sanitize_diagnostic(observation.get('diagnostic'))
+                            message=_login_check_message(observation['state'],observation.get('reason'),diagnostic,target['platform'])
+                            held={**target,'reason':message}
+                            login_holds.append(held);holds[target['account_id']]={'reason':message}
+                            _,label=_login_account_label(s,target['account_id'])
+                            summary={'time':utcnow().isoformat(),'stage':progress['auth_stage'],'index':account_index,
+                                'accounts':len(actual),'account_label':label,'message':message,'reason':observation.get('reason') or 'login_check_failed'}
+                            if diagnostic is not None:
+                                summary.update(check_stage=diagnostic['stage'],elapsed_ms=diagnostic['elapsed_ms'])
+                                summary['message']+='（'+_login_elapsed(diagnostic['elapsed_ms'])+'）'
+                            login_failures.append(summary)
+                    for target in actual:
+                        account=s.get(AccountRow,target['account_id'])
+                        if target['account_id'] not in holds and (account is None or account.login_state!='valid' or not account.session_ref):
+                            raise DailyMixingError('account_verification_required')
                     if [(t['account_id'], t['platform'], t['platform_user_id']) for t in actual] != [
                             (t['account_id'], t['platform'], t['platform_user_id']) for t in frozen['targets']]:
                         raise DailyMixingError('daily_login_identity_mismatch')
                     # A delayed login never moves the original frozen plan to
                     # another day or turns it into an immediate publication.
-                    remaining = frozen['slots'] if task.completed_count >= task.quantity else frozen['slots'][task.current_index:]
+                    serial = frozen.get('execution_flow') == 'per_item_v1'
+                    serial_index = progress.get('auth_item_index', task.current_index)
+                    remaining = frozen['slots'][serial_index:] if serial else frozen['slots'] if task.completed_count >= task.quantity else frozen['slots'][task.current_index:]
                     if any(slot and datetime.fromisoformat(slot) <= utcnow() for slot in remaining):
                         raise DailyMixingError('daily_schedule_invalid')
                     frozen['targets'] = actual
                     frozen['host_session'] = self.session_id
-                    self._check_frozen_fields(c, snapshot, frozen)
-                    ready = task.completed_count >= task.quantity
+                    self._check_frozen_fields(c, snapshot, frozen,allow_expired=bool(holds))
+                    ready = progress['auth_stage'] == 'before_publish' if serial else task.completed_count >= task.quantity
                     if ready:
-                        task.state = 'completed_with_errors' if task.failure_count else 'completed'
+                        task.state = 'waiting_publish' if serial else 'completed_with_errors' if task.failure_count else 'completed'
                         task.pause_requested = task.auto_resume = False
                     else:
                         task.state = 'waiting'
@@ -733,7 +903,7 @@ class DailyMixingService:
                                    'stage': progress['auth_stage'], 'accounts': len(actual)})
                     _put(s, STATUS + task_id, {**progress, 'auth_phase': '', 'auth_verified': progress['auth_stage'],
                         'auth_targets': actual, 'auth_host': self.session_id,
-                        'automatic_stopped': False, 'login_accounts': [], 'login_repair_accounts': [], 'login_failures': [],
+                        'automatic_stopped': False, 'login_accounts': [], 'login_repair_accounts': [], 'login_failures': login_failures,'login_holds':login_holds,
                         'reason_code': '', 'reason': '', 'login_log': events})
                 c.commit()
             except BaseException:
@@ -746,8 +916,17 @@ class DailyMixingService:
         else:
             self.wake_making()
 
-    def prepare_continue(self, connection, task_id):
+    def prepare_continue(self, connection, task_id, *, automatic=False):
         """Renew only this original batch after an explicit continue action."""
+        with session_scope(connection) as s:
+            candidate = s.get(MixTask, task_id)
+            from yijianjifa.features.mixing.serial_gate import has_flow_marker, is_serial
+            snapshot = json.loads(candidate.snapshot_json) if candidate else {}
+            if has_flow_marker(snapshot) and not is_serial(snapshot): raise DailyMixingError('daily_flow_invalid')
+            serial = has_flow_marker(snapshot)
+        if serial:
+            from .daily_serial_flow import prepare_serial_continue
+            return prepare_serial_continue(self, connection, task_id, automatic=automatic)
         with session_scope(connection) as s:
             task = s.get(MixTask, task_id)
             if task is None or not json.loads(task.snapshot_json).get('daily_publish'):
@@ -775,13 +954,15 @@ class DailyMixingService:
             previous = _json(s, STATUS + task_id, {})
             # Once children exist they are independently controlled in the
             # task center. A making control never changes their platform state.
-            if previous.get('handoff_authorized'):
+            task = s.get(MixTask, task_id)
+            from yijianjifa.features.mixing.serial_gate import has_flow_marker
+            serial = has_flow_marker(json.loads(task.snapshot_json))
+            if previous.get('handoff_authorized') and not serial:
                 return
             code = 'daily_batch_cancelled' if cancelled else 'daily_batch_paused'
             _put(s, STATUS + task_id, {**previous, 'automatic_stopped': True, 'auth_phase': '',
                                       'reason_code': code, 'reason': MESSAGES[code]})
-            task = s.get(MixTask, task_id)
-            if task.state in {'completed', 'completed_with_errors'}:
+            if task.state in {'completed', 'completed_with_errors', 'waiting_publish'}:
                 task.state = 'cancelled' if cancelled else 'paused'
 
     def resume_automatic(self, connection, task_id):
@@ -791,6 +972,24 @@ class DailyMixingService:
             previous = _json(s, STATUS + task_id, {})
             if frozen['host_session'] == self.session_id and previous.get('reason_code') == 'daily_batch_paused':
                 _put(s, STATUS + task_id, {**previous, 'automatic_stopped': False, 'reason_code': '', 'reason': ''})
+
+    def release_cancelled_serial_sessions(self, task_id):
+        """取消回执提交后，停止本批发布子目标并在所属线程释放页面，保留提交证据。"""
+        from sqlalchemy import select
+        from yijianjifa.features.mixing.serial_gate import has_flow_marker, SOURCE
+        from yijianjifa.features.publish.deliveries import PublishDeliveryRow
+        with session_scope(self.engine) as s:
+            task=s.get(MixTask,task_id)
+            if task is None or not has_flow_marker(json.loads(task.snapshot_json)):return
+            proof=_json(s,STATUS+task_id,{})
+            if not proof.get('automatic_stopped') or proof.get('reason_code')!='daily_batch_cancelled':return
+            ids=[]
+            for child in proof.get('publish_task_ids',[]):
+                if _json(s,SOURCE+child,{}).get('mix_task_id')!=task_id:continue
+                ids.extend(s.scalars(select(PublishDeliveryRow.id).where(PublishDeliveryRow.task_id==child)))
+        for delivery_id in ids:
+            self.runtime.service.cancel_delivery(delivery_id)
+            self.runtime.cancel_session(delivery_id)
 
     def _record(self, task_id, **values):
         with self.engine.connect() as c:
@@ -812,6 +1011,8 @@ class DailyMixingService:
             raise DailyMixingError('daily_target_changed')
 
     def _assert_automatic(self, engine, task_id, frozen):
+        if 'execution_flow' in frozen and frozen['execution_flow'] != 'per_item_v1':
+            raise DailyMixingError('daily_flow_invalid')
         if frozen['host_session'] != self.session_id:
             raise DailyMixingError('daily_authorization_required')
         if self.runtime.closed.is_set():
@@ -821,7 +1022,9 @@ class DailyMixingService:
             progress = _json(s, STATUS + task_id, {})
             if progress.get('automatic_stopped'):
                 raise DailyMixingError(progress['reason_code'])
-            if current.state not in {'completed', 'completed_with_errors'}:
+            allowed = {'completed', 'completed_with_errors'}
+            if frozen.get('execution_flow') == 'per_item_v1': allowed.add('waiting_publish')
+            if current.state not in allowed:
                 raise DailyMixingError('daily_batch_cancelled' if current.state in {'cancelled', 'cancelling'} else 'daily_batch_paused')
 
     def _successes(self, task):
@@ -846,6 +1049,11 @@ class DailyMixingService:
             try:
                 return self._reconcile(task_id)
             except Exception as error:
+                task = self._mix_task(task_id)
+                if task.snapshot.get('daily_publish', {}).get('execution_flow') == 'per_item_v1' and not isinstance(error, (DailyMixingError, CommandRejected)):
+                    self._stop_serial_error(task_id, error)
+                    if isinstance(error, AssertionError): raise
+                    return self.status(task_id)
                 if isinstance(error, DailyMixingError):
                     code = error.code
                 elif isinstance(error, CommandRejected):
@@ -867,6 +1075,11 @@ class DailyMixingService:
     def _reconcile(self, task_id):
         task = DesktopMixService(self.engine, self.paths).queue.get(task_id)
         frozen = task.snapshot['daily_publish']
+        if 'execution_flow' in frozen and frozen['execution_flow'] != 'per_item_v1':
+            raise DailyMixingError('daily_flow_invalid')
+        if frozen.get('execution_flow') == 'per_item_v1':
+            from .daily_serial_flow import reconcile_serial
+            return reconcile_serial(self, task_id)
         if task.state not in {'completed', 'completed_with_errors'}:
             return self.status(task_id)
         with self.engine.connect() as c:
@@ -917,10 +1130,10 @@ class DailyMixingService:
         if receipt is None:
             times = {vid: frozen['slots'][index] for index, vid in successes} if frozen['mode'] == 'platform_schedule' else None
             prepared = self.runtime.service.prepare(request_id=intent_id, video_ids=[vid for _, vid in successes],
-                targets=[{'account_id': t['account_id'], 'platform': t['platform'], 'fields': frozen['fields_by_platform'][t['platform']]} for t in frozen['targets']],
+                targets=[{'account_id': t['account_id'], 'platform': t['platform'], 'fields': _frozen_account_fields(frozen,t)} for t in frozen['targets']],
                 common_fields={}, fields_by_video={vid: {k: task.snapshot['copies'][index].get(k, '') for k in ('title', 'body', 'tags')}
                                                   for index, vid in successes},
-                execution_mode=frozen['mode'], scheduled_times=times, allow_new_request=True)
+                execution_mode=frozen['mode'], scheduled_times=times, allow_new_request=True,inherit_account_settings=False)
             self._assert_automatic(self.engine, task_id, frozen)
             receipt = self.runtime.service.save(prepared['prepared_id'], request_id=intent_id, consent_partial=True)
         pid = receipt['id']

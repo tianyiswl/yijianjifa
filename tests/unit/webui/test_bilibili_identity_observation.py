@@ -4,12 +4,13 @@ These checks use synthetic account data. They never open an account profile,
 read credentials, upload a video, or claim current-platform acceptance.
 """
 from types import SimpleNamespace
-import threading
 
 import pytest
 
 from yijianjifa.webui import bilibili_auth as auth, bilibili_multi_publish as m
 from yijianjifa.webui.chromium_publish_session import LiveSession
+from yijianjifa.features.accounts.service import AccountService
+from yijianjifa.features.accounts.session_store import SessionStore
 
 
 @pytest.fixture(scope='module')
@@ -22,7 +23,7 @@ def offline_browser():
 
 
 @pytest.fixture
-def offline_case(offline_browser):
+def offline_case(offline_browser, db_engine, app_paths):
     context = offline_browser.new_context(service_workers='block')
     nav = dict(code=0, data=dict(isLogin=True, mid=111, uname='Fixture Bili'))
     requests = []
@@ -35,19 +36,20 @@ def offline_case(offline_browser):
     context.route('**/*', local)
     page = context.new_page()
     page.goto(m.form_contract.MANAGE_URL)
-    adapter = m.BilibiliMultiPublishAdapter.__new__(m.BilibiliMultiPublishAdapter)
-    adapter.cancel = threading.Event()
-    adapter.step_timeout = 180
-    adapter._thread = lambda: None
-    adapter._trace = lambda *args, **kwargs: None  # This fixture has no database; execution logs are tested separately.
+    service = AccountService(db_engine)
+    account = service.create('bilibili', '111', 'Fixture Bili')
+    ref = service.attach_session(account.id, SessionStore(app_paths.data_dir/'profiles'), b'synthetic-offline-session')
+    # This fixture only inspects account DOM. Inspection keeps a real original
+    # headless page, and cannot launch a login/retry publishing worker.
+    adapter = m.BilibiliMultiPublishAdapter(db_engine, app_paths, inspection_only=True)
+    adapter._trace = lambda *args, **kwargs: None  # Execution logs are tested separately.
     adapter._open = lambda *args, **kwargs: None
     adapter._version = lambda *args, **kwargs: True
-    adapter._account = lambda s: SimpleNamespace(id='fixture-account', nickname='Fixture Bili')
-    payload = dict(platform_user_id='111', execution_mode='publish_now',
+    payload = dict(platform='bilibili', account_id=account.id, platform_user_id='111', execution_mode='publish_now',
                    fields=dict(title='Fixture content', body='', tags='#功能测试',
                                category_choice='human:knowledge', creation_statement_choice='no_mark'))
     session = LiveSession(payload, dict(delivery_id='fixture-target', attempt=1, digest='fixture'))
-    session.page = page
+    session.page = page; session.context = context; session.original_ref = ref
     adapter._init_observations(session)
     page.on('response', lambda response: adapter._response(session, response))
     try: yield adapter, session, page, nav, requests
@@ -90,6 +92,8 @@ def test_normal_manager_nav_and_connected_header_allow_uninitialized_store(offli
     assert session.broker.status()['request'] is None
     assert page.url == m.form_contract.MANAGE_URL
     assert requests == [m.form_contract.MANAGE_URL, 'https://api.bilibili.com/x/web-interface/nav']
+    account = adapter.service.get(session.payload['account_id'])
+    assert adapter.service.login_checks([account])[account.id]['state'] == 'valid'
 
 
 @pytest.mark.parametrize('change', ['no-header', 'disconnected', 'conflicting-store'])

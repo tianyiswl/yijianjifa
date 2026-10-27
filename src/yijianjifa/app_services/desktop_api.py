@@ -5,6 +5,7 @@ import re
 
 from .library_queries import LibraryCommands, InvalidRequest, CommandRejected, ContextualCommandRejected, _unique_object
 from .task_runtime import TaskRuntime
+from .startup_login_checks import StartupLoginChecks
 from yijianjifa.features.mixing.desktop_service import DesktopMixService
 from yijianjifa.features.library.copy_service import CopyRepository, CategoryRepository
 from yijianjifa.features.library.media_storage import MediaStorageService
@@ -18,6 +19,7 @@ class DesktopApi(LibraryCommands):
     _operations = LibraryCommands._operations | {'settings.publish.save','task.delete','video.note.save','publish.reschedule','publish.cancel','account.save','account.default','account.delete','finished.cover.save','finished.assignment.apply','notification.read','notification.read_all','preset.save','preset.delete','settings.sound.save','settings.mix_preset.save','preset.mix.save','mix.submit','task.pause','task.resume','task.cancel','task.move','media.rename','library.categories','finished.categories','media.preference.save','media.delete','copy.progress.reset','finished.save'}
     _operations |= _daily_operations
     _operations |= {'mix.daily.continue'}
+    _operations |= {'account.publish_settings.save'}
 
     @staticmethod
     def _error(code, request_id):
@@ -54,6 +56,7 @@ class DesktopApi(LibraryCommands):
         self._scheduled_publish=ScheduledPublish(engine,paths,getattr(login_provider,"scheduled_publish",None))
         from .login_runtime import LoginRuntime
         self._login_runtime=LoginRuntime(engine,paths,login_provider,providers=login_providers)
+        self._startup_login_checks=StartupLoginChecks(engine,self._login_runtime)
         self._mix = DesktopMixService(engine, paths)
         from .mix_publish_handoff import MixPublishHandoff
         self._runtime = TaskRuntime(self._mix,handoff=MixPublishHandoff(engine,paths))
@@ -80,6 +83,9 @@ class DesktopApi(LibraryCommands):
             adapters[platform]=adapter
         self._multi_publish=MultiPublishRuntime(engine,paths,adapters=adapters,host_lock_held=host_lock_held)
         self._multi_commands=MultiPublishCommands(engine,self._multi_publish,declarations=self._publish_declarations,locations=self._publish_locations)
+        from .account_publish_settings import AccountPublishSettings
+        self._multi_publish.service.account_publish_settings=AccountPublishSettings(engine,catalog=self._multi_publish.catalog,
+            declarations=self._publish_declarations,locations=self._publish_locations)
         self._multi_commands.login_platforms=self._login_runtime.platforms
         from .daily_mixing import DailyMixingService
         self._daily = DailyMixingService(engine, paths, self._multi_commands)
@@ -90,6 +96,9 @@ class DesktopApi(LibraryCommands):
             progress=self._daily.auth_progress)
         self._daily.wake_making = self.start_queue
         self._runtime.daily_handoff = self._daily
+        self._multi_publish.daily_recheck = self._daily.recheck_serial
+        self._multi_publish.daily_recheck_error = self._daily.record_serial_runtime_error
+        self._mix.queue.serial_host_session = self._daily.session_id
         from .image_post_commands import ImagePostCommands
         from .image_post_publishing import ImagePostPublishing
         self._image_posts = ImagePostCommands(engine, paths)
@@ -124,6 +133,7 @@ class DesktopApi(LibraryCommands):
         return self._download_commands.dispatch_native(raw,picker,trusted_origin=trusted_origin)
 
     def start_local_checks(self):
+        self._startup_login_checks.start()
         self._multi_publish.start()
         if self._download_runtime is not None:self._download_runtime.start()
         return self._publish_watch.start()
@@ -135,6 +145,7 @@ class DesktopApi(LibraryCommands):
 
     def close(self, timeout=0):
         self._daily.closing.set()
+        startup_closed=self._startup_login_checks.close(timeout)
         daily_closed=self._daily.auth.close(timeout)
         multi_closed=self._multi_publish.close(timeout)
         if self._metadata_provider:self._metadata_provider.close()
@@ -152,7 +163,7 @@ class DesktopApi(LibraryCommands):
         queue_closed = self._runtime.close(timeout)
         covers_closed = self._cover_jobs.close(timeout)
         if publishing_closed and checks_closed and queue_closed and covers_closed and login_closed and downloads_closed:self._covers.close()
-        return daily_closed and multi_closed and publishing_closed and checks_closed and queue_closed and covers_closed and login_closed and downloads_closed
+        return startup_closed and daily_closed and multi_closed and publishing_closed and checks_closed and queue_closed and covers_closed and login_closed and downloads_closed
 
     def dispatch(self, raw, *, trusted_origin=False):
         if trusted_origin is not True:
@@ -230,6 +241,17 @@ class DesktopApi(LibraryCommands):
             elif op=='account.login.availability':
                 if p:raise InvalidRequest()
                 data={'available':self._login_runtime.available(),'platforms':self._login_runtime.platforms()}
+            elif op=='account.publish_settings.read':
+                if set(p)!={'account_id'} or type(p['account_id']) is not str or not 1<=len(p['account_id'])<=64:raise InvalidRequest()
+                from .account_publish_settings import AccountPublishSettings
+                data=AccountPublishSettings(self._engine,catalog=self._multi_publish.catalog,
+                    declarations=self._publish_declarations,locations=self._publish_locations).read(p['account_id'])
+            elif op=='account.login.check.start':
+                if set(p)!={'account_ids'}:raise InvalidRequest()
+                data=self._login_runtime.start_checks(rid,p['account_ids'])
+            elif op in {'account.login.check.status','account.login.check.cancel'}:
+                if set(p)!={'id'} or type(p['id']) is not str or not re.fullmatch('[a-f0-9]{48}',p['id']):raise InvalidRequest()
+                data=self._login_runtime.checks_status(p['id']) if op.endswith('status') else self._login_runtime.cancel_checks(p['id'])
             elif op=='account.capabilities.prepare':
                 if set(p)!={'account_id'} or type(p['account_id']) is not str:raise InvalidRequest()
                 from yijianjifa.features.accounts.service import AccountService
@@ -351,11 +373,11 @@ class DesktopApi(LibraryCommands):
             elif op=='account.list':
                 if set(p)!={'query','platform','group','state','offset','limit'} or type(p['query']) is not str or len(p['query'])>200 or p['platform'] not in ('','douyin','kuaishou','channels','bilibili') or type(p['group']) is not str or len(p['group'])>128 or p['state'] not in ('','ok','relogin','pending') or type(p['offset']) is not int or p['offset']<0 or type(p['limit']) is not int or not 1<=p['limit']<=100:raise InvalidRequest()
                 from .account_access import AccountAccess
-                data=AccountAccess(self._engine).list(**p)
+                data=AccountAccess(self._engine,self._login_runtime).list(**p)
             elif op=='account.get':
                 if set(p)!={'id'} or type(p['id']) is not str or not 1<=len(p['id'])<=64:raise InvalidRequest()
                 from .account_access import AccountAccess
-                data=AccountAccess(self._engine).get(p['id'])
+                data=AccountAccess(self._engine,self._login_runtime).get(p['id'])
             elif op=='finished.assignment.preview':
                 data=self._assignment.preview(p)
             elif op=='task.center.list':
@@ -489,6 +511,8 @@ class DesktopApi(LibraryCommands):
                     self._daily.start_check(result['data']['id'])
                 if result.get('ok') and op in {'task.pause', 'task.cancel', 'task.delete'}:
                     self._daily.auth.cancel(p['id'])
+                if result.get('ok') and op=='task.cancel':
+                    self._daily.release_cancelled_serial_sessions(p['id'])
                 if op=='task.cancel' and result.get('ok') and p['id'] not in self._mix.queue._active_ids:
                     # LibraryCommands returns only after the cancellation and
                     # receipt commit. Replays also retry outstanding cleanup;
@@ -607,6 +631,11 @@ class DesktopApi(LibraryCommands):
             if set(p)!=expected or type(p['id']) is not str or not 1<=len(p['id'])<=64:raise InvalidRequest()
             if op=='account.save' and (type(p['remark']) is not str or len(p['remark'])>255 or type(p['group_name']) is not str or len(p['group_name'])>128):raise InvalidRequest()
             return
+        if op=='account.publish_settings.save':
+            if (not {'account_id','fields'}<=set(p) or set(p)-{'account_id','fields','douyin'}
+                    or type(p['account_id']) is not str or not 1<=len(p['account_id'])<=64
+                    or type(p['fields']) is not dict or 'douyin' in p and type(p['douyin']) is not dict):raise InvalidRequest()
+            return
         if op in {'finished.assignment.apply','finished.cover.save'}:
             if set(p)!={'token'} or type(p['token']) is not str or not re.fullmatch(r'[a-f0-9]{48}',p['token']):raise InvalidRequest()
         elif op=='notification.read_all':
@@ -640,6 +669,7 @@ class DesktopApi(LibraryCommands):
             for key in ('ids','category_ids'):
                 if type(p[key]) is not list or len(p[key])>100 or any(type(v) is not str or not 1<=len(v)<=64 for v in p[key]):raise InvalidRequest()
             if not p['ids']:raise InvalidRequest()
+            if len(p['category_ids'])>1:raise CommandRejected('single_category_only')
         elif op=='finished.save':
             if set(p)!={'id','display_name','title','body','tags'} or type(p['id']) is not str or not 1<=len(p['id'])<=64:raise InvalidRequest()
             if any(type(p[k]) is not str for k in ('display_name','title','body','tags')) or not 1<=len(p['display_name'].strip())<=255:raise InvalidRequest()
@@ -660,6 +690,7 @@ class DesktopApi(LibraryCommands):
                 for key in ('ids','category_ids'):
                     if type(p[key]) is not list or len(p[key])>100 or not all(type(x) is str and 1<=len(x)<=64 for x in p[key]):raise InvalidRequest()
                 if not p['ids']:raise InvalidRequest()
+                if len(p['category_ids'])>1:raise CommandRejected('single_category_only')
         elif op=='mix.submit':
             allowed={'use_copy','publish_after','quantity','material_categories','copy_categories','total_ms','segment_ms','resolution','aspect_ratio','frame_fit','copy_mode','voice','speed','sentence_cut','spoken_enabled','full_enabled','batch_full_text','keep_original_audio','original_gain','voice_gain','spoken_style','full_style','music_gain','background_music','transition','total_range_ms','segment_range_ms'}
             if set(p)-allowed or 'quantity' not in p:raise InvalidRequest()
@@ -735,11 +766,19 @@ class DesktopApi(LibraryCommands):
                 with self._login_runtime._lock:
                     if self._login_runtime.thread and self._login_runtime.thread.is_alive():
                         raise CommandRejected('account_window_active')
-                    return AccountService(connection).remove(p['id'])
+                    result=AccountService(connection).remove(p['id'])
+                    from .account_publish_settings import AccountPublishSettings
+                    AccountPublishSettings(connection).forget(p['id'])
+                    return result
             AccountAccess(connection).get(p['id'])
             core=AccountService(connection)
             item=core.set_default(core.get(p['id']).platform,p['id']) if op=='account.default' else core.update_metadata(p['id'],remark=p['remark'],group_name=p['group_name'])
             return public_account(item)
+        if op=='account.publish_settings.save':
+            from .account_publish_settings import AccountPublishSettings
+            return AccountPublishSettings(connection,catalog=self._multi_publish.catalog,
+                declarations=self._publish_declarations,locations=self._publish_locations).save(
+                    p['account_id'],p['fields'],douyin=p.get('douyin'))
         if op=='finished.cover.save':
             return self._covers.save(connection,p['token'])
         if op=='finished.assignment.apply':
@@ -801,7 +840,6 @@ class DesktopApi(LibraryCommands):
             if not set(p['category_ids'])<={c.id for c in CategoryRepository(connection).list('finished')}:raise CommandRejected('invalid_category')
             for pid in dict.fromkeys(p['ids']):
                 cats=set(p['category_ids'])
-                if p['mode']=='append':cats|=core.category_ids(pid)
                 core.set_categories(pid,cats)
             return {'ids':list(dict.fromkeys(p['ids']))}
         if op=='finished.save':
@@ -841,9 +879,8 @@ class DesktopApi(LibraryCommands):
             if not set(p['category_ids'])<=valid:raise CommandRejected('invalid_category')
             for id in ids:
                 categories=set(p['category_ids'])
-                if p['mode']=='append':categories|=repo.category_ids(id)
                 repo.set_categories(id,categories)
-            return {'ids':ids,'category_ids':p['category_ids'],'mode':p['mode']}
+            return {'ids':ids,'category_ids':p['category_ids'],'mode':'replace'}
         if op=='mix.submit':
             from yijianjifa.features.mixing.desktop_service import EmptyCopySelection
             try:task=DesktopMixService(connection,self._paths,tts=self._mix.tts).submit(**p)

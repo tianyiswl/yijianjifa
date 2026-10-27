@@ -4,6 +4,7 @@ import os
 import queue
 import subprocess
 import threading
+import time
 import uuid
 from sqlalchemy import select
 from yijianjifa.storage.db import session_scope
@@ -196,6 +197,8 @@ class MultiPublishRuntime:
         self.service.deliveries.final_guard=self._authorize_final
         self.coordinator=PublishCoordinator(self.service);self.jobs=queue.Queue();self.thread=None
         self._start_lock=threading.Lock();self.current=None;self.deferred=set()
+        self.daily_recheck = None
+        self.daily_recheck_error = None
         from .multi_publish_platform_options import PlatformOptionsJobs
         self.platform_options=PlatformOptionsJobs(self)
         from .multi_publish_inspection import InspectionJobs
@@ -231,6 +234,7 @@ class MultiPublishRuntime:
         if self.thread and self.thread.is_alive() and not self.closed.is_set():
             self.jobs.put(('cancel_session',delivery_id));self.wakeup.set()
     def _run(self):
+        last_daily_check = 0.0
         try:
             while not self.closed.is_set():
                 self.platform_options.expire()
@@ -282,6 +286,13 @@ class MultiPublishRuntime:
                         result=self.coordinator.run_once(task_id,ids)
                         progressed=progressed or result is not None
                     except Exception:continue
+                if self.daily_recheck is not None and time.monotonic() - last_daily_check >= .5:
+                    last_daily_check = time.monotonic()
+                    try:self.daily_recheck()
+                    except Exception as error:
+                        if self.daily_recheck_error is None: raise
+                        self.daily_recheck_error(error)
+                        if isinstance(error, AssertionError): raise
                 if not progressed:self.wakeup.wait(.2);self.wakeup.clear()
         finally:
             # A failed context close retains its SDK lease and account lock.

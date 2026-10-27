@@ -11,7 +11,7 @@ from typing import Iterable, Mapping
 import uuid
 
 from PIL import Image, ImageOps, UnidentifiedImageError
-from sqlalchemy import Engine, func, or_, select
+from sqlalchemy import Engine, func, literal_column, or_, select
 
 from yijianjifa.features.image_posts.models import ImagePost, ImagePostImage, ImagePostImageRecord, ImagePostRecord
 from yijianjifa.os_integration.paths import AppPaths
@@ -156,7 +156,8 @@ class ImagePostService:
             statement = statement.where(or_(*(getattr(ImagePost, field).like(pattern, escape="\\") for field in ("display_name", "title", "body", "tags"))))
         with session_scope(self.engine) as session:
             total = session.scalar(select(func.count()).select_from(statement.subquery())) or 0
-            rows = session.scalars(statement.order_by(ImagePost.created_at.desc(), ImagePost.id.desc()).offset(offset).limit(limit)).all()
+            # 本地SQLite可能在同一时钟刻度内插入多组，rowid保留实际插入先后。
+            rows = session.scalars(statement.order_by(ImagePost.created_at.desc(), literal_column("image_posts.rowid").desc(), ImagePost.id.desc()).offset(offset).limit(limit)).all()
             return [self._record(row, self._images(session, row.id)) for row in rows], total
 
     def list_by_ids(self, post_ids: Iterable[str]) -> list[ImagePostRecord]:

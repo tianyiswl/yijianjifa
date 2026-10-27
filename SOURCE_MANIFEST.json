@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "project": "一剪即发",
-  "version": "0.1.42",
+  "version": "0.1.48",
   "publication_scope": "MIT project source with owned icons and synthetic test media",
   "binary_program_release_ready": false,
   "dependency_binaries_included": false,
@@ -22,6 +22,12 @@
       "mode": "100644"
     },
     {
+      "path": ".github/workflows/windows-test.yml",
+      "sha256": "501aca2fb88fd4876ab36da8656c914f978b312e40564a265e6fbc284d130641",
+      "size_bytes": 29031,
+      "mode": "100644"
+    },
+    {
       "path": ".gitignore",
       "sha256": "0ae0b87bd0b6e2a7e89714763b88e4f3f8a3cdc21ef5355b9017887b3b26f2a0",
       "size_bytes": 837,
@@ -35,8 +41,8 @@
     },
     {
       "path": "README.md",
-      "sha256": "62bd51b1d4d6b15d7f3faaa93e40f7d13c1569881fbffff395e75e39cc6508f0",
-      "size_bytes": 3991,
+      "sha256": "da802a75859eeab993e90ec699ca8bbb91d13a96ec6cf4ae30e7ab5cc5152c2c",
+      "size_bytes": 4715,
       "mode": "100644"
     },
     {
@@ -53,8 +59,8 @@
     },
     {
       "path": "alembic/versions/0001_initial.py",
-      "sha256": "1da47cae51584207bf6354e6bd237f0b10a379ce48270577f37f170dc717eb44",
-      "size_bytes": 942,
+      "sha256": "1eac1520d32b108a5b00e5437407f895943f2340933e4f81fc01be8b713c8d26",
+      "size_bytes": 1723,
       "mode": "100644"
     },
     {
@@ -160,15 +166,21 @@
       "mode": "100644"
     },
     {
+      "path": "alembic/versions/0019_single_category.py",
+      "sha256": "15d2e43f3b6bfa3f4450c63b4fe6360640264f23ad59bbd19f396a47580fb47f",
+      "size_bytes": 5410,
+      "mode": "100644"
+    },
+    {
       "path": "docs/CONFIGURATION.md",
-      "sha256": "4e00eeeb3a4a86a0d103aaca22206696ab22ae05e1567c1cd3465e6480c47d8d",
-      "size_bytes": 4405,
+      "sha256": "3a5f5943779bc8eb5e55741b9c09da677d22b6c1973f23089f5db3e7b561ef6a",
+      "size_bytes": 4721,
       "mode": "100644"
     },
     {
       "path": "docs/QUICK_START.md",
-      "sha256": "92eca463536babf99243d6b18ec773509140a9ecd742d3bbd6a25bfbb13e2058",
-      "size_bytes": 3413,
+      "sha256": "6ab2d5058fe96341a2619271b47baa54e93c9f960a8740d7d295b6955a7a8990",
+      "size_bytes": 3454,
       "mode": "100644"
     },
     {
@@ -179,8 +191,8 @@
     },
     {
       "path": "docs/VALIDATION.md",
-      "sha256": "e2d897d684377c130528008cc3f04742fae1dda45108012918083ab3f85b7ce6",
-      "size_bytes": 2999,
+      "sha256": "f74369107a67a872403a062326ac75ac18ead9156a71bea76ba0c9c81cf103c6",
+      "size_bytes": 4919,
       "mode": "100644"
     },
     {
@@ -215,8 +227,8 @@
     },
     {
       "path": "docs/release/THIRD_PARTY_RELEASE_READINESS.md",
-      "sha256": "bc26a7b0fafae069aa380c86b1a751fc7b69330913f4a50e3d04aa42329fc7eb",
-      "size_bytes": 3321,
+      "sha256": "c8bbba2f1d6572448463927c5ed9067a41d2afe73b1959fe0b2fc7d4b3860367",
+      "size_bytes": 3363,
       "mode": "100644"
     },
     {
@@ -1157,7 +1169,7 @@
     },
     {
       "path": "packaging/windows/installer.iss",
-      "sha256": "420a3d987d4ab314ae9927558b599b83db16be485ab3455118a1b35d66fafd4b",
+      "sha256": "e712e3c70e183ee022fc8806adf707701e5d2f68a51ad68962d7082a6b826c52",
       "size_bytes": 1031,
       "mode": "100644"
     },
@@ -1199,14 +1211,14 @@
     },
     {
       "path": "pyproject.toml",
-      "sha256": "f8958eff9bafeac376f8e5a13a5fd1a9ec6dc4839e9947010d0fa33cccfae37d",
+      "sha256": "4b8be9f142be81ec04ca278260fac7658b6e64185ef33ab7dcc24b4feaae8399",
       "size_bytes": 1359,
       "mode": "100644"
     },
     {
       "path": "server/cloud_voice/README.md",
-      "sha256": "46761200bb689d7347d6f5fad5fdd308e60e6b7036dd845e8846f4462e2c8b44",
-      "size_bytes": 7830,
+      "sha256": "0c6f7d8d1038c1ad16211df472cca37c4543813fe9d695c13473081ab82d0016",
+      "size_bytes": 7851,
       "mode": "100644"
     },
     {
@@ -1487,7 +1499,7 @@
     },
     {
       "path": "src/yijianjifa/__init__.py",
-      "sha256": "fc968b967218d70d2129f3270fbbb82be252e485c6cdb9d85ff620451042697c",
+      "sha256": "ec28bd4dcdd2545173f5f2900b25c22c20e3cb3240aeea663cae8bbc213b9097",
       "size_bytes": 181,
       "mode": "100644"
     },
@@ -1511,14 +1523,20 @@
     },
     {
       "path": "src/yijianjifa/app_services/account_access.py",
-      "sha256": "39d8d1e6b316baaef4d9c73f2c74119fb150254b17d71a431df801adfafd714b",
-      "size_bytes": 2056,
+      "sha256": "ea5ac963ed7cd8da083a8d9d0c74adade4990b7d61164926a37e208cb1c8c6a2",
+      "size_bytes": 2971,
+      "mode": "100644"
+    },
+    {
+      "path": "src/yijianjifa/app_services/account_publish_settings.py",
+      "sha256": "3638549b638c8ed13b8b5983a304c6007e1c1a382a22afa9574046a3724d2210",
+      "size_bytes": 12565,
       "mode": "100644"
     },
     {
       "path": "src/yijianjifa/app_services/bilibili_static_catalog.py",
-      "sha256": "65d6aed4f86dc2145cc64e9ac22522abd529dec97776c863ff7ff3301e26e9e3",
-      "size_bytes": 11112,
+      "sha256": "0604ff21fe9f559fb30035ba0811d88953a9677b38aea257b880803d874cf16d",
+      "size_bytes": 11287,
       "mode": "100644"
     },
     {
@@ -1529,8 +1547,8 @@
     },
     {
       "path": "src/yijianjifa/app_services/cloud_voice_access.py",
-      "sha256": "87f2ee0c914b4644de3190d81155583fbdced70c9a9d7c2bd54fb2e45b0e19b9",
-      "size_bytes": 23384,
+      "sha256": "43db5a500bf36f3d2461db8fa30e72e538b7949116a05f574eec27e2815657de",
+      "size_bytes": 23591,
       "mode": "100644"
     },
     {
@@ -1589,20 +1607,26 @@
     },
     {
       "path": "src/yijianjifa/app_services/daily_login_runtime.py",
-      "sha256": "6483c859d42726bf886cde36b20aa0c46957594de96719ba088994a268b662df",
-      "size_bytes": 9928,
+      "sha256": "034509cebd161b3bc01321cb3e612bccfdd8fcab5c69dd0d53382f871d3b7b7c",
+      "size_bytes": 10066,
       "mode": "100644"
     },
     {
       "path": "src/yijianjifa/app_services/daily_mixing.py",
-      "sha256": "67e7e484aec205d9e4199b6cb1a78f52c4136d9db9d90ce51e5e59fdb768ab98",
-      "size_bytes": 60878,
+      "sha256": "ebae0530fd9eb6aa74f2bbd09858f53f48c6eaba4006169e72bd8e6757669c7d",
+      "size_bytes": 77345,
+      "mode": "100644"
+    },
+    {
+      "path": "src/yijianjifa/app_services/daily_serial_flow.py",
+      "sha256": "93e64a4597ec6fc55e0bad4f2590e591bb038d5d1e64d6997185d758f8ab7302",
+      "size_bytes": 19637,
       "mode": "100644"
     },
     {
       "path": "src/yijianjifa/app_services/desktop_api.py",
-      "sha256": "b4e9e67d2e8178e11df02c535be3d7c249475530d0094efc1fba98b5a10a3557",
-      "size_bytes": 62193,
+      "sha256": "b25993206a8419214122f65c985f93a7c3b4729f93f4e8139c66aabdae6020ea",
+      "size_bytes": 65198,
       "mode": "100644"
     },
     {
@@ -1619,14 +1643,14 @@
     },
     {
       "path": "src/yijianjifa/app_services/download_access.py",
-      "sha256": "a786a1805f9345fa612dc3e04e5d1ca5863105720fe8f0af17d4d8254e58a766",
-      "size_bytes": 8326,
+      "sha256": "c2835c3bb1a17b3897ef07a3cd13509ddbc546dc256e761e26495e8347251e9e",
+      "size_bytes": 8401,
       "mode": "100644"
     },
     {
       "path": "src/yijianjifa/app_services/download_commands.py",
-      "sha256": "fcf70eeb1666f22c03cab1e036bf968ebb8e7d529365bc34ac5ea17e3b8683e6",
-      "size_bytes": 16403,
+      "sha256": "c8f3f12c3ab2a4c549673dbf0df22b7dadda6d82e72747ca0383ba7d62df6eff",
+      "size_bytes": 16552,
       "mode": "100644"
     },
     {
@@ -1637,14 +1661,14 @@
     },
     {
       "path": "src/yijianjifa/app_services/download_runtime.py",
-      "sha256": "efb49bd063ba5267e4654a033605a17917b63b97f8a8c5e868da3ae63fe0c6db",
-      "size_bytes": 90613,
+      "sha256": "346cc1e4bc5be2e675f3283ba69fc70257bbc9f1eea27c6138f8ac683f0d5770",
+      "size_bytes": 90998,
       "mode": "100644"
     },
     {
       "path": "src/yijianjifa/app_services/excel_access.py",
-      "sha256": "cc185d79bdbd99262dd070eac63dff19b4b29bfa6b26ae96f2692c5c86ac6830",
-      "size_bytes": 5506,
+      "sha256": "19e0abfa140ee02c87b489f90120c454310052cf60b57095bbb64c913eaf8535",
+      "size_bytes": 5634,
       "mode": "100644"
     },
     {
@@ -1661,8 +1685,8 @@
     },
     {
       "path": "src/yijianjifa/app_services/finished_delete.py",
-      "sha256": "7858d3873860edf79c225978b4ec689ad6b1f951798fc9d839194e45a2525c93",
-      "size_bytes": 7521,
+      "sha256": "650e23d98fd9e014d8ebef90ba480c115ccebdc6396c3122550b784ce080ac35",
+      "size_bytes": 7984,
       "mode": "100644"
     },
     {
@@ -1691,26 +1715,26 @@
     },
     {
       "path": "src/yijianjifa/app_services/library_queries.py",
-      "sha256": "0a0b9943ee3b69a2a593f4ca9b56780c9d9accc13ee44097155d6129797ccb24",
-      "size_bytes": 15086,
+      "sha256": "b20ef78db5712f80aeebb35c66dec2cb25d7cd9a9e4b0cb4305228c06c2d0291",
+      "size_bytes": 15341,
       "mode": "100644"
     },
     {
       "path": "src/yijianjifa/app_services/login_runtime.py",
-      "sha256": "3cdf17dc10b5ff704cb4fdf4e5dbe81de57cd95011d54b52986f273baea57b52",
-      "size_bytes": 12547,
+      "sha256": "c17d2842adf3eacd11b6fb4fc00e4e62b515fbee5bed1093e92993371f9445fc",
+      "size_bytes": 20304,
       "mode": "100644"
     },
     {
       "path": "src/yijianjifa/app_services/media_access.py",
-      "sha256": "b6479fe1f99dfb573ece26d9bd1d60469f7ce4069ddebebf1cf1c6f06885a89e",
-      "size_bytes": 10512,
+      "sha256": "c91cd5e853ac3bf5075839f11aa5b587d6d3918d4a825b26d6203b360680177c",
+      "size_bytes": 10590,
       "mode": "100644"
     },
     {
       "path": "src/yijianjifa/app_services/mix_execution.py",
-      "sha256": "16dc531b48b42e3ac7382c35e36f45073b368b69c69be323ab2465e81746a59c",
-      "size_bytes": 22844,
+      "sha256": "aae3194283bf20863117ddb98feb3181b44d81101d1c6cfb83191278ad7de725",
+      "size_bytes": 29978,
       "mode": "100644"
     },
     {
@@ -1721,14 +1745,20 @@
     },
     {
       "path": "src/yijianjifa/app_services/mix_publish_handoff.py",
-      "sha256": "ae6a010e1d7e1f121f23a424f71ef0ccc9d6d002f6462abf0d304f7cbca4ff6f",
-      "size_bytes": 5269,
+      "sha256": "ebe6231bd5e83676f286e689f89ba371f60c993ba12ab3efb681d401254b7fb0",
+      "size_bytes": 5300,
+      "mode": "100644"
+    },
+    {
+      "path": "src/yijianjifa/app_services/mix_publish_report.py",
+      "sha256": "e4dedba1b1cfc214e6a5dd181082e5e0e11bedaabaa366eedbac836f2da24940",
+      "size_bytes": 8394,
       "mode": "100644"
     },
     {
       "path": "src/yijianjifa/app_services/multi_publish.py",
-      "sha256": "18315246696b33fee75c6378a3299d4829497c168a74c2b091f504033c4bbdd2",
-      "size_bytes": 52584,
+      "sha256": "515c95f40192ea3eac9ebec77b9ead6b55a8501467de8fbf92c1a4d9730c8be0",
+      "size_bytes": 54572,
       "mode": "100644"
     },
     {
@@ -1739,14 +1769,14 @@
     },
     {
       "path": "src/yijianjifa/app_services/multi_publish_dto.py",
-      "sha256": "a04e74ac104a5096c7b8f145970506fb7e323bcd97949dd8baa3dbf5faafa757",
-      "size_bytes": 16779,
+      "sha256": "ad881e4f55b72534992c728fee0755599b34db1b86134172ac875820744ba43a",
+      "size_bytes": 33311,
       "mode": "100644"
     },
     {
       "path": "src/yijianjifa/app_services/multi_publish_inspection.py",
-      "sha256": "72129a426dbba3745cb5c7024946d4e4eefd0e8c7d7ac132a386945c95030b20",
-      "size_bytes": 15926,
+      "sha256": "4f759e07092f7d252a255cf8d4eab4bddce8c4350de40f5c0ba72f49a47e31f6",
+      "size_bytes": 16079,
       "mode": "100644"
     },
     {
@@ -1757,8 +1787,8 @@
     },
     {
       "path": "src/yijianjifa/app_services/multi_publish_runtime.py",
-      "sha256": "56897ffd02bed4644e1deb6bc79feb0f4c677009be5be2715920a80df5569014",
-      "size_bytes": 20440,
+      "sha256": "e9a31bfcde1624789885e3fa64b7d729b027454782160a7906da4d67c99c5922",
+      "size_bytes": 20993,
       "mode": "100644"
     },
     {
@@ -1787,8 +1817,8 @@
     },
     {
       "path": "src/yijianjifa/app_services/publish_confirmation.py",
-      "sha256": "498b1a9d744eb831819f77dcc7dd2af098c568c8b9018873a9980e36fb5b3fa1",
-      "size_bytes": 6784,
+      "sha256": "51c3b939bd106457ad202cb84489a0d6e8703688c406c758de3f03c8551c71f4",
+      "size_bytes": 6864,
       "mode": "100644"
     },
     {
@@ -1799,26 +1829,26 @@
     },
     {
       "path": "src/yijianjifa/app_services/publish_locations.py",
-      "sha256": "40b8a04a8620e5f70c477e1c2ad155b05b21cd3230077cbfcc76c1c3b5e72c84",
-      "size_bytes": 5183,
+      "sha256": "22c81e8981754e3b47b619e08a9ac521218ded4bb8f53349820d68bb2175fa3b",
+      "size_bytes": 5616,
       "mode": "100644"
     },
     {
       "path": "src/yijianjifa/app_services/publish_metadata_cache.py",
-      "sha256": "9a59a3f5d259275734cf29516253ead9dfc4637f511f3b0cc5231f6005b97bae",
-      "size_bytes": 5218,
+      "sha256": "de5fd221d5342dbc2844832b5aeb8db210f4c7dce188a48ea8dfcf96680496e6",
+      "size_bytes": 5567,
       "mode": "100644"
     },
     {
       "path": "src/yijianjifa/app_services/publish_planning.py",
-      "sha256": "25ca4db6e113b641242158306cf07d7019beed53f393ab26da8d039c01361fcf",
-      "size_bytes": 17822,
+      "sha256": "ff52a617f6da9edbc88bffdbba1b8a0aece081af5a0a137a27509ea7371fb665",
+      "size_bytes": 18446,
       "mode": "100644"
     },
     {
       "path": "src/yijianjifa/app_services/publish_preparation.py",
-      "sha256": "855373bf1d08e74e3a64f95c05ee37a7430e374a96af22b2745f64942b1c768a",
-      "size_bytes": 4857,
+      "sha256": "7a42b7bffba53fe7cfc54836b111039c0405b0ffb3c9b8ccbf47b81059f17ad7",
+      "size_bytes": 5018,
       "mode": "100644"
     },
     {
@@ -1846,21 +1876,27 @@
       "mode": "100644"
     },
     {
+      "path": "src/yijianjifa/app_services/startup_login_checks.py",
+      "sha256": "406b4828b300e2a58202eb128bf0a44f82769e3083c6c350f96e3ac6347b66b6",
+      "size_bytes": 1946,
+      "mode": "100644"
+    },
+    {
       "path": "src/yijianjifa/app_services/task_center_access.py",
-      "sha256": "ef4a74f377524932f650f146839dc54dd1fd450235e4623b2ba97e9c0b06241a",
-      "size_bytes": 31808,
+      "sha256": "35d9233630380ceadad7c3ebcfb98dde4170c313ab3c2fba8c1b35267d19730b",
+      "size_bytes": 39890,
       "mode": "100644"
     },
     {
       "path": "src/yijianjifa/app_services/task_removal.py",
-      "sha256": "49830322d406e81ada299f588efec9011abb1adef43106bd97def066d34691e9",
-      "size_bytes": 6626,
+      "sha256": "27669b52d0f4fa40fa7aeaedc6fb2756926b0b3b5da2c82a30bad93d8b96b141",
+      "size_bytes": 7278,
       "mode": "100644"
     },
     {
       "path": "src/yijianjifa/app_services/task_runtime.py",
-      "sha256": "8d7c3bb436fee477a65e961a57e1a33f2e1ffe472038f31238c56dee8892a61b",
-      "size_bytes": 5026,
+      "sha256": "36944a9f8116d1886b9e4fefe3c709c42764ef01c9c7baaf67e580c02417fdc1",
+      "size_bytes": 5345,
       "mode": "100644"
     },
     {
@@ -1877,8 +1913,8 @@
     },
     {
       "path": "src/yijianjifa/app_services/voice_catalog.py",
-      "sha256": "728987969270409a6ee2f54a8b6e0796a43d3edffa90ee8391659b968bc634ce",
-      "size_bytes": 3912,
+      "sha256": "6e955f7f1dbaf0ac4c59bb781f21a0def78c134da322fe60b5dc6cf9e600a42f",
+      "size_bytes": 4499,
       "mode": "100644"
     },
     {
@@ -1913,8 +1949,8 @@
     },
     {
       "path": "src/yijianjifa/features/accounts/login_flow.py",
-      "sha256": "cc4613c9bd74a2cd417eff3ad0869d87e4694d89110596257038ae861b3583b5",
-      "size_bytes": 7804,
+      "sha256": "fc75ee40e337cc7b0b36367704e16fe4d7455632e05241917a45afc46fbaa2bb",
+      "size_bytes": 7879,
       "mode": "100644"
     },
     {
@@ -1925,8 +1961,14 @@
     },
     {
       "path": "src/yijianjifa/features/accounts/service.py",
-      "sha256": "5a2fa929f8b6c0e03fc5009344d4be8a968b93a626cfd3aee86ba16363dfd9e5",
-      "size_bytes": 11112,
+      "sha256": "fa6a1ac47940c9c56efb9d7970bb895d7c46624ec90eef27c46c2f47baff16ee",
+      "size_bytes": 18310,
+      "mode": "100644"
+    },
+    {
+      "path": "src/yijianjifa/features/accounts/session_rotation.py",
+      "sha256": "4e09abf1fe8fdd8fe38d5402d69a809c15227a3f5fd0ab5ce2f6ce2d914b5312",
+      "size_bytes": 2024,
       "mode": "100644"
     },
     {
@@ -1997,8 +2039,8 @@
     },
     {
       "path": "src/yijianjifa/features/downloads/contracts.py",
-      "sha256": "067e4aee3bd66f49ad29588fe595a9da274bd5d0a57a3d11e5542c0b56defd26",
-      "size_bytes": 4921,
+      "sha256": "4526cf37f28e88e5b9094ea79e13008d0d5b7cd837a9678240faaa8505954c40",
+      "size_bytes": 4945,
       "mode": "100644"
     },
     {
@@ -2069,8 +2111,8 @@
     },
     {
       "path": "src/yijianjifa/features/downloads/repository.py",
-      "sha256": "cc30f7942ad1b25b445c9a1619426170bbe85285f3f84f05dce858e24ca73469",
-      "size_bytes": 39485,
+      "sha256": "5ddbbc51dbef2f4099031e693940a45f8ca044a6eb1954398b22f961360680dd",
+      "size_bytes": 39560,
       "mode": "100644"
     },
     {
@@ -2093,8 +2135,8 @@
     },
     {
       "path": "src/yijianjifa/features/finished/service.py",
-      "sha256": "32545a3e1c5423c3ac83bb7441199cb8568c7f89f1deb972fe0c50ab1799cec1",
-      "size_bytes": 10786,
+      "sha256": "548960e88137261f575cba7d9c20d2e496eb37ee30699599a450231b8e7efc39",
+      "size_bytes": 10901,
       "mode": "100644"
     },
     {
@@ -2117,20 +2159,20 @@
     },
     {
       "path": "src/yijianjifa/features/image_posts/service.py",
-      "sha256": "a7ebb69ff87cf2b7edacbabaa63393d212b2cd9568da3f6820d08dd0c6421c2b",
-      "size_bytes": 12581,
+      "sha256": "a48a06e895854a2ec541368c124ee77ccb7e7df1b6133470532102dfff145d8d",
+      "size_bytes": 12745,
       "mode": "100644"
     },
     {
       "path": "src/yijianjifa/features/library/active_references.py",
-      "sha256": "dcb785be2ec6e687c7092143dd579fad862de9e6b9bb3a8d6c35f72d8322bdc8",
-      "size_bytes": 2312,
+      "sha256": "0e3180e4d471aa94977fab25a4274e96daed97444bacdc1af6d540429e4e0c3d",
+      "size_bytes": 5571,
       "mode": "100644"
     },
     {
       "path": "src/yijianjifa/features/library/copy_service.py",
-      "sha256": "4dbef56a598e9c44745f9179d44cf09c5035ac914fb786c7571a37ffec856c53",
-      "size_bytes": 7937,
+      "sha256": "69c783490b190fe71cefde4cf24a4aff7270244b87a90546d501b1faed84eb78",
+      "size_bytes": 8557,
       "mode": "100644"
     },
     {
@@ -2159,8 +2201,8 @@
     },
     {
       "path": "src/yijianjifa/features/library/media_storage.py",
-      "sha256": "fbaf360458893e8133fc06b4fd2067c1883d5d091c532ab36056afd4594ce314",
-      "size_bytes": 13438,
+      "sha256": "1606c4a80617dbd84bcb116aa141a1e8d8f5b15997cdd278b40b07cc871ed6d7",
+      "size_bytes": 13923,
       "mode": "100644"
     },
     {
@@ -2171,14 +2213,14 @@
     },
     {
       "path": "src/yijianjifa/features/library/ui/categories.py",
-      "sha256": "54a354dfa73c3c615ff00377468039e79a0c4a30d7efa15f941acdb38f23277f",
-      "size_bytes": 5932,
+      "sha256": "5a029620046b611f3fdc1bddbbdf03e491eacf6016f1ac138bc7c743eb283577",
+      "size_bytes": 5887,
       "mode": "100644"
     },
     {
       "path": "src/yijianjifa/features/library/ui/copy_pane.py",
-      "sha256": "dc001b55186ad2c968c8cd919c64f71203f2f4c09e834a2a9fa78c4fdd332b71",
-      "size_bytes": 15243,
+      "sha256": "30b629964a2ce21b14a535825ad337482a4b6350da720f6baddba2c092ebfbee",
+      "size_bytes": 15507,
       "mode": "100644"
     },
     {
@@ -2189,8 +2231,8 @@
     },
     {
       "path": "src/yijianjifa/features/library/ui/media_pane.py",
-      "sha256": "ec7ceb23946fee3bcb4c552a6de1d9428340242e8caf5d74f380f5fece3fd031",
-      "size_bytes": 10352,
+      "sha256": "07a75a1d5b205d69e13046ff84229b105cd59c7fa2726b91b5bc6387610f28ef",
+      "size_bytes": 10412,
       "mode": "100644"
     },
     {
@@ -2213,8 +2255,8 @@
     },
     {
       "path": "src/yijianjifa/features/mixing/desktop_service.py",
-      "sha256": "23ed7ee8f393762579fd4a9ff4e9282227b91266aee2e3a3e67ec8e787fe2a9f",
-      "size_bytes": 30580,
+      "sha256": "a5bcceff2cf71bd3e1c2e4eb3856a6afaae02c1954556f5edc86da805e73ce97",
+      "size_bytes": 30618,
       "mode": "100644"
     },
     {
@@ -2261,8 +2303,8 @@
     },
     {
       "path": "src/yijianjifa/features/mixing/output_names.py",
-      "sha256": "863415426e5cf3d4a6832a3d39f2e37562330298a2f1a0584ff46760f80bdbb2",
-      "size_bytes": 568,
+      "sha256": "f9d5ac1293a39add3be1069e6d4340ad39899f84096a9b9d2aa39822efe82153",
+      "size_bytes": 666,
       "mode": "100644"
     },
     {
@@ -2279,14 +2321,26 @@
     },
     {
       "path": "src/yijianjifa/features/mixing/queue.py",
-      "sha256": "a20bc2a671480541e1ab42d5d786e06795075a10430215de86cb4c0d7a2e20bd",
-      "size_bytes": 18969,
+      "sha256": "39998e95b3fbbc9362fb5a4e3e9bd63ace500a894f8af5dbf39db45bc5275c85",
+      "size_bytes": 23981,
       "mode": "100644"
     },
     {
       "path": "src/yijianjifa/features/mixing/sentences.py",
       "sha256": "915aa0b8945bdbbbcbf07e666946ac25e6823d6dd5c6300b4bd485361209f9fb",
       "size_bytes": 1362,
+      "mode": "100644"
+    },
+    {
+      "path": "src/yijianjifa/features/mixing/serial_claim.py",
+      "sha256": "048fe84c98a002017da4ad55256e70d6ffdd31776128e87e450fd35bf751bad2",
+      "size_bytes": 12180,
+      "mode": "100644"
+    },
+    {
+      "path": "src/yijianjifa/features/mixing/serial_gate.py",
+      "sha256": "7b9dacc20a38cadad181b45170c8722b480999334168f34909d0b8ed74ddf9df",
+      "size_bytes": 20916,
       "mode": "100644"
     },
     {
@@ -2333,8 +2387,8 @@
     },
     {
       "path": "src/yijianjifa/features/mixing/tts/voice_services.py",
-      "sha256": "9c75de61ad248c5ef5555127334c7c7e7048cc9cd8baa8b0df1c76ebf4148c80",
-      "size_bytes": 6547,
+      "sha256": "224ed74726579d15a2ca617a88f25230df56ac641e8b06de7786f63a0e082730",
+      "size_bytes": 7412,
       "mode": "100644"
     },
     {
@@ -2411,14 +2465,14 @@
     },
     {
       "path": "src/yijianjifa/features/publish/coordinator.py",
-      "sha256": "26542c06bdd8648930167ee21f5500863a55929a416e6b98728b1b37a3139eae",
-      "size_bytes": 13072,
+      "sha256": "b3c2fdb2ce7b83ebe12d1746fef7befb523a8f426c504816c8d1bd998d480696",
+      "size_bytes": 17476,
       "mode": "100644"
     },
     {
       "path": "src/yijianjifa/features/publish/deliveries.py",
-      "sha256": "7bc7ad457ac61b3388e35c6c15e965c72918184f373a58abac984b55b7ace6c2",
-      "size_bytes": 23864,
+      "sha256": "a98a7027a0fb00809bf8cb3a2087bfda9cbdd7c4836ca100dabe2b1296d9df80",
+      "size_bytes": 26169,
       "mode": "100644"
     },
     {
@@ -2449,6 +2503,18 @@
       "path": "src/yijianjifa/features/publish/normal_service.py",
       "sha256": "6698987d5e30799cf7fa112e40398a1b8ea59038653f47c31ea7f1b7326edb72",
       "size_bytes": 5090,
+      "mode": "100644"
+    },
+    {
+      "path": "src/yijianjifa/features/publish/outcomes.py",
+      "sha256": "91952ff43088add0e50ca948d2697f6fbe7e155c9aeeef18dd8db6677f0ae2a7",
+      "size_bytes": 441,
+      "mode": "100644"
+    },
+    {
+      "path": "src/yijianjifa/features/publish/platform_feedback.py",
+      "sha256": "95813abd6a9c6bbd587d4ed0cb1bdd0e4c7a9eeb974db170011bf256a75c729c",
+      "size_bytes": 1195,
       "mode": "100644"
     },
     {
@@ -2521,6 +2587,18 @@
       "path": "src/yijianjifa/features/publish/platforms/official_http.py",
       "sha256": "a06b0301c8ee16f3af93d2766569ac961b093a106f7fe3b8e477c572018b57aa",
       "size_bytes": 10506,
+      "mode": "100644"
+    },
+    {
+      "path": "src/yijianjifa/features/publish/posting_limits.py",
+      "sha256": "8d6f29a9972c3740b0e69def52b1f94ed6c4ab58666e1b826c3e0fd40a90bb93",
+      "size_bytes": 4864,
+      "mode": "100644"
+    },
+    {
+      "path": "src/yijianjifa/features/publish/read_diagnostics.py",
+      "sha256": "bb40a3f9ba69d7b64bca17d30bd6e3157f7f3f4b04a3f22ca09367b4adac437a",
+      "size_bytes": 5934,
       "mode": "100644"
     },
     {
@@ -2615,14 +2693,14 @@
     },
     {
       "path": "src/yijianjifa/storage/db.py",
-      "sha256": "389d7eed34a8fac061bf22f6c9987be67b0ddf6a351a531bb2aa22cda42ccf02",
-      "size_bytes": 3724,
+      "sha256": "45f5677e65c4a79e015054cca4cf69858b71bb0bb5948e12bb1580baa9ed2d55",
+      "size_bytes": 3748,
       "mode": "100644"
     },
     {
       "path": "src/yijianjifa/storage/models.py",
-      "sha256": "2a41a9e1dd4162593158f842c74c58bee0f55ae10d61c2573a62627fe5b1f1fc",
-      "size_bytes": 16107,
+      "sha256": "ae908fdd865a8896c0da98f56d2ed03c78b56567bc146c492d6facf2c7b96757",
+      "size_bytes": 17543,
       "mode": "100644"
     },
     {
@@ -2633,26 +2711,38 @@
     },
     {
       "path": "src/yijianjifa/webui/app_bundle.py",
-      "sha256": "d09e1529a842aa2040d6c46a9b418387c1be1cbf04cdbda7f215af6abd3be00e",
-      "size_bytes": 1788,
+      "sha256": "2302364d17bd2b9f457116860ef7c205ef5fbdd2722b2a535a983be99f19698f",
+      "size_bytes": 1889,
       "mode": "100644"
     },
     {
       "path": "src/yijianjifa/webui/assets/account_login.js",
-      "sha256": "4830f963c19f370f033eef3287b8fb683ea0f9951ed18ef4a799baf7b417d34a",
-      "size_bytes": 2595,
+      "sha256": "c73b2b99b3f725e9df6975cc49e6386cf984583f0a6ef3416a1ba9d3236f9e51",
+      "size_bytes": 4085,
+      "mode": "100644"
+    },
+    {
+      "path": "src/yijianjifa/webui/assets/account_picker.js",
+      "sha256": "a235225b2e7bca790ab62f01271036f68227eb9aa54b11a5f57410439580b15e",
+      "size_bytes": 4930,
+      "mode": "100644"
+    },
+    {
+      "path": "src/yijianjifa/webui/assets/account_publish_settings.js",
+      "sha256": "4bd5f2d2c9aa69031e75cd184e6671901813fe005532edd5a0a190ce9fa020af",
+      "size_bytes": 7715,
       "mode": "100644"
     },
     {
       "path": "src/yijianjifa/webui/assets/accounts.html",
-      "sha256": "1d4fb6fc47e87f378e497fcaa81a7a3a27e524194710d7576172b11ca9c7886f",
-      "size_bytes": 7824,
+      "sha256": "6f9006af531cf4413d03b1508dda29ecba1d94952cd73d3da5d1d6f01a14a370",
+      "size_bytes": 8568,
       "mode": "100644"
     },
     {
       "path": "src/yijianjifa/webui/assets/accounts.js",
-      "sha256": "7993d220457f5241974bd01d20a3f74cfa74f3948c2b17d95c451ed253af7342",
-      "size_bytes": 23758,
+      "sha256": "5b90ce86d3465b82d5257636fb41884ccf0880807c76ce23350fb22210f80c8e",
+      "size_bytes": 32190,
       "mode": "100644"
     },
     {
@@ -2669,14 +2759,14 @@
     },
     {
       "path": "src/yijianjifa/webui/assets/category_manager.js",
-      "sha256": "9c3c7e8ebaa1c74b768a97615ad7c4bfaa7a0d53b9d283787b436c7c8e2206a4",
-      "size_bytes": 6555,
+      "sha256": "b8aa3dbfc77ba2a0bfc10678780c031142f9716f8ec839749398944655c8ed0a",
+      "size_bytes": 9224,
       "mode": "100644"
     },
     {
       "path": "src/yijianjifa/webui/assets/cloud_voice.js",
-      "sha256": "98225d9cf4530ab4f7b9284243d2e858b388064d42d1a912ee0e117081a1b0cd",
-      "size_bytes": 12684,
+      "sha256": "462c882b408f2c815041c5248c4c2f9c36bb8e2ede992f864b8410eab63ffb88",
+      "size_bytes": 13241,
       "mode": "100644"
     },
     {
@@ -2687,7 +2777,7 @@
     },
     {
       "path": "src/yijianjifa/webui/assets/commerce.js",
-      "sha256": "8302def2debd34b569d2b5b714d84ad5ca618b4bcc5f65a4b8854bf0bf29952d",
+      "sha256": "8db96c997a9ceb14420337e9e879f934f3452eb11cc6787475d2d2d01e22346b",
       "size_bytes": 53890,
       "mode": "100644"
     },
@@ -2699,8 +2789,8 @@
     },
     {
       "path": "src/yijianjifa/webui/assets/common.css",
-      "sha256": "663f61fd67455a0e475f290df9980c98f4165e3b4fc63533751e48fc5e4f9603",
-      "size_bytes": 53435,
+      "sha256": "a4d13ffc09d8f78437e2e1b6262f9f4549056202375198b6efa80bf129dde464",
+      "size_bytes": 77385,
       "mode": "100644"
     },
     {
@@ -2723,50 +2813,50 @@
     },
     {
       "path": "src/yijianjifa/webui/assets/downloads.html",
-      "sha256": "88c6b34ed2942fc2360804dd87ac4f974ce2dc9b5cbac0b64b48d6e4a7de6d78",
-      "size_bytes": 13746,
+      "sha256": "03cdc4383af47f33d4bd9d6d5b799a3ecce456c6476d44b84b801036a08f1258",
+      "size_bytes": 11581,
       "mode": "100644"
     },
     {
       "path": "src/yijianjifa/webui/assets/downloads.js",
-      "sha256": "a59c918b803d31943ec2a4de5b6f09cf6de2e3efe883a40a3b2c8bcaac570151",
-      "size_bytes": 48275,
+      "sha256": "ccbb878c3b94fbdbede6b59a9f8c37042001b2311dace87f71df3ee736a051f5",
+      "size_bytes": 43224,
       "mode": "100644"
     },
     {
       "path": "src/yijianjifa/webui/assets/features.js",
-      "sha256": "1f1e8f14bbe7ac9d602d3d0d2b1a8549f2918599a36e68de40bc84ccafe9be5b",
-      "size_bytes": 6464,
+      "sha256": "a29dda0f0502b35c6595a63857cce8f9067ac258a6df392f49b4f64f96be9f77",
+      "size_bytes": 6434,
       "mode": "100644"
     },
     {
       "path": "src/yijianjifa/webui/assets/finished.html",
-      "sha256": "7875b887696ee58800ac9ffb21a50d4f6ece90d6da18d1de5c27c828a63e221b",
-      "size_bytes": 36681,
+      "sha256": "95fca9cc8f4efe6c013aeb21e82ac17bd836b80894bc3d5ae7185303f1283934",
+      "size_bytes": 36889,
       "mode": "100644"
     },
     {
       "path": "src/yijianjifa/webui/assets/finished.js",
-      "sha256": "48c89fdf49063c5ab0e20c770610fb99aa156989ff81a1c1acf10637febb849a",
-      "size_bytes": 31660,
+      "sha256": "161d5056073b3f0e8501d4c75f6900dc3e49536fd203832c34f118b1d14a97a5",
+      "size_bytes": 33717,
       "mode": "100644"
     },
     {
       "path": "src/yijianjifa/webui/assets/image_content.css",
-      "sha256": "9f3aaf12970575780bcb1a826d931a44c53c528c7b0f79a6724b9b158f9bad2c",
-      "size_bytes": 6054,
+      "sha256": "32ea2a55d3502d6c2bd6696953ad9985cb69c2fbf06f1e53c75e38e144057a13",
+      "size_bytes": 6436,
       "mode": "100644"
     },
     {
       "path": "src/yijianjifa/webui/assets/image_posts.js",
-      "sha256": "bae95cb9f1ec95c37b79507068b2b453a590ebdb1594bf3e1016cd3642c5ee0f",
-      "size_bytes": 22329,
+      "sha256": "6fe323e0664da2c1af81352ba1ad9604eb679e2012cf4ada78e0c5c778d16387",
+      "size_bytes": 22468,
       "mode": "100644"
     },
     {
       "path": "src/yijianjifa/webui/assets/image_publish.js",
-      "sha256": "cc95c34dacd82d627c84aed52b4868ff6918a4b9548b5170edd42377854fda39",
-      "size_bytes": 17063,
+      "sha256": "0c62fc6234dd5ba9ebf696c6c7f93afae88ee463a938935994fdd3f6b757d19a",
+      "size_bytes": 18214,
       "mode": "100644"
     },
     {
@@ -2777,20 +2867,20 @@
     },
     {
       "path": "src/yijianjifa/webui/assets/library.js",
-      "sha256": "f8e5f37027ba634f9a51a9d5bd069ac4e14eaeeec8dec4079b463902b8020a7c",
-      "size_bytes": 28466,
+      "sha256": "36ac558ecafdf9a09ea30ee16711f9289c635efab88d79863d8849f51b19ccc1",
+      "size_bytes": 30515,
       "mode": "100644"
     },
     {
       "path": "src/yijianjifa/webui/assets/mixing.html",
-      "sha256": "97cb63fd38b1a45af9361e5183bfa7fad715f142a8271e551f66b56d8655041f",
-      "size_bytes": 76249,
+      "sha256": "dce95601cea3d8667b4f843de54d844e766fce6889db3cee3bd94ce95d5610ea",
+      "size_bytes": 71038,
       "mode": "100644"
     },
     {
       "path": "src/yijianjifa/webui/assets/mixing.js",
-      "sha256": "7b087f9faea6ff9d98751188cc2b747d0aa891c08c1060f26e486a7742bc3190",
-      "size_bytes": 26542,
+      "sha256": "7b9654cbd19aac4d70d9a25009eae4c148faf3ffed3af6d1bc40b8f1d525299d",
+      "size_bytes": 32123,
       "mode": "100644"
     },
     {
@@ -2801,8 +2891,8 @@
     },
     {
       "path": "src/yijianjifa/webui/assets/mixing_execution.js",
-      "sha256": "8a1148ed51f83ed49c794a790c0d461d9c1704a0c9a5da523cf6568f1d62f97e",
-      "size_bytes": 25142,
+      "sha256": "603a1f2903e973ef0b62eb311f06b7175374cea1a5d4406899fd4e2be8ca1baa",
+      "size_bytes": 46453,
       "mode": "100644"
     },
     {
@@ -2813,8 +2903,8 @@
     },
     {
       "path": "src/yijianjifa/webui/assets/mixing_publish.js",
-      "sha256": "ca69a2555bb20bb43bda23f69be64f6592aac312801b342db614cfee4ee4e24f",
-      "size_bytes": 14001,
+      "sha256": "33fe39c2167aecf3447e0e276dbafc09fcdd3fc81172675858c446444ef969dc",
+      "size_bytes": 13229,
       "mode": "100644"
     },
     {
@@ -2843,38 +2933,50 @@
     },
     {
       "path": "src/yijianjifa/webui/assets/multi_publish_ui.js",
-      "sha256": "fc853247e228ab01ff68291d2264410eb13500b9d17b74f1049ccfc778a1845b",
-      "size_bytes": 41440,
+      "sha256": "045f729038e821324df811f85ccdbb58607795aa08daf911248d84a2c554267e",
+      "size_bytes": 28218,
       "mode": "100644"
     },
     {
       "path": "src/yijianjifa/webui/assets/notifications.js",
-      "sha256": "9b3390330313c52429e68df23f71a7d2a343758f5925d3a0c80344f55fd03208",
-      "size_bytes": 4187,
+      "sha256": "496ad7888d820c991de868f0809c9313e43e9cb8acc6638a7bcd4e48d9ba40dd",
+      "size_bytes": 4329,
       "mode": "100644"
     },
     {
       "path": "src/yijianjifa/webui/assets/presets.html",
-      "sha256": "d1e9fa683d534dd4e77ebddc9a98f454d36c28f0b07e43bd0bddafb2118a02fc",
+      "sha256": "1c6f655f56ca5d21572f788e0f4148079d4b6c69a8a25931dab39d3ef0b2a12b",
       "size_bytes": 12282,
       "mode": "100644"
     },
     {
       "path": "src/yijianjifa/webui/assets/presets.js",
-      "sha256": "660f77506ba633f0d486ef3266536c70d2e55cbe6b6a58ec52c38f4bcbb9c15c",
+      "sha256": "ff364ad6c18af79e390a5049f66e33164e7a8d750d601664620329796f44425b",
       "size_bytes": 20443,
       "mode": "100644"
     },
     {
       "path": "src/yijianjifa/webui/assets/publish.html",
-      "sha256": "d3eda33cc14b5567ab1551f8ed00eeafafce68bdfa671613880454b4df727f30",
+      "sha256": "2f1654ea48ce6d94fb410ceb1a6152168f88759c2ee016ca0b8996c7179a67c3",
       "size_bytes": 41352,
       "mode": "100644"
     },
     {
       "path": "src/yijianjifa/webui/assets/publish.js",
-      "sha256": "9b911ab4d2497155e163d219c6b8a48402fb4565ca7fc628ca0cf6d4f8b14054",
-      "size_bytes": 96917,
+      "sha256": "3b82051d9351856e537d9a89a00c0108d41fe0b8fbdb024459cae4730d24dd0c",
+      "size_bytes": 98001,
+      "mode": "100644"
+    },
+    {
+      "path": "src/yijianjifa/webui/assets/publish_daily_schedule.js",
+      "sha256": "04ca1dc688407788110e4f5fc41cfe4aeddf34e5ef827283ab6bc36cc03ca24d",
+      "size_bytes": 8364,
+      "mode": "100644"
+    },
+    {
+      "path": "src/yijianjifa/webui/assets/publish_execution.js",
+      "sha256": "b386f528c0cf6c5051c809e8db83115d296f41c35770180298d147fd83677a74",
+      "size_bytes": 15704,
       "mode": "100644"
     },
     {
@@ -2885,8 +2987,8 @@
     },
     {
       "path": "src/yijianjifa/webui/assets/publish_intervention.js",
-      "sha256": "fa5029622b155768d4789737755940f8fcae7f667bab7c57a8af9bdf4273f146",
-      "size_bytes": 24048,
+      "sha256": "a76382991b2bcf826c5eb8339802cd3a78cd120fa3b742772b7830a4bc7c5878",
+      "size_bytes": 26190,
       "mode": "100644"
     },
     {
@@ -2897,7 +2999,7 @@
     },
     {
       "path": "src/yijianjifa/webui/assets/router.js",
-      "sha256": "16f9205599b77b0cc7f70954db21e2a9234456d07d1d19ae33fc23fc9c575dc7",
+      "sha256": "59dcfeb6d15b2f68d323e063bda1df368c9258264652e8ce9dabc78330a732fd",
       "size_bytes": 1348,
       "mode": "100644"
     },
@@ -2915,14 +3017,14 @@
     },
     {
       "path": "src/yijianjifa/webui/assets/tasks.html",
-      "sha256": "233e5516e77154bec85a138f16e6c5cae54486599405624a9b3d8a10c1fa9b7a",
+      "sha256": "197626d753670b3ebfc60000c20cd3460a8ad13ae6ae3c1fcffbb0d2a9d249d6",
       "size_bytes": 8985,
       "mode": "100644"
     },
     {
       "path": "src/yijianjifa/webui/assets/tasks.js",
-      "sha256": "d45869daf1be787572e62a9c167e791a23d26fbaa30218dc6f630ba5e1965bb9",
-      "size_bytes": 32493,
+      "sha256": "2a529924f95f629691d22b986dbd4ca39e87de80181775d33785c557cac7cfd2",
+      "size_bytes": 35900,
       "mode": "100644"
     },
     {
@@ -2933,14 +3035,14 @@
     },
     {
       "path": "src/yijianjifa/webui/assets/voices.html",
-      "sha256": "bcaa88a0b73413ab4137e9045e47f21d4de945b3594673ab29bd58caee396d8a",
-      "size_bytes": 13258,
+      "sha256": "2b8b78dae71308c1ffe59bdb9d52edfcf3a4cac47e11a305803a66c8aee9215f",
+      "size_bytes": 13253,
       "mode": "100644"
     },
     {
       "path": "src/yijianjifa/webui/assets/voices.js",
-      "sha256": "10535913b7eeb8a607d0b4b69dcf4afa0937100dde0f84d64b84c52707ef05df",
-      "size_bytes": 11802,
+      "sha256": "e7567c460fcd48adf200b2c943d49d54b4d78d80451df6f59b70671394b4bbe9",
+      "size_bytes": 11724,
       "mode": "100644"
     },
     {
@@ -2969,14 +3071,14 @@
     },
     {
       "path": "src/yijianjifa/webui/bilibili_multi_publish.py",
-      "sha256": "b88e763d7e6e6d58eeec564bdc72aaafec26a6d169d1fe5f7ef327f7dd0e9c22",
-      "size_bytes": 56324,
+      "sha256": "c8206d8968ce8ddbbdc7f4f28e8924263191d63f0ae200ab558c249f027817e3",
+      "size_bytes": 66787,
       "mode": "100644"
     },
     {
       "path": "src/yijianjifa/webui/bilibili_publish_form.py",
-      "sha256": "be8331ef620fbff0defcbb1b42a462ab75bb3723f1301604730f5fb63b9ab12c",
-      "size_bytes": 21216,
+      "sha256": "bf048b935c3dde808a5b6f27f20de8e63c96536cb45d839654567eea50fc9252",
+      "size_bytes": 24753,
       "mode": "100644"
     },
     {
@@ -2993,20 +3095,20 @@
     },
     {
       "path": "src/yijianjifa/webui/channels_multi_publish.py",
-      "sha256": "06a1ee78223a448a8276ffbb81cc836e3493b4db77946c224261002265f88af4",
-      "size_bytes": 74964,
+      "sha256": "c4706f99f84c3c24102f46dfca8901b5d600a4aa2bfc3951bc086c9af283612a",
+      "size_bytes": 80385,
       "mode": "100644"
     },
     {
       "path": "src/yijianjifa/webui/channels_publish_form.py",
-      "sha256": "fe456cad35aefee7f0ecee07475063fa0ae4709a01940ea81cc6a599f48b3526",
-      "size_bytes": 29833,
+      "sha256": "87cb34221165fe6531d959fb472067ac5c3aed3cd64f3ce8e63e194d2aa2e3fc",
+      "size_bytes": 29934,
       "mode": "100644"
     },
     {
       "path": "src/yijianjifa/webui/chromium_multi_publish.py",
-      "sha256": "84d88f93a29ec6e968094b1d9c74d71ff637d05eb275068e9d2b28fbafe20890",
-      "size_bytes": 28855,
+      "sha256": "7a832970638fa2ac1160e0ed4ab9389ae9365f283f8712074a2dab8891a2fcc5",
+      "size_bytes": 37529,
       "mode": "100644"
     },
     {
@@ -3017,14 +3119,14 @@
     },
     {
       "path": "src/yijianjifa/webui/chromium_publish.py",
-      "sha256": "8fedb2b45584f3ee799df84448bf023bcb2dacb54c3e3b91c954db67cf93cb0f",
-      "size_bytes": 28800,
+      "sha256": "37e27eaa5d98cf55b57f8125ad1ebefdc4e2f5e2eb1857777e46ead75a065101",
+      "size_bytes": 33103,
       "mode": "100644"
     },
     {
       "path": "src/yijianjifa/webui/chromium_publish_session.py",
-      "sha256": "2160c68dee113cc9e2ed774ee4252c483dded90651b3de159ebda28c15def4e2",
-      "size_bytes": 37128,
+      "sha256": "3e792a6a8d107490940425d7abaf713b9b7d1857280c99b619adc87fe1d51714",
+      "size_bytes": 44879,
       "mode": "100644"
     },
     {
@@ -3065,8 +3167,8 @@
     },
     {
       "path": "src/yijianjifa/webui/creator_auth.py",
-      "sha256": "ef986bcdf186b707f2c87de58872937ce3721cb6a6ed41658360cfd66f2aa142",
-      "size_bytes": 14525,
+      "sha256": "e0345056e809b8b90484aa1b0e7dac0b6093814d4d5ed49667c2945e06db9cac",
+      "size_bytes": 14622,
       "mode": "100644"
     },
     {
@@ -3095,8 +3197,8 @@
     },
     {
       "path": "src/yijianjifa/webui/douyin_image_publish.py",
-      "sha256": "31076dee7c88986ca38528294b77b36375a38d56bec03d0fa3c2b99f18ac58a5",
-      "size_bytes": 30521,
+      "sha256": "e4b6b9a41f45ea8b0d1ab4c384e75da15fc113a9faea6b5c808c030749ff815b",
+      "size_bytes": 30902,
       "mode": "100644"
     },
     {
@@ -3119,8 +3221,8 @@
     },
     {
       "path": "src/yijianjifa/webui/douyin_scheduled.py",
-      "sha256": "2384db1916bfbc473bb0dd17bfcb8d2d10c352630ebbd4fe3572cd7c9b70d489",
-      "size_bytes": 21837,
+      "sha256": "160bb368ead98f0506d4055db13ed95be722c4fe8a689575b77bd1b0bb80ae3a",
+      "size_bytes": 22895,
       "mode": "100644"
     },
     {
@@ -3143,20 +3245,20 @@
     },
     {
       "path": "src/yijianjifa/webui/host_commands.py",
-      "sha256": "ae33f7d3bfc17ebf2491e59f8f05b06cdbc01326d8b26950ada3706fd27da050",
-      "size_bytes": 24118,
+      "sha256": "eeabf64cc8a0599910e54ae29f65e195011139820438e3cfa173246b0d32f700",
+      "size_bytes": 24849,
       "mode": "100644"
     },
     {
       "path": "src/yijianjifa/webui/kuaishou_auth.py",
-      "sha256": "2c81eb20ea52472bc8569aa51dee9fd8a162fe4d4dedd948c7bcbd746b20f272",
-      "size_bytes": 14634,
+      "sha256": "439e8c93223b818ad3ba74fd83dd31be50ed513931f388f0badad0bfa553278b",
+      "size_bytes": 14686,
       "mode": "100644"
     },
     {
       "path": "src/yijianjifa/webui/kuaishou_multi_publish.py",
-      "sha256": "582a78518cdd4277ea80a4a4cbe9756260239aa2ecf6fccdaa98c6f700df0892",
-      "size_bytes": 25967,
+      "sha256": "5ab5d1d58fa193ebb4020b1fc2496ecbde706d6f18c83a82c59765e3c2f04b1b",
+      "size_bytes": 30102,
       "mode": "100644"
     },
     {
@@ -3167,8 +3269,8 @@
     },
     {
       "path": "src/yijianjifa/webui/kuaishou_publish_form.py",
-      "sha256": "7ae7608a548fbb3795c469935247986229e65452e88ca3155f301f566ae0e0c2",
-      "size_bytes": 12056,
+      "sha256": "0d0c5d42143d434f4808b8325ae1efd8ebaf4addb999646d5e28f985f6eddb60",
+      "size_bytes": 12053,
       "mode": "100644"
     },
     {
@@ -3181,6 +3283,12 @@
       "path": "src/yijianjifa/webui/local_voice_test.py",
       "sha256": "0a6488671b798015504425b383345cfbd99b17f019f5221835c05c16af911abe",
       "size_bytes": 1097,
+      "mode": "100644"
+    },
+    {
+      "path": "src/yijianjifa/webui/login_observation.py",
+      "sha256": "240b58a57c22e2133b99155809cfcf76a759a29672d286d09ef321b346ce3588",
+      "size_bytes": 3775,
       "mode": "100644"
     },
     {
@@ -3215,8 +3323,8 @@
     },
     {
       "path": "src/yijianjifa/webui/publish_intervention.py",
-      "sha256": "29d6d6e5c5af706e3372026f49fed9e36bb108c7762ce89f08dc7d104b7502b8",
-      "size_bytes": 5846,
+      "sha256": "5463b42bfd486a2594d9d72071c1abb55ea24b1aa2a5749133c21e3ce417b280",
+      "size_bytes": 7272,
       "mode": "100644"
     },
     {
@@ -3227,8 +3335,8 @@
     },
     {
       "path": "src/yijianjifa/webui/qt_runtime.py",
-      "sha256": "34cf2e2af968fc901135447ab81ad2a34768e10ed63f04f3a3eaf71b4fba6674",
-      "size_bytes": 10384,
+      "sha256": "6381b1fc855e40d3ea39ee6c02322248d78a83dab85868ca1251987eb4a035a5",
+      "size_bytes": 10434,
       "mode": "100644"
     },
     {
@@ -3245,8 +3353,8 @@
     },
     {
       "path": "src/yijianjifa/webui/session_check.py",
-      "sha256": "088ba0c73b842d98dabdc50344e9f2277348ebddedf4d9931f23a50bb2879080",
-      "size_bytes": 18242,
+      "sha256": "8f9679209c5e1cf1f1617c42b17feaf560881d493792ef664c8d44828881b0f5",
+      "size_bytes": 18981,
       "mode": "100644"
     },
     {
@@ -3257,8 +3365,8 @@
     },
     {
       "path": "src/yijianjifa/webui/session_check_process.py",
-      "sha256": "249fdc13a856ea1cc1151929e039bf988e2ce3a47c6f1dbaf59788a83eba0d92",
-      "size_bytes": 22847,
+      "sha256": "7764d7bf35e27adf246abcea0161620fd4c4975a43d19593a0a6f7d6854f1ffb",
+      "size_bytes": 25789,
       "mode": "100644"
     },
     {
@@ -3274,9 +3382,15 @@
       "mode": "100644"
     },
     {
+      "path": "src/yijianjifa/webui/submit_feedback.py",
+      "sha256": "f0fcdffd136e84eaa4854e89a24190d37853a9aae545e6b9d0bc6e78813f6df8",
+      "size_bytes": 5458,
+      "mode": "100644"
+    },
+    {
       "path": "src/yijianjifa/webui/windows_app.py",
-      "sha256": "3fb8ba9d19cc564058c5d8843ff3e3863699ea5f94d8185be694bc5ddd7d9304",
-      "size_bytes": 8017,
+      "sha256": "afec0a7b535e1021ec1058be2567e3b1a1f514792b15e9f4a67328f6a3e2c6a8",
+      "size_bytes": 9293,
       "mode": "100644"
     },
     {
@@ -3317,8 +3431,8 @@
     },
     {
       "path": "tests/conftest.py",
-      "sha256": "ab935e77fb03ef4f6d69dd8a8547eb04a5e7027a2796e3b0192e55f066cd6d0a",
-      "size_bytes": 4348,
+      "sha256": "10666101a4c8f84db08640c72f1aeb0416854a060bcbbcec1f303e981493bf80",
+      "size_bytes": 4434,
       "mode": "100644"
     },
     {
@@ -3389,8 +3503,8 @@
     },
     {
       "path": "tests/integration/downloads/test_access.py",
-      "sha256": "7dc62f7c352c9410137ccf87295f40cc246196737435b2dace834897a57b0019",
-      "size_bytes": 19278,
+      "sha256": "d221806dd937d02ff00b344414d4f674962ccea64a79a2288660dacd15ea0660",
+      "size_bytes": 19636,
       "mode": "100644"
     },
     {
@@ -3419,14 +3533,14 @@
     },
     {
       "path": "tests/integration/downloads/test_final_backend.py",
-      "sha256": "4f5ba77332c1154b48bd9a287c70d87927e8375dcb5471188000714a26d08058",
-      "size_bytes": 9681,
+      "sha256": "80ee8ad1d8005f050c3771f58dae0b84f5946a33d5fe743e3a2c60bef2a32d97",
+      "size_bytes": 13886,
       "mode": "100644"
     },
     {
       "path": "tests/integration/downloads/test_local_video.py",
-      "sha256": "4e96423546fd0960ab035a79b73d2cede1e3e8640ba4a49200e1e0b20d1b92da",
-      "size_bytes": 33117,
+      "sha256": "ec65ec3a8c084c39c5c53ae29b0eba147184bbea9be31863d762630faa2a81e4",
+      "size_bytes": 33112,
       "mode": "100644"
     },
     {
@@ -3449,8 +3563,8 @@
     },
     {
       "path": "tests/integration/downloads/test_repository.py",
-      "sha256": "b4f1e0b18a2a1a73f347bb9320148b55429c36a600b46caa55b255fd2b953e7f",
-      "size_bytes": 46436,
+      "sha256": "e9dbd9061c9f8a6d221b8e10895ccfebc7f342ea46eaa4f1f0e7e0ee96dd9610",
+      "size_bytes": 48155,
       "mode": "100644"
     },
     {
@@ -3503,8 +3617,8 @@
     },
     {
       "path": "tests/integration/image_posts/test_service.py",
-      "sha256": "1f88961aab14de0d74d3c4a1e8c599a82e845867db90e0153255b9bebb200951",
-      "size_bytes": 6824,
+      "sha256": "3b618961940326266549f6c85295f06538d319d8d7b8ad9f87d1227eff8a574a",
+      "size_bytes": 8370,
       "mode": "100644"
     },
     {
@@ -3521,14 +3635,26 @@
     },
     {
       "path": "tests/integration/library/test_media_storage.py",
-      "sha256": "face26afd4dfb6eee2c2f063c065d6e85400b2dd9bda93dce4c33dfd803d5768",
-      "size_bytes": 3712,
+      "sha256": "0720c506832c4e1cbba865e0c52e20d4c7d746ce9f8ea1140d762af30ade513e",
+      "size_bytes": 3929,
       "mode": "100644"
     },
     {
       "path": "tests/integration/library/test_native_gate.py",
       "sha256": "284fd0fa2686fbf9e42c46763dcfbe3c20e6f29b6bef87cd00f568069e7e61ae",
       "size_bytes": 1793,
+      "mode": "100644"
+    },
+    {
+      "path": "tests/integration/library/test_single_category.py",
+      "sha256": "309617a7cd6006371bb077c3f2f1f921bb71d7dcc8c8f6cdc3ec339baf24c88a",
+      "size_bytes": 3903,
+      "mode": "100644"
+    },
+    {
+      "path": "tests/integration/library/test_single_category_migration.py",
+      "sha256": "756dfa198d4241b1f8d629832625ab70565c5a356ae369501c36d6b04ddcae11",
+      "size_bytes": 12040,
       "mode": "100644"
     },
     {
@@ -3539,8 +3665,8 @@
     },
     {
       "path": "tests/integration/library/test_web_writes.py",
-      "sha256": "6319706aae1bea65b95c10b4020eafadb12da959d958d717d74f308d81695714",
-      "size_bytes": 4510,
+      "sha256": "071006858d7347f23be06e523fb54106ad7ecc2512431797ddb76c5585cf1661",
+      "size_bytes": 5372,
       "mode": "100644"
     },
     {
@@ -3616,6 +3742,24 @@
       "mode": "100644"
     },
     {
+      "path": "tests/integration/publish/test_account_publish_defaults.py",
+      "sha256": "9f7393620e77b88209e42768ed43e9a3cc47a91c7ac200ce5d6345645e0ad1c6",
+      "size_bytes": 3532,
+      "mode": "100644"
+    },
+    {
+      "path": "tests/integration/publish/test_channels_ack_boundary.py",
+      "sha256": "3d6d7b017e2beef969aff02b05e80547bb90f343e8c2e3f9250fe527f5e4ab58",
+      "size_bytes": 7080,
+      "mode": "100644"
+    },
+    {
+      "path": "tests/integration/publish/test_delivery_completion_shared.py",
+      "sha256": "8f55f4d065fd91ce4e8eb6be1e64d7b9d54f074d8ff861d849518b2fb94b270f",
+      "size_bytes": 11399,
+      "mode": "100644"
+    },
+    {
       "path": "tests/integration/publish/test_douyin_adapter_contract.py",
       "sha256": "c9bc7c932057896b530bc73a160021db2955ed4546da47d5f8bf108f39e0189c",
       "size_bytes": 3247,
@@ -3623,8 +3767,8 @@
     },
     {
       "path": "tests/integration/publish/test_image_post_publishing.py",
-      "sha256": "6cdff55d905868c001ed302bfdd9330d887648cab71e3e5f883f156c940ad7d5",
-      "size_bytes": 22245,
+      "sha256": "d32c6408e2ca4475c2b7c4f7a6f80b2f0b268dec4564c91fdeadceb1f3b29d33",
+      "size_bytes": 22466,
       "mode": "100644"
     },
     {
@@ -3635,8 +3779,8 @@
     },
     {
       "path": "tests/integration/publish/test_multi_publish_v2.py",
-      "sha256": "e1caf8ef1c9e92726948af9198da964ffd55ab65d3a76b045be6987e7f17a971",
-      "size_bytes": 73011,
+      "sha256": "1ddcb8573614bd0968ebc3d907b97d7d39e857022922d60a288078130136b5bb",
+      "size_bytes": 73700,
       "mode": "100644"
     },
     {
@@ -3647,8 +3791,8 @@
     },
     {
       "path": "tests/integration/publish/test_official_clients.py",
-      "sha256": "e70ce2e37bd7a55cc93c660f7c530d64e331d9b92333baba581bc3f9320bddc2",
-      "size_bytes": 17208,
+      "sha256": "564b66f4d3e730fe2354950d0d735dd0cb6114f341b5d5461843011ff592cc08",
+      "size_bytes": 17510,
       "mode": "100644"
     },
     {
@@ -3661,6 +3805,12 @@
       "path": "tests/integration/publish/test_official_http_completion.py",
       "sha256": "4e0b1fd0556a6f8b8164fba9dd9db4a41052d03c64934d2cee6cb57f816e2208",
       "size_bytes": 2123,
+      "mode": "100644"
+    },
+    {
+      "path": "tests/integration/publish/test_posting_limit_skip.py",
+      "sha256": "0fc9ea71ad7d1980a825d5e21e39f3313c22a2b7af6c3d09d37082b2d069f7ac",
+      "size_bytes": 4697,
       "mode": "100644"
     },
     {
@@ -3772,6 +3922,12 @@
       "mode": "100644"
     },
     {
+      "path": "tests/integration/webui/legacy_daily_fixture.py",
+      "sha256": "456cb6b7afcc8501a33a178052ee200c5e7f25442adbde134099959f4a80a9b0",
+      "size_bytes": 965,
+      "mode": "100644"
+    },
+    {
       "path": "tests/integration/webui/legacy_schedule_fixture.py",
       "sha256": "90681f6cb4c7b2b55f40311b1c9671135869b8abd141566f90ad9e03d8b3b175",
       "size_bytes": 320,
@@ -3802,6 +3958,24 @@
       "mode": "100644"
     },
     {
+      "path": "tests/integration/webui/test_account_check_details.py",
+      "sha256": "cabc4b283f36e1ae75441d6e2712df83346ba75fc571748325a87b849d121370",
+      "size_bytes": 9221,
+      "mode": "100644"
+    },
+    {
+      "path": "tests/integration/webui/test_account_check_task_safety.py",
+      "sha256": "ad02cc4167c7000dc6056cad3b68406ee0d233c3de0c4de6ce0355785d008920",
+      "size_bytes": 4422,
+      "mode": "100644"
+    },
+    {
+      "path": "tests/integration/webui/test_account_publish_settings.py",
+      "sha256": "f0358753e4ca38b093b206a99649704df3b9c28cfbcef332278d60b1bc87b7f7",
+      "size_bytes": 19461,
+      "mode": "100644"
+    },
+    {
       "path": "tests/integration/webui/test_application_bundle_routes.py",
       "sha256": "4f85e6ce432c7c681f89fe58def77064b8fa690927b91dd450fccb92df077484",
       "size_bytes": 3032,
@@ -3826,6 +4000,12 @@
       "mode": "100644"
     },
     {
+      "path": "tests/integration/webui/test_bilibili_tag_inspection.py",
+      "sha256": "87259f552545cf90ace8bbae3d0df801c3835ed8a9528c358c92bf5f8237f271",
+      "size_bytes": 1111,
+      "mode": "100644"
+    },
+    {
       "path": "tests/integration/webui/test_builtin_douyin_declarations.py",
       "sha256": "f63038ffda8663f6d813ab1d6c391817ecf48d7cd0e9292b258cd5bca54a9a48",
       "size_bytes": 4322,
@@ -3845,14 +4025,14 @@
     },
     {
       "path": "tests/integration/webui/test_channels_publish_boundary.py",
-      "sha256": "b6064cebab15b2accf751b1bc4bfe3fb3165db7c5d2303259f49526e2bb44ecb",
-      "size_bytes": 14834,
+      "sha256": "cd93cd2f63e35a87decfc2e892673f760f4e56195a8baf81210367ef3acf874a",
+      "size_bytes": 16354,
       "mode": "100644"
     },
     {
       "path": "tests/integration/webui/test_channels_validation_navigation.py",
-      "sha256": "57b0b40a36923b6f41e7de675dcd1fdf057dfe44a0e6101f9c9c6e79630cccfb",
-      "size_bytes": 3743,
+      "sha256": "2f3c325013a54618bcaab8b3fbc62b205aaa115dcbca1be9ffa4cde72746ab0a",
+      "size_bytes": 4221,
       "mode": "100644"
     },
     {
@@ -3941,26 +4121,26 @@
     },
     {
       "path": "tests/integration/webui/test_daily_execution_copy.py",
-      "sha256": "6ef95d8b0c279a9eacbb791f58d56b49cf2873756a2752fdb0674a6da76b9578",
-      "size_bytes": 11653,
+      "sha256": "441417891d119ce9a1b800e5cde622f57e965d5395694efae884d99f05921e4b",
+      "size_bytes": 12770,
       "mode": "100644"
     },
     {
       "path": "tests/integration/webui/test_daily_login_diagnostics.py",
-      "sha256": "49ae3ea42fbd10bdaac344a275e0d5eed2b0dcffa52928ad2a6def42d9f0d64f",
-      "size_bytes": 13282,
+      "sha256": "9d0e277aa59b17ef3f0165f8b804018a3b652f9171e31b45d562bb57c4b18d2f",
+      "size_bytes": 13467,
       "mode": "100644"
     },
     {
       "path": "tests/integration/webui/test_daily_login_flow.py",
-      "sha256": "6d1781670d1bd8a6217b85cd5cd18f8a14fb5f87ad33a88a9c776b7c07bdc208",
-      "size_bytes": 20742,
+      "sha256": "938259eaa1ba604d89407f5476e8429a916fdaa823b8deee907e17fe10ccca3b",
+      "size_bytes": 21300,
       "mode": "100644"
     },
     {
       "path": "tests/integration/webui/test_daily_login_progress.py",
-      "sha256": "211d7fd83e737409e67cbe5b7c24f0d657924b7a07b2e646a1c72b83d1b47b3b",
-      "size_bytes": 5133,
+      "sha256": "c15f1ff831a8ebbda69d95b1695541b8a321070723b500383c9b62965509f7cc",
+      "size_bytes": 5173,
       "mode": "100644"
     },
     {
@@ -3971,8 +4151,8 @@
     },
     {
       "path": "tests/integration/webui/test_daily_mixing.py",
-      "sha256": "2fada1756cb605853aec0b658de36e95737f2a4b7e0ea22890c41a4fe3170747",
-      "size_bytes": 49165,
+      "sha256": "4115c4e631a0f2e71acf624b649e97838c82e980f257d698e7aa27221ec7b362",
+      "size_bytes": 58741,
       "mode": "100644"
     },
     {
@@ -3989,14 +4169,32 @@
     },
     {
       "path": "tests/integration/webui/test_daily_recent_batch.py",
-      "sha256": "62af040359a0165ad0b692095b65441ef593adee9c1243ee38fe6c077fe2309d",
-      "size_bytes": 6950,
+      "sha256": "2aaf9d0baf60ae15b9fe216f2c17b3b65cc2efe9b1292b1d2c0fc0509d7d779f",
+      "size_bytes": 9059,
       "mode": "100644"
     },
     {
       "path": "tests/integration/webui/test_daily_reopen_reason.py",
       "sha256": "f55e1df3e3036c607afd2cb7517e340eda8938048159d72b13b2c0dc65944a46",
       "size_bytes": 6620,
+      "mode": "100644"
+    },
+    {
+      "path": "tests/integration/webui/test_daily_serial_flow.py",
+      "sha256": "c22aa825de0dc2220bbec11a457e7d1a6d44f3fd9a67cac60c22c488b4e7a174",
+      "size_bytes": 44598,
+      "mode": "100644"
+    },
+    {
+      "path": "tests/integration/webui/test_daily_serial_late_authorization.py",
+      "sha256": "592bd81a81acdc9989fe4cad2985719ef29ff43dafd5d31a120264e5a374d677",
+      "size_bytes": 7845,
+      "mode": "100644"
+    },
+    {
+      "path": "tests/integration/webui/test_daily_serial_recovery.py",
+      "sha256": "eb4ad25469b2a3c26dd0d028084427c3f5d9a07584d5c170b52e6b31cacb110e",
+      "size_bytes": 14237,
       "mode": "100644"
     },
     {
@@ -4048,6 +4246,12 @@
       "mode": "100644"
     },
     {
+      "path": "tests/integration/webui/test_douyin_result_copy.py",
+      "sha256": "b3aa3727811759617e68658a4aa40fba8edf6aa2c10b8ae3a7c4cccb0b47a64f",
+      "size_bytes": 1852,
+      "mode": "100644"
+    },
+    {
       "path": "tests/integration/webui/test_douyin_topics.py",
       "sha256": "34c6bffa1a4d477773d30e710e2a81d729744623545cc8c3f92bfb9dff0a699d",
       "size_bytes": 832,
@@ -4073,8 +4277,8 @@
     },
     {
       "path": "tests/integration/webui/test_excel_access.py",
-      "sha256": "0a4183be242561b8a2f7310b1bfa85d353a5ceb8f238d0abd3ef9a2a36568108",
-      "size_bytes": 4427,
+      "sha256": "8ca4b599297a5af19f7ee0d10d6f4e37eb727903277cfe43ba5e1b7f17b73241",
+      "size_bytes": 4740,
       "mode": "100644"
     },
     {
@@ -4097,8 +4301,8 @@
     },
     {
       "path": "tests/integration/webui/test_finished_categories_names.py",
-      "sha256": "e3efd8a8c653beb9fd25de071026f79a570dadb1dc479ad1eee1ac9738433c5f",
-      "size_bytes": 4464,
+      "sha256": "3dc23768d505040094c864d5f66fd4a65fa564e590ef96110010cd5670b91402",
+      "size_bytes": 4666,
       "mode": "100644"
     },
     {
@@ -4109,8 +4313,8 @@
     },
     {
       "path": "tests/integration/webui/test_finished_delete.py",
-      "sha256": "2488f9c4da9d748d348e933ce8af9dfe3040809c6b184e833326750d7d5036bf",
-      "size_bytes": 4328,
+      "sha256": "7e27fc9c4fcaa3cb8cce3b6cd0c5cbe1893ec9596f28f43c2150e0e86c251b10",
+      "size_bytes": 8718,
       "mode": "100644"
     },
     {
@@ -4163,14 +4367,14 @@
     },
     {
       "path": "tests/integration/webui/test_library_management.py",
-      "sha256": "027e2af5957c4323c620fc2af599c95a889a14335fb2a881c0c9355d75581cbd",
-      "size_bytes": 3105,
+      "sha256": "99da2a28c03e8d493ab0843d6611c12b0f474d944b946b497c9d91e3436397f2",
+      "size_bytes": 3277,
       "mode": "100644"
     },
     {
       "path": "tests/integration/webui/test_login_account_busy.py",
-      "sha256": "d68340b6094706580a5b08e1f9f2dc8a5633c2c4abc8a4e53eb1338d90c5809b",
-      "size_bytes": 3246,
+      "sha256": "7bfd99001bfc59eaeba28c19c1fdda3dac5218a3bb0bea53b4b001003193b8db",
+      "size_bytes": 4906,
       "mode": "100644"
     },
     {
@@ -4181,8 +4385,8 @@
     },
     {
       "path": "tests/integration/webui/test_login_session_check.py",
-      "sha256": "81936f772253d6ee9a9c7b283abb4ba620a7529a66f9b46491767aa888e6adfb",
-      "size_bytes": 8773,
+      "sha256": "38822f8fdcc92373120d92710f1736432977aa9411c73bcc3c6fd113d26d0ba2",
+      "size_bytes": 20546,
       "mode": "100644"
     },
     {
@@ -4199,20 +4403,20 @@
     },
     {
       "path": "tests/integration/webui/test_mix_execution_projection.py",
-      "sha256": "a127db51c9128a3ba2b8c9693ce35f5f614cfe44e4c86dca79eaf35330d0fd81",
-      "size_bytes": 11701,
+      "sha256": "e43d1bc7bb9601a77169f0458c6c35a9c00d63d04d4332cc07e31ea032616bfd",
+      "size_bytes": 13908,
       "mode": "100644"
     },
     {
       "path": "tests/integration/webui/test_mix_execution_publishing.py",
-      "sha256": "9ca14414cf37f665073031f495bf4a455422e0c4aaa7f501b59de3ad6e34340b",
+      "sha256": "2d2b778f14864a514fef17d11e086996c98390561a366ccf8e5c5e9919ce6aa5",
       "size_bytes": 12876,
       "mode": "100644"
     },
     {
       "path": "tests/integration/webui/test_mix_execution_timing.py",
-      "sha256": "44238d210fbdce19b538ab09cd1663b532fabe8ff988bcbf679373cb8888667b",
-      "size_bytes": 10797,
+      "sha256": "28197e6adc86793caad9ffc94e9002dd59fe92a8a83fb1a22ce3f081df92b770",
+      "size_bytes": 14420,
       "mode": "100644"
     },
     {
@@ -4235,8 +4439,8 @@
     },
     {
       "path": "tests/integration/webui/test_mix_verification_presentation.py",
-      "sha256": "fe75453b364e18f184699a5885d56328435c2907b0764eca914f3c4e78e25454",
-      "size_bytes": 6754,
+      "sha256": "9386d867cf0839a7a79fd9b302eb8bebd07aec3fd5f5178fe48382e3604574ce",
+      "size_bytes": 6924,
       "mode": "100644"
     },
     {
@@ -4253,20 +4457,20 @@
     },
     {
       "path": "tests/integration/webui/test_multi_publish_content_declarations.py",
-      "sha256": "544454a0ac32cd40dfd5fe5eb9688cd466d9075b740d0febf53e6f619d69f20a",
-      "size_bytes": 9771,
+      "sha256": "bf2ec4d1082bbd7eaaebc0fd756dae2fb2b30be365a3fb8a9b04632391d4ccda",
+      "size_bytes": 10395,
       "mode": "100644"
     },
     {
       "path": "tests/integration/webui/test_multi_publish_creator_fields.py",
-      "sha256": "05632506a7498c2dec2ee29377371c440b0b1925df3c13e2de9f3ec4d3a2a82d",
-      "size_bytes": 10765,
+      "sha256": "fe8888dc4ee2dc17f1c082824b2aef27cc7bfc413230f56f2f7f3526108c0673",
+      "size_bytes": 12566,
       "mode": "100644"
     },
     {
       "path": "tests/integration/webui/test_multi_publish_failure_diagnostics.py",
-      "sha256": "4b59e8e67b16a5b41df80ce71545f3990be2d8e2e573624609196ff203493bd2",
-      "size_bytes": 18978,
+      "sha256": "ab6e5648b3c5062016a132e909d71dacfc6b510c2cc86ac1b029d8814a4d1fc6",
+      "size_bytes": 39217,
       "mode": "100644"
     },
     {
@@ -4319,8 +4523,8 @@
     },
     {
       "path": "tests/integration/webui/test_music_category_submit.py",
-      "sha256": "4c2a19f35eadd30072828900d839c83408c4a4fe2e34063379d7d16527e07a17",
-      "size_bytes": 2826,
+      "sha256": "060dcf5c252d0558b235889a4281e6885cd545e81c11ca7d7a9f1e40bcd54694",
+      "size_bytes": 2842,
       "mode": "100644"
     },
     {
@@ -4351,6 +4555,12 @@
       "path": "tests/integration/webui/test_preset_catalog.py",
       "sha256": "46ee145ec15c23c5f7806208646855be9e7e6bbcd40d2780d3426599aefd1c5a",
       "size_bytes": 5998,
+      "mode": "100644"
+    },
+    {
+      "path": "tests/integration/webui/test_publish_batch_report.py",
+      "sha256": "caf6676770ad9a94f9ad2b4b1cc54ae29e3813d2e1333f3ecfa2cbd5622c3b4a",
+      "size_bytes": 5161,
       "mode": "100644"
     },
     {
@@ -4396,9 +4606,15 @@
       "mode": "100644"
     },
     {
+      "path": "tests/integration/webui/test_publish_partial_daily_schedule.py",
+      "sha256": "6a21dea8180b59eba8aa302b849f593614141c522c7605f86d3ab43404c7913e",
+      "size_bytes": 8245,
+      "mode": "100644"
+    },
+    {
       "path": "tests/integration/webui/test_publish_planning.py",
-      "sha256": "753b801bef839dd40baf5eba61d2cf2614a0af7033cb242e350c27db0883eb31",
-      "size_bytes": 10419,
+      "sha256": "820cb7c4899bd2b8e0da3a3ef9d518060e0f2aa9300bce9af9e18bbf5c310996",
+      "size_bytes": 10356,
       "mode": "100644"
     },
     {
@@ -4421,8 +4637,8 @@
     },
     {
       "path": "tests/integration/webui/test_publish_session_refresh.py",
-      "sha256": "c8d5c050c3acd98bd895a82a474f046032903604b555df6b952f244b4700956d",
-      "size_bytes": 2714,
+      "sha256": "1538e24c60f85a39884939e166e6da822e50b14c662f117b1be50fe2be9d3cdc",
+      "size_bytes": 3087,
       "mode": "100644"
     },
     {
@@ -4444,6 +4660,18 @@
       "mode": "100644"
     },
     {
+      "path": "tests/integration/webui/test_serial_execution_projection.py",
+      "sha256": "5ca3e175afc44965eedd7bddfb4eaa4839d8f054c27da8aa9cf85531fee93a99",
+      "size_bytes": 4072,
+      "mode": "100644"
+    },
+    {
+      "path": "tests/integration/webui/test_serial_session_rotation.py",
+      "sha256": "b37ff4dd8fc4e9cb8fcb75e6f33a15b7c6a19f34b2ec852008263a3872409bf3",
+      "size_bytes": 3988,
+      "mode": "100644"
+    },
+    {
       "path": "tests/integration/webui/test_session_check.py",
       "sha256": "3eb356df38a6ddf9f68cea560ce1be7e9c6393231a06674795b233386c106a07",
       "size_bytes": 22645,
@@ -4457,14 +4685,14 @@
     },
     {
       "path": "tests/integration/webui/test_session_check_diagnostics.py",
-      "sha256": "804e4d971014f0a8612944c91e2dc659f40b76137a3e056c02a95710674d8f1d",
-      "size_bytes": 13139,
+      "sha256": "85107fc35fbdebd48bf19d84cdda45fc1f8ae43b380d259223cc63c6adc9ac60",
+      "size_bytes": 13355,
       "mode": "100644"
     },
     {
       "path": "tests/integration/webui/test_session_check_hang.py",
-      "sha256": "44640d299403d2269dd2490b8b7b8de37399f72830b976b5792cb99e8ef04193",
-      "size_bytes": 14866,
+      "sha256": "e264b6f4701a4d7e8ad6c3bee34b13c03b63ea8e1640b62974dc073b3376d420",
+      "size_bytes": 18308,
       "mode": "100644"
     },
     {
@@ -4477,6 +4705,12 @@
       "path": "tests/integration/webui/test_single_instance.py",
       "sha256": "e3a0dab690d870490c0798a4608bc5fad1c9f92be11cc73e32bbfe21c7187a6b",
       "size_bytes": 2542,
+      "mode": "100644"
+    },
+    {
+      "path": "tests/integration/webui/test_startup_login_checks.py",
+      "sha256": "f05377b49ef9e246d1bf97a4428104740c8298ab66093be7789c49c39d840780",
+      "size_bytes": 10629,
       "mode": "100644"
     },
     {
@@ -4498,6 +4732,12 @@
       "mode": "100644"
     },
     {
+      "path": "tests/integration/webui/test_task_center_serial_progress.py",
+      "sha256": "c4c8044d36b84c1bdca43d6511728907403e55cdc7762ca6b42af882c946ee97",
+      "size_bytes": 10301,
+      "mode": "100644"
+    },
+    {
       "path": "tests/integration/webui/test_task_removal.py",
       "sha256": "d52aef6cd7a5e2074f2239c6d62551ce9c630aa7af462f1a957cb2d471df8098",
       "size_bytes": 8618,
@@ -4513,6 +4753,12 @@
       "path": "tests/integration/webui/test_topic_popup_recovery.py",
       "sha256": "2e1d8a50c06f0de47a6065a3fbd78abe7903512082c231467f0c25066f90df66",
       "size_bytes": 2022,
+      "mode": "100644"
+    },
+    {
+      "path": "tests/integration/webui/test_unified_channels_completion_api.py",
+      "sha256": "e60bfd0e0942174f1e2afe05620257280150f5571239ccb04edeb4ac19aa9653",
+      "size_bytes": 2995,
       "mode": "100644"
     },
     {
@@ -4535,8 +4781,8 @@
     },
     {
       "path": "tests/ui/library/test_copy_completion.py",
-      "sha256": "d20804deb8a4acd605025fa59f7413fc3cdf02bbe69b97e6fb1cebcd309aff83",
-      "size_bytes": 3224,
+      "sha256": "51243540bda89e4b337cd46dc14a634897a6734a960d3ce0694cb4c43499fb0d",
+      "size_bytes": 4276,
       "mode": "100644"
     },
     {
@@ -4613,8 +4859,8 @@
     },
     {
       "path": "tests/unit/downloads/test_bundle.py",
-      "sha256": "0eeb1f2ef17dcdb5dc9af438a57cd69ef6a7d00bbc554e6ba7ce2d620cb5178b",
-      "size_bytes": 29542,
+      "sha256": "3df10585e4191cb06fcac02bd66f113ddbbef4c90705fa0a50982f273dc16d56",
+      "size_bytes": 29750,
       "mode": "100644"
     },
     {
@@ -4727,8 +4973,8 @@
     },
     {
       "path": "tests/unit/mixing/test_free_cloud_configuration.py",
-      "sha256": "49b25aad6f57941a1c5f87dd98cf726a0ecc47291c67ab7c320eb922acf1246f",
-      "size_bytes": 5104,
+      "sha256": "8d4ad73a31119cef98d8f08835bfddf922dd669f96d06127dfcde8c770389541",
+      "size_bytes": 6741,
       "mode": "100644"
     },
     {
@@ -4739,8 +4985,8 @@
     },
     {
       "path": "tests/unit/mixing/test_hosted_voice.py",
-      "sha256": "1ce5188940d0133071baee49fe8af69aff77e0f537b8a67792b3a211f343530c",
-      "size_bytes": 19367,
+      "sha256": "5ff2087f6ed577cdd8ab4172f88826137a3b83a9ebb8569503d3b146439f7aa7",
+      "size_bytes": 19408,
       "mode": "100644"
     },
     {
@@ -4751,8 +4997,8 @@
     },
     {
       "path": "tests/unit/mixing/test_output_names.py",
-      "sha256": "2f1211d67ef03dcd74759d4b82801acbdfbc5ad5617f30c500ba651f1135bac2",
-      "size_bytes": 738,
+      "sha256": "fbc349ce765e9fada08946ca8c9b392f5bf830a94e5b59ac3583c4c2ab7c9d8e",
+      "size_bytes": 1270,
       "mode": "100644"
     },
     {
@@ -4798,6 +5044,12 @@
       "mode": "100644"
     },
     {
+      "path": "tests/unit/mixing/test_serial_claim.py",
+      "sha256": "a072e3422216bc2cfd6b268a57e1afcf4dc10e8eb8a62db97b0ec06358cfe38d",
+      "size_bytes": 17113,
+      "mode": "100644"
+    },
+    {
       "path": "tests/unit/mixing/test_subtitle_styles.py",
       "sha256": "617e45b59caac74848a54b0ca91b4f0e975d094a95defdaa5f3db56be4184fc7",
       "size_bytes": 5896,
@@ -4829,8 +5081,8 @@
     },
     {
       "path": "tests/unit/mixing/test_voice_catalog.py",
-      "sha256": "45a7b7a46f94cfa608a9abf0738e2a416a78703b8f18fa49fede2cb9e71f33f0",
-      "size_bytes": 2046,
+      "sha256": "fd1f3a07f9f99350d7678e85705703e09c008315fc99fde4c0e36d8fffdcfba5",
+      "size_bytes": 5033,
       "mode": "100644"
     },
     {
@@ -4876,9 +5128,15 @@
       "mode": "100644"
     },
     {
+      "path": "tests/unit/packaging/fixtures/windows-3ab5770-backend.yml",
+      "sha256": "b2eda95fc7e2197de6fb3b4eed9977d83b4877c55a0e63bcf340442f019e8bf9",
+      "size_bytes": 2467,
+      "mode": "100644"
+    },
+    {
       "path": "tests/unit/packaging/test_release_build_configuration.py",
-      "sha256": "13a175e799b0bb77ea81ac27caeaa17cf1f9ea613b0a586133149e6afcf82de9",
-      "size_bytes": 4782,
+      "sha256": "d3f3886d00f6f91301d604e098e5818d41149f6d51aecb08c3b0d01cf7cb90a3",
+      "size_bytes": 4862,
       "mode": "100644"
     },
     {
@@ -4900,6 +5158,12 @@
       "mode": "100644"
     },
     {
+      "path": "tests/unit/packaging/test_windows_ui_recovery_contract.py",
+      "sha256": "bc7e0efc834eb3bb998650962422db2a1d208c976e7f24f13a7861e1e17e7d7c",
+      "size_bytes": 6702,
+      "mode": "100644"
+    },
+    {
       "path": "tests/unit/presets/test_preset_types.py",
       "sha256": "fcfff844052c08206b30f819c37d7257145714575e26b47c12c9c0bec581c6a9",
       "size_bytes": 1251,
@@ -4909,6 +5173,12 @@
       "path": "tests/unit/presets/test_time_rules.py",
       "sha256": "f4645aaf96c2d4e49bc9d2bc70f0180626cf821e61879da26d1e66fdd337e552",
       "size_bytes": 771,
+      "mode": "100644"
+    },
+    {
+      "path": "tests/unit/publish/test_channels_submission_ack.py",
+      "sha256": "6e8477d8a6ce07af1c731ffff235592c0b961577da0c1b1e1561ba0ef82063c3",
+      "size_bytes": 3067,
       "mode": "100644"
     },
     {
@@ -4945,6 +5215,12 @@
       "path": "tests/unit/publish/test_quick_candidates.py",
       "sha256": "a44bbcb436d4248c7e57db4b86c0e080ba3ade0b12846c572b533992dea48754",
       "size_bytes": 1948,
+      "mode": "100644"
+    },
+    {
+      "path": "tests/unit/publish/test_read_diagnostics.py",
+      "sha256": "8c2e9d7d756fd94fed2a451b9cb296df76b2b9402165f0f041c06c056b1c3cf1",
+      "size_bytes": 8402,
       "mode": "100644"
     },
     {
@@ -4991,8 +5267,8 @@
     },
     {
       "path": "tests/unit/test_prepare_public_source.py",
-      "sha256": "9fb7902f7d3269e8f16dbdabb55daabc3983f0a2fb6877b9eed61edf4e4271c2",
-      "size_bytes": 16520,
+      "sha256": "a1b4fcea710343dd84106c262aeea5832f673365de0e80bb01facffeea777385",
+      "size_bytes": 17742,
       "mode": "100644"
     },
     {
@@ -5021,8 +5297,8 @@
     },
     {
       "path": "tests/unit/test_task_execution_copy.py",
-      "sha256": "334b5b4170f6790be40eef6d0566c5a9bb1a6a15415d1854691c1e997a6bf1bc",
-      "size_bytes": 5339,
+      "sha256": "21fc00285f32cc52953086f89bb3e6217dfc6212410f49fa8631bf8c75c61c85",
+      "size_bytes": 7161,
       "mode": "100644"
     },
     {
@@ -5032,21 +5308,39 @@
       "mode": "100644"
     },
     {
+      "path": "tests/unit/webui/test_account_picker_layout.py",
+      "sha256": "3951329a8ea5a97273163e9a0dd405cb7900eeda64964f75acd0ea10b12f145f",
+      "size_bytes": 3665,
+      "mode": "100644"
+    },
+    {
       "path": "tests/unit/webui/test_app_version.py",
-      "sha256": "e68621a4ffbb48adf51caeadad4c1dd3de437188330b6282f3cf36acc4ef08f8",
-      "size_bytes": 567,
+      "sha256": "d4908f8709fe1aee253a272b40abcd21097c6483944a88b6556553cf85a14cee",
+      "size_bytes": 1469,
+      "mode": "100644"
+    },
+    {
+      "path": "tests/unit/webui/test_bilibili_current_statement.py",
+      "sha256": "7198ff623b0e662816741141be3fdec6c25e79af7dfd73e3b154940a2b86fe4d",
+      "size_bytes": 2737,
+      "mode": "100644"
+    },
+    {
+      "path": "tests/unit/webui/test_bilibili_description_readback.py",
+      "sha256": "4933af539c809c53a98bc892f7592c950425b1f396bfbad9f3b2fc38191b1c08",
+      "size_bytes": 2635,
       "mode": "100644"
     },
     {
       "path": "tests/unit/webui/test_bilibili_identity_observation.py",
-      "sha256": "65f23045f39f476cdd305514c97a076af8ab411f99ffbeb00ffd76722d9f507f",
-      "size_bytes": 9565,
+      "sha256": "383752b5d93f84342fac3a1a237470043a0ae610d732cc800c19b55c599b6b19",
+      "size_bytes": 10098,
       "mode": "100644"
     },
     {
       "path": "tests/unit/webui/test_bilibili_multi_publish.py",
-      "sha256": "bd8459416f0f2b7135fd503db270532b1340dc85776978675db311ed577c7f10",
-      "size_bytes": 27936,
+      "sha256": "1564c779bd32c94085dee7e7322326a6448b4c8fd346623fede34b887bdf4b1f",
+      "size_bytes": 28129,
       "mode": "100644"
     },
     {
@@ -5057,8 +5351,8 @@
     },
     {
       "path": "tests/unit/webui/test_bilibili_preparation_observation.py",
-      "sha256": "d0faaf5a7bd93bcf6946bf38ade779a320a684b66c0c5e70a3d9d45c401d443a",
-      "size_bytes": 44356,
+      "sha256": "19988f55281c34a50ae87c329127a561501d811c44086316adef0e868f70762f",
+      "size_bytes": 61140,
       "mode": "100644"
     },
     {
@@ -5074,9 +5368,27 @@
       "mode": "100644"
     },
     {
+      "path": "tests/unit/webui/test_bilibili_tag_observation.py",
+      "sha256": "7c8b91ec7b4cb5d896700283590e584bac20e1d0aa5e2131cd199158ff5f6aae",
+      "size_bytes": 5917,
+      "mode": "100644"
+    },
+    {
+      "path": "tests/unit/webui/test_bilibili_tag_rejection.py",
+      "sha256": "5ece491ad504d200a14966d82015061b50a2979ad10477b70a213933837da1b9",
+      "size_bytes": 5644,
+      "mode": "100644"
+    },
+    {
       "path": "tests/unit/webui/test_bundled_browser_check.py",
       "sha256": "7b15ce866db7e1f8a6b36813a0c9a37c4ec2f930f506faa6d27ca3b6fb5953e2",
       "size_bytes": 2181,
+      "mode": "100644"
+    },
+    {
+      "path": "tests/unit/webui/test_channels_browser_login.py",
+      "sha256": "c0823d5b2e89002a4d6dd8de34de150520a640ce5134c59affc4963490fbfbd9",
+      "size_bytes": 16749,
       "mode": "100644"
     },
     {
@@ -5110,9 +5422,15 @@
       "mode": "100644"
     },
     {
+      "path": "tests/unit/webui/test_channels_immediate_ack.py",
+      "sha256": "30dc3c08d645af7f00d267391de83873fa0cb8d906f38800074ec5d640b038c9",
+      "size_bytes": 4954,
+      "mode": "100644"
+    },
+    {
       "path": "tests/unit/webui/test_channels_multi_publish.py",
-      "sha256": "c55b76b653e290f04f540257f0688f0c56d4e4143f179c1bfb5d448229e9bb1a",
-      "size_bytes": 34301,
+      "sha256": "520005f1a9bd1707919aa8b660df991a9ba9b3db0eb1f9e11f2c453f505e1609",
+      "size_bytes": 34841,
       "mode": "100644"
     },
     {
@@ -5146,6 +5464,12 @@
       "mode": "100644"
     },
     {
+      "path": "tests/unit/webui/test_channels_result_page_cleanup.py",
+      "sha256": "9888e6e9693f20ea01803005118fe0d72140d33acfe8fd7d44a88fa0a2ad1cd0",
+      "size_bytes": 14606,
+      "mode": "100644"
+    },
+    {
       "path": "tests/unit/webui/test_channels_validation_resilience.py",
       "sha256": "5247c67701e9ece7d0acbd49eead08f83a1576e0d52cfbafaa80bc9d762aa6e1",
       "size_bytes": 6579,
@@ -5165,8 +5489,8 @@
     },
     {
       "path": "tests/unit/webui/test_chromium_multi_publish.py",
-      "sha256": "d840fb126e9dcee677d3cf3310f5658aa10b7d83b56d1620c3f5aa6e898bf686",
-      "size_bytes": 26920,
+      "sha256": "3648474f9620c7dcd88e29c040c07d44e40a78e51367c9b8c65cd44b9812679a",
+      "size_bytes": 32323,
       "mode": "100644"
     },
     {
@@ -5176,9 +5500,21 @@
       "mode": "100644"
     },
     {
+      "path": "tests/unit/webui/test_closed_publish_login.py",
+      "sha256": "10a25759038ee72b5f2c3d05f291ea96befc022443a8e9b049c4188d9947c1b6",
+      "size_bytes": 3705,
+      "mode": "100644"
+    },
+    {
       "path": "tests/unit/webui/test_cloud_voice_commands.py",
       "sha256": "d0e65a9fa497ede1a052394fd6131e119165182f0f2ef717326491f1ef533180",
       "size_bytes": 4226,
+      "mode": "100644"
+    },
+    {
+      "path": "tests/unit/webui/test_creator_browser_recovery_modes.py",
+      "sha256": "6362a6e27fcd8f795b5a3a4a441318de5fec886481f1a2ea87bd8b81034ace60",
+      "size_bytes": 5453,
       "mode": "100644"
     },
     {
@@ -5189,8 +5525,8 @@
     },
     {
       "path": "tests/unit/webui/test_daily_login_runtime.py",
-      "sha256": "bc9a2d48b3db6fdaa1f1e4a08bd17b252f7487235f3459951131fc882dfbfc70",
-      "size_bytes": 17966,
+      "sha256": "bb1b1485504db4b39b2bcf7af6732e0ce5f92e4834672e0fad04bc87935cc023",
+      "size_bytes": 18688,
       "mode": "100644"
     },
     {
@@ -5201,14 +5537,14 @@
     },
     {
       "path": "tests/unit/webui/test_deleted_publish_session_cleanup.py",
-      "sha256": "fa79b5af18af7bc591c7cd02a1fa8f3502a758ed0fecaf07c040ebd65e5d8a50",
-      "size_bytes": 7521,
+      "sha256": "4065b2dd15dce9536d70edea88b7e01d2637d0886211ca6a0ca7d1a93f41c1dc",
+      "size_bytes": 7807,
       "mode": "100644"
     },
     {
       "path": "tests/unit/webui/test_douyin_form_budget.py",
-      "sha256": "a56f1eeb073245e910753d76b1b963a5ca16bc73aee860073aa8d4cee852357e",
-      "size_bytes": 14061,
+      "sha256": "1b46a1aedc60e6a8130533c1b055f021db0012bfb22a92471d542715f789e485",
+      "size_bytes": 14215,
       "mode": "100644"
     },
     {
@@ -5219,8 +5555,8 @@
     },
     {
       "path": "tests/unit/webui/test_douyin_image_publish.py",
-      "sha256": "56af14233e0f7305578bd686fdb0aa7fc38d344ff52263f781673c917a7eb19e",
-      "size_bytes": 14814,
+      "sha256": "0b8da2c043d6ff3cf2b3d6ca198672ba658d385d470e3c5927e08025adeb2a45",
+      "size_bytes": 15294,
       "mode": "100644"
     },
     {
@@ -5236,9 +5572,21 @@
       "mode": "100644"
     },
     {
+      "path": "tests/unit/webui/test_douyin_posting_limit_dom.py",
+      "sha256": "5cf1d12dbe1cb92398b87837a593945baa4370655821b02a64009f43cc24716a",
+      "size_bytes": 2065,
+      "mode": "100644"
+    },
+    {
       "path": "tests/unit/webui/test_douyin_publish_diagnostics.py",
-      "sha256": "ad89a9ab98a72cae9fdba6cba455df1ad73eb41bf3d2765ffb8adc56cc430c44",
-      "size_bytes": 22251,
+      "sha256": "2c15ac9c317c1ef422263c5718446999edaf7489f2161263155c4a22b5f67edd",
+      "size_bytes": 22370,
+      "mode": "100644"
+    },
+    {
+      "path": "tests/unit/webui/test_douyin_result_diagnostics.py",
+      "sha256": "e1657fed141e75a5fb77b40ad67c6961278e290544789fa2710fd30558246cb3",
+      "size_bytes": 7298,
       "mode": "100644"
     },
     {
@@ -5249,8 +5597,8 @@
     },
     {
       "path": "tests/unit/webui/test_douyin_sms_verification.py",
-      "sha256": "b311173f39fe813b588238c4b98bea5acbe3c59383b5f5c79dc3c4d2ccb94cd3",
-      "size_bytes": 10911,
+      "sha256": "72f31b8217013679abcffd9dfc39ccc3bfb0df9588af49e0c5404c972d406630",
+      "size_bytes": 11235,
       "mode": "100644"
     },
     {
@@ -5261,14 +5609,32 @@
     },
     {
       "path": "tests/unit/webui/test_exit_controller.py",
-      "sha256": "695dd12c2071f4035411d078cfb3426cb51d8440cf3254d5d58c8fe3da7ec1c6",
-      "size_bytes": 1846,
+      "sha256": "c211dd8e25a06c165439906917d437b918961cc9ab0cd7f66e1b98fe138e42af",
+      "size_bytes": 1932,
+      "mode": "100644"
+    },
+    {
+      "path": "tests/unit/webui/test_identity_failure_event_pipeline.py",
+      "sha256": "73d39743339ace88c9e6555f39bb430c89dd40d269834ee495a632b5e9edd234",
+      "size_bytes": 7029,
+      "mode": "100644"
+    },
+    {
+      "path": "tests/unit/webui/test_identity_read_failure_detail.py",
+      "sha256": "5fac6c5db11b79d2e00321d3aed794f18ac49176b5e4ad222764b4415d67aaa2",
+      "size_bytes": 4424,
       "mode": "100644"
     },
     {
       "path": "tests/unit/webui/test_intervention_account_status.py",
       "sha256": "ff1ba947678f178ef34f920452f24ee2a8dfc7b51de0d98fee2c6c1203f68ee1",
       "size_bytes": 2793,
+      "mode": "100644"
+    },
+    {
+      "path": "tests/unit/webui/test_kuaishou_caption_browser.py",
+      "sha256": "4d043837b87381b0ed5f079b932757c8d65d8e3ae22c29c22140ef21527944e9",
+      "size_bytes": 3202,
       "mode": "100644"
     },
     {
@@ -5285,14 +5651,14 @@
     },
     {
       "path": "tests/unit/webui/test_kuaishou_multi_publish.py",
-      "sha256": "17f948a3cd86fafdb14609c81745476c7450c2883bd5d65944a46263d619d691",
-      "size_bytes": 25961,
+      "sha256": "40bd6247c78d2bfa1cd08c5e4bb20f580341cbd5563bc49c6b8ef05a988e4178",
+      "size_bytes": 26814,
       "mode": "100644"
     },
     {
       "path": "tests/unit/webui/test_kuaishou_prepare_inputs.py",
-      "sha256": "bf84e489daab9d6f1a9b32ebcba28e7538d02b1d992107bec19b8956cf46cb87",
-      "size_bytes": 7203,
+      "sha256": "0cd1875a1c91cdd7b8d6a16af4285e8c9f24c3e0f939b608cd2fa0f1cc95be9a",
+      "size_bytes": 9403,
       "mode": "100644"
     },
     {
@@ -5303,20 +5669,38 @@
     },
     {
       "path": "tests/unit/webui/test_kuaishou_publish_form.py",
-      "sha256": "72783c986ba1199b20e663d172e1c44c2f99b17eff8f2a56c6f1fd49e96893ee",
-      "size_bytes": 3406,
+      "sha256": "5cc99b6e3cbead6731e268f26f7e8be33b990df335cdb1e67d91b7ab3a962737",
+      "size_bytes": 3890,
       "mode": "100644"
     },
     {
       "path": "tests/unit/webui/test_kuaishou_safety_review.py",
-      "sha256": "15ee1fa1756b1e1eb3a0becbd9684494a88d799ed475964f44b865610213628f",
-      "size_bytes": 7666,
+      "sha256": "83fae20751e8eb73bac038845bba7b65ad01052441ccf1f83e5873ececb7409e",
+      "size_bytes": 7895,
       "mode": "100644"
     },
     {
       "path": "tests/unit/webui/test_local_cloud_voice_test.py",
-      "sha256": "dcb014109403dbc5e9a63b0dcac4e019aa7708bad69456009dbf3396af8f1be5",
-      "size_bytes": 4598,
+      "sha256": "01a1082fb24031fc4062b15085f5ae7e15b55c4dba65760f480452bf18bed9ee",
+      "size_bytes": 4628,
+      "mode": "100644"
+    },
+    {
+      "path": "tests/unit/webui/test_mixing_cancel_dom.py",
+      "sha256": "d7679be6aabeb963302bc378482e0fcbfc85c30a777318043a9e8911e669ff59",
+      "size_bytes": 5558,
+      "mode": "100644"
+    },
+    {
+      "path": "tests/unit/webui/test_mixing_progress_browser.py",
+      "sha256": "9ed719bee4aefa70461e6164c4ab4565c18bb9259533a019e3f7766ffb68a06e",
+      "size_bytes": 1982,
+      "mode": "100644"
+    },
+    {
+      "path": "tests/unit/webui/test_ordinary_native_login.py",
+      "sha256": "e8f5594f6b1284a7d60134445857169c6b5f168bf3aa13d0009bf793631780ee",
+      "size_bytes": 8746,
       "mode": "100644"
     },
     {
@@ -5329,6 +5713,12 @@
       "path": "tests/unit/webui/test_portable_session.py",
       "sha256": "ae0bdb42f6aa36764ec8743ecc019597b85bf2b5522f9f76c16f0c9dbb8f7600",
       "size_bytes": 1006,
+      "mode": "100644"
+    },
+    {
+      "path": "tests/unit/webui/test_publish_browser_handoff.py",
+      "sha256": "5f641f48adb353efb4cfed7633c9187cc43c939f3530b1c87fb5286057e568fc",
+      "size_bytes": 5199,
       "mode": "100644"
     },
     {
@@ -5351,8 +5741,20 @@
     },
     {
       "path": "tests/unit/webui/test_publish_intervention_viewer.py",
-      "sha256": "0fde63e6cc871f7eafe0877015977b543a3ea0fd31f0a77c585cb375f91df748",
-      "size_bytes": 8730,
+      "sha256": "4d48fe096cf328d0e05b93031a563a8eb08637ddae82b07253805714307b476a",
+      "size_bytes": 9189,
+      "mode": "100644"
+    },
+    {
+      "path": "tests/unit/webui/test_publish_login_observation.py",
+      "sha256": "eb1cbba477869a0d84462af697b232f832d765d197dc50b5ac1f8812dc5c1b5d",
+      "size_bytes": 9566,
+      "mode": "100644"
+    },
+    {
+      "path": "tests/unit/webui/test_publish_page_cleanup.py",
+      "sha256": "d1e4dff24eb3b7191eee557695dca3c60a77557c24c1c165fb32c48ecea5176f",
+      "size_bytes": 7287,
       "mode": "100644"
     },
     {
@@ -5380,15 +5782,33 @@
       "mode": "100644"
     },
     {
+      "path": "tests/unit/webui/test_settled_result_cleanup.py",
+      "sha256": "cea12e6b5c74bae7ab621bb3381edfcb693c45ca22e30de659f403666de2df7d",
+      "size_bytes": 5539,
+      "mode": "100644"
+    },
+    {
       "path": "tests/unit/webui/test_sms_cooldown.py",
       "sha256": "6cd9692991e9a9f01dd76a0a9d03e82743b72a7cfc0535f55317e815593564ac",
       "size_bytes": 1342,
       "mode": "100644"
     },
     {
+      "path": "tests/unit/webui/test_submit_feedback.py",
+      "sha256": "fc0d708c1c5bf3cbb42f1a83193b78ccbb67e630b3bd65c71664a70ff1d9d491",
+      "size_bytes": 2860,
+      "mode": "100644"
+    },
+    {
+      "path": "tests/unit/webui/test_submit_feedback_adapters.py",
+      "sha256": "284d9eb27d579e142190ee29a4a008341a189a3093b6e3d98610200a14e68d4b",
+      "size_bytes": 3952,
+      "mode": "100644"
+    },
+    {
       "path": "tests/unit/webui/test_verification_view_jobs.py",
-      "sha256": "668d8338e494bc3e80f7dfa38f85aa14dc2da2c18d6b095b2fcb77ccec329ca6",
-      "size_bytes": 13347,
+      "sha256": "60b828819c0906255f61ed3d8d9c36eab52d3897b4c6b537008456f741949f7c",
+      "size_bytes": 13787,
       "mode": "100644"
     },
     {
@@ -5399,32 +5819,62 @@
     },
     {
       "path": "tests/webui/account_login_busy.test.cjs",
-      "sha256": "0f835e72ff85f14454e61c012491c59f25c515151977d1e366373eb51bdc8855",
-      "size_bytes": 4202,
+      "sha256": "cde7e991bc6d7a31a0cb21799380fe577ec8464a5112b45df9a0a6af52a436b8",
+      "size_bytes": 12371,
+      "mode": "100644"
+    },
+    {
+      "path": "tests/webui/account_picker.test.cjs",
+      "sha256": "651d16fc7346dedbbab179ecf695b772c97c4a463eaee934d03582fd07866d79",
+      "size_bytes": 5815,
+      "mode": "100644"
+    },
+    {
+      "path": "tests/webui/account_publish_settings.test.cjs",
+      "sha256": "10e1af32643f14458243787845bfdab65a481aee673e732a80d1692044ba443b",
+      "size_bytes": 5039,
       "mode": "100644"
     },
     {
       "path": "tests/webui/accounts_login_view.test.cjs",
-      "sha256": "4d5800bcbfb97ec4acad9c781cb5e78ee4f06ca26a7aa759930fee49b99a7c50",
-      "size_bytes": 25314,
+      "sha256": "52961de26da1689e6ed372f6c1e492eece3a379a7a42cca2490a8e6a38c62aa8",
+      "size_bytes": 28092,
+      "mode": "100644"
+    },
+    {
+      "path": "tests/webui/accounts_manual_check.test.cjs",
+      "sha256": "064ee4b3db39d568d0f8d95e208d818e1941badbaf2c190272637b196b206459",
+      "size_bytes": 15973,
+      "mode": "100644"
+    },
+    {
+      "path": "tests/webui/accounts_saved_status.test.cjs",
+      "sha256": "d6244a7520c823bc2b5fa641fe0474d1e7b52f1f1c43d2459cad432991eadfb4",
+      "size_bytes": 9961,
       "mode": "100644"
     },
     {
       "path": "tests/webui/batch_categories.test.cjs",
-      "sha256": "efd3d819ec385a2a4103afba04553a47027881130a5e771423447e045360fd8b",
-      "size_bytes": 2227,
+      "sha256": "f2f3daf1be94dc7c6d7ad40edddce10d5a242b5f2ed1f2b3386ae2f03ac63ce8",
+      "size_bytes": 6721,
+      "mode": "100644"
+    },
+    {
+      "path": "tests/webui/category_assignment_view.test.cjs",
+      "sha256": "567e74ef0166aafc9385306e0e0f94f0ad2aa67a63de6baaf4689cc05e532a5c",
+      "size_bytes": 12859,
       "mode": "100644"
     },
     {
       "path": "tests/webui/category_manager.test.cjs",
-      "sha256": "48a6cc689fa886e017a6d431667186d1979d6d4bfe2bf090b04cd05aef4df3ba",
-      "size_bytes": 1942,
+      "sha256": "46d48a97759ebd733ecf47f4c870531ef5e617f931989159aa3651e65a2fd116",
+      "size_bytes": 3922,
       "mode": "100644"
     },
     {
       "path": "tests/webui/cloud_voice.test.cjs",
-      "sha256": "a809e51414353a202cca79d7d93122c06b5a74762633a68da40c0cd072e95eb7",
-      "size_bytes": 17441,
+      "sha256": "12b0575447c2542c726ebc001a445f0ac6de4e385e5f89e1c82dbb07072f9915",
+      "size_bytes": 21249,
       "mode": "100644"
     },
     {
@@ -5453,8 +5903,8 @@
     },
     {
       "path": "tests/webui/commerce_view.test.cjs",
-      "sha256": "7a31af1038388bef9ee2a2a152822dac65bdb054d81ec3314058fd8e5618e998",
-      "size_bytes": 6555,
+      "sha256": "00894547329440656273091ebf063cc436003a96b76ef0ac3ed3259d8fa36edc",
+      "size_bytes": 6581,
       "mode": "100644"
     },
     {
@@ -5476,21 +5926,39 @@
       "mode": "100644"
     },
     {
+      "path": "tests/webui/downloads_actions.test.cjs",
+      "sha256": "987863ef157cd0077120f40a1f0bd59df36387ba2ea72b619cf173cdd8862071",
+      "size_bytes": 12190,
+      "mode": "100644"
+    },
+    {
       "path": "tests/webui/downloads_local.test.cjs",
-      "sha256": "1d6e2cc728348fcdaa64b6332bed5ff5de768083884da356ced2d82ad9596fe2",
-      "size_bytes": 25961,
+      "sha256": "7e55087f17b699e332debed3a223a6bc4c8947bc56fa0086d2c942a9265c49bd",
+      "size_bytes": 21670,
+      "mode": "100644"
+    },
+    {
+      "path": "tests/webui/downloads_simple.test.cjs",
+      "sha256": "6c5f9f7d7cb58b2b4038c1110fb76cbb30f8827b6d9ba0f02d69ecc0fcc1c636",
+      "size_bytes": 7150,
       "mode": "100644"
     },
     {
       "path": "tests/webui/downloads_view.test.cjs",
-      "sha256": "4d1282ebb3c27a1945238742c78a8ccb92b586e1cd3bb09193fa11ae459b49ca",
-      "size_bytes": 35753,
+      "sha256": "fbe52a0273326baa01a86a6278fd5d8783c66756408e63ba72db787d467908f0",
+      "size_bytes": 25742,
       "mode": "100644"
     },
     {
       "path": "tests/webui/features.test.cjs",
-      "sha256": "a9a36593f6ab9279a76d63aa65280554eea3af4f1737d57fc832cdda203c4622",
-      "size_bytes": 2071,
+      "sha256": "4a5a0767a95e08bc0f1a0d99dbb90e037583cc025071a531e8568b4b1ec6c7b5",
+      "size_bytes": 2112,
+      "mode": "100644"
+    },
+    {
+      "path": "tests/webui/finished_compact_detail.test.cjs",
+      "sha256": "bb5aac741882e4f96cdd62f4ea81580f3b67b42e9f910a1c833d178c0db8e7e0",
+      "size_bytes": 2092,
       "mode": "100644"
     },
     {
@@ -5501,20 +5969,26 @@
     },
     {
       "path": "tests/webui/image_posts.test.cjs",
-      "sha256": "5307e0f3e89ad3e0cb726e4680db8316e0c1fe0e2eab6c6dbc92b49fe25c7430",
-      "size_bytes": 14747,
+      "sha256": "2357b1c2e810e47e45aa5680aece74071b61f71b2dead868ef362a9c8d7a8ddd",
+      "size_bytes": 14733,
       "mode": "100644"
     },
     {
       "path": "tests/webui/image_publish.test.cjs",
-      "sha256": "e5e9b87c3351dc449f4773d6862ff9bc805149f6a540be7bb22507ac059f6628",
-      "size_bytes": 6925,
+      "sha256": "d87763c9f50d83cd16b0d2377573a6bbbaafc8067c6afaf77ba9bad138f7e99a",
+      "size_bytes": 19146,
       "mode": "100644"
     },
     {
       "path": "tests/webui/image_task_detail.test.cjs",
       "sha256": "84841e4c5b425e1cf80d8bb9cd4baa1fccf2c44f374e69516e5e8caf478423c7",
       "size_bytes": 5162,
+      "mode": "100644"
+    },
+    {
+      "path": "tests/webui/library_excel_import.test.cjs",
+      "sha256": "0f93dfed03d0a1e52718bba9c3cf79293ac09837e27a05e49bad5d1bf711a8cd",
+      "size_bytes": 4026,
       "mode": "100644"
     },
     {
@@ -5531,8 +6005,8 @@
     },
     {
       "path": "tests/webui/mix_publish.test.cjs",
-      "sha256": "1286ecf0843bdf5ad45da58d220f9fb22db183376ae5920e039de436a3985d3d",
-      "size_bytes": 11426,
+      "sha256": "f92155980ca4de471caa9fcbc084ee7401b30fcc7811f35a61cd639f695c6cf9",
+      "size_bytes": 11445,
       "mode": "100644"
     },
     {
@@ -5543,8 +6017,8 @@
     },
     {
       "path": "tests/webui/mixing_batch_progress.test.cjs",
-      "sha256": "9feab58d42d687b6a53139fc33a79b30cd639d42f1c233674795896b798461f5",
-      "size_bytes": 20021,
+      "sha256": "189a4e9e48d549c2ac9a75d36fcd0ae0083829cc11219eac87af008cf22758f6",
+      "size_bytes": 20003,
       "mode": "100644"
     },
     {
@@ -5555,14 +6029,14 @@
     },
     {
       "path": "tests/webui/mixing_daily_integration.test.cjs",
-      "sha256": "0a2f5303f08a57a475222f51cc62aa741f2300220471458b2e916d241be383e3",
-      "size_bytes": 42383,
+      "sha256": "2b80ec4010d92b6cc7d4df07f0668be8dcd284c7c41f84f45219c6e3bec9e914",
+      "size_bytes": 43547,
       "mode": "100644"
     },
     {
       "path": "tests/webui/mixing_daily_login.test.cjs",
-      "sha256": "c60d7fd74d16caf9ef49767db8e30f6d0bee0272b42c6498dff9f07e6b0aaa0f",
-      "size_bytes": 14185,
+      "sha256": "b08868d8d7d98a8260c0e3d429efdde3b0d45220a4c818972992ab6b7eceffa6",
+      "size_bytes": 15620,
       "mode": "100644"
     },
     {
@@ -5573,8 +6047,20 @@
     },
     {
       "path": "tests/webui/mixing_execution.test.cjs",
-      "sha256": "5db9b5044ded7d5ff03dd2c7e019389994d2ae3a98334e7cbea5bd7637a7218c",
-      "size_bytes": 30736,
+      "sha256": "d8b84b15a167ce779f49df2a80ec291086197bd1ae032f4a059f3058a73ed0a5",
+      "size_bytes": 36014,
+      "mode": "100644"
+    },
+    {
+      "path": "tests/webui/mixing_execution_publish_only.test.cjs",
+      "sha256": "fe25507afde26bed530ae577e6d736215c1022d53fba206358d5f02159718a1f",
+      "size_bytes": 9792,
+      "mode": "100644"
+    },
+    {
+      "path": "tests/webui/mixing_execution_styles.test.cjs",
+      "sha256": "de0875239dee40c8e9e146b0549c1e353958da26e35289073665c1627b86f22c",
+      "size_bytes": 2225,
       "mode": "100644"
     },
     {
@@ -5596,6 +6082,12 @@
       "mode": "100644"
     },
     {
+      "path": "tests/webui/mixing_progress_return.test.cjs",
+      "sha256": "3edfc8471eb38aff0c2c568bfbd877626bd41826cd90dde37aac7a7b8165838f",
+      "size_bytes": 7381,
+      "mode": "100644"
+    },
+    {
       "path": "tests/webui/mixing_shared_quantity.test.cjs",
       "sha256": "d278777f8a6d42fb1aaa078d4135c405ed9b6a851ea45479969d648172b31967",
       "size_bytes": 6382,
@@ -5603,14 +6095,20 @@
     },
     {
       "path": "tests/webui/mixing_verification_feedback.test.cjs",
-      "sha256": "b9b144c0fb912651db746a51b3870b74bddefae458f668cb8cf48997f95d1c0e",
-      "size_bytes": 8382,
+      "sha256": "1f3e405795f8650b243bd1c484cbd0d79343eee79a075899470206e5428f6224",
+      "size_bytes": 8861,
+      "mode": "100644"
+    },
+    {
+      "path": "tests/webui/multi_publish_account_picker.test.cjs",
+      "sha256": "5e3c5838eafee5173fcbce432c5a84c13a01a128f5471732e294e7857ce66a74",
+      "size_bytes": 9069,
       "mode": "100644"
     },
     {
       "path": "tests/webui/multi_publish_defaults.test.cjs",
-      "sha256": "6a8e5db305d3364fc715d3144817646c239db284beb0db6cacf611949d079df4",
-      "size_bytes": 11388,
+      "sha256": "31e69e3d00dadbb73335d062fc3eefee449013f53fb30600bc45b60b96a3df2d",
+      "size_bytes": 6898,
       "mode": "100644"
     },
     {
@@ -5627,14 +6125,26 @@
     },
     {
       "path": "tests/webui/multi_publish_platform_fields.test.cjs",
-      "sha256": "cc836667b12829a5dd39910d8d89cd231364ff225c7fc36a56805e42ee5fe8f0",
-      "size_bytes": 47144,
+      "sha256": "2624b93a252dd6e3752fb72703876a3fd0fd9e814ed296e600a8fa3f7a77447c",
+      "size_bytes": 49809,
+      "mode": "100644"
+    },
+    {
+      "path": "tests/webui/multi_publish_preview_return.test.cjs",
+      "sha256": "0fec3738d77b02fe5590b287af74c1aa416bb6dcdfd4c6af77009be572c1c5cd",
+      "size_bytes": 7518,
+      "mode": "100644"
+    },
+    {
+      "path": "tests/webui/multi_publish_schedule.test.cjs",
+      "sha256": "e2cf8b74a3225c295f0adcb11ab9b2c856b6ef8015d1fe41f85397b6138a5e85",
+      "size_bytes": 13464,
       "mode": "100644"
     },
     {
       "path": "tests/webui/multi_publish_scope.test.cjs",
-      "sha256": "3aaee2c00c96d3822c922dfc3866cdb3673dbf9876ce0047a836c66b6f388ec0",
-      "size_bytes": 2589,
+      "sha256": "b302a386a03d6949b3206f51f58359c39e3191c2820ef67f7be37249b1e02019",
+      "size_bytes": 2423,
       "mode": "100644"
     },
     {
@@ -5645,8 +6155,8 @@
     },
     {
       "path": "tests/webui/multi_publish_view.test.cjs",
-      "sha256": "c6f3bcea56372f381ab15d0563cb358420d23650ef683492d8ae5b32075ce8f6",
-      "size_bytes": 45573,
+      "sha256": "a6dd2cb9c4ba00c3d4af322ec5d069772db227b0346d0d835ae13b285a12f87a",
+      "size_bytes": 42983,
       "mode": "100644"
     },
     {
@@ -5656,21 +6166,27 @@
       "mode": "100644"
     },
     {
+      "path": "tests/webui/normal_account_defaults.test.cjs",
+      "sha256": "e86b1ff4edf6c5aa7e0e44265c547f8305000a189ea410710aeb1e228d57be37",
+      "size_bytes": 1333,
+      "mode": "100644"
+    },
+    {
       "path": "tests/webui/normal_declarations.test.cjs",
-      "sha256": "343f2929bdd13828414887514a1b6387b60a00616e434447e538bce0b38a9e93",
-      "size_bytes": 21075,
+      "sha256": "d4b3e5347bb32e33427647e4446a54dc417bc941f51da3aa50ef14151b952b14",
+      "size_bytes": 21302,
       "mode": "100644"
     },
     {
       "path": "tests/webui/normal_locations.test.cjs",
-      "sha256": "50f345e13a98076a9137016063c93a7286b5e19d4acd700205733d53b4545e83",
-      "size_bytes": 8988,
+      "sha256": "3ade8f3fe13845e66422c8dd77fa9f3e95df1ef6d098d7b5e14d8485b59cd0d1",
+      "size_bytes": 9018,
       "mode": "100644"
     },
     {
       "path": "tests/webui/notifications.test.cjs",
-      "sha256": "74b87fa7eac7c9168ed8181c9dc80cca521817888255c266b131db4c2d0cac06",
-      "size_bytes": 1740,
+      "sha256": "0611aa9306dd9fe2d79b8fbe9203bf17ca13283377e211f3be76830f2f929c48",
+      "size_bytes": 1866,
       "mode": "100644"
     },
     {
@@ -5686,15 +6202,39 @@
       "mode": "100644"
     },
     {
+      "path": "tests/webui/publish_compact_layout.test.cjs",
+      "sha256": "634f4b49ec62b6afd3adb540cd7095cd325d44b1d0cd91588abac14a867b43fb",
+      "size_bytes": 7019,
+      "mode": "100644"
+    },
+    {
       "path": "tests/webui/publish_cover.test.cjs",
       "sha256": "2257b093439fac19612426f2c81939c030d6fd066700da1720578ec3f9a989c0",
       "size_bytes": 9675,
       "mode": "100644"
     },
     {
+      "path": "tests/webui/publish_current_batch_progress.test.cjs",
+      "sha256": "f518e7cb1ba9fd8a81f1149064181bb90bad4fbb1aff9526e3b398054b1f6fac",
+      "size_bytes": 19552,
+      "mode": "100644"
+    },
+    {
+      "path": "tests/webui/publish_daily_schedule.test.cjs",
+      "sha256": "eef4b141679fbb44088f45c0e0d5f6f641aeb051f0b5bb6008692e30231db231",
+      "size_bytes": 10435,
+      "mode": "100644"
+    },
+    {
       "path": "tests/webui/publish_direct.test.cjs",
-      "sha256": "c2fa2703bd2946cf0dc8a8747ff04a043fb78220fce647b8f1df07fac1a4e346",
-      "size_bytes": 5041,
+      "sha256": "424eb976839c4e7f17985b4d1407ad1087ddec3505bba21aa4c2be2b0768ec33",
+      "size_bytes": 4848,
+      "mode": "100644"
+    },
+    {
+      "path": "tests/webui/publish_execution.test.cjs",
+      "sha256": "b89a1d786dcfaff2da80d0037cf2cf045d67ed950c8b214b931010c4e6d2bf81",
+      "size_bytes": 25110,
       "mode": "100644"
     },
     {
@@ -5707,6 +6247,12 @@
       "path": "tests/webui/publish_inspection_intervention.test.cjs",
       "sha256": "1f5e8d30203311d1dbe203b0c99a42c73683dc1f4f740e5c9473e0395f012d55",
       "size_bytes": 3146,
+      "mode": "100644"
+    },
+    {
+      "path": "tests/webui/publish_intervention_browser_login.test.cjs",
+      "sha256": "4d7dabe01f259885a5732a6962cb5a278facc4ee5bc9e5fae39cf3be6bf033a4",
+      "size_bytes": 12403,
       "mode": "100644"
     },
     {
@@ -5741,20 +6287,20 @@
     },
     {
       "path": "tests/webui/publish_memory.test.cjs",
-      "sha256": "0a5333b9ad2a5abc87fa2d18cb9d0714738654b48a9f149a264df6ba5156706d",
-      "size_bytes": 1710,
+      "sha256": "f38a9536c5b293bac1006e90a472ff93857227cce57ea124d3f74cbf89a9780f",
+      "size_bytes": 3401,
       "mode": "100644"
     },
     {
       "path": "tests/webui/publish_module_split.test.cjs",
-      "sha256": "4eed52e022ec532d4c5770aa124487714fe510de57e5e158118c86292a99e453",
+      "sha256": "80aa416c00f004b55425d4bad4eceb2e32f96d90dd85bdb498ff477f84c7f65e",
       "size_bytes": 3202,
       "mode": "100644"
     },
     {
       "path": "tests/webui/publish_preset.test.cjs",
-      "sha256": "a8db6f08fa6ac72c40a463e75ef65b7aab304959804e6d92c6a5ef1013a94503",
-      "size_bytes": 7152,
+      "sha256": "e669b3b39992c96d893143fbec8e1f4b3cedfae92bd969f12bf336c72cda54d8",
+      "size_bytes": 10917,
       "mode": "100644"
     },
     {
@@ -5770,6 +6316,12 @@
       "mode": "100644"
     },
     {
+      "path": "tests/webui/publish_preview_simple.test.cjs",
+      "sha256": "e6fb4f57a05ab2e8887951f2bde6dfa2bf6de34806238147e9a7887abf5517e2",
+      "size_bytes": 5698,
+      "mode": "100644"
+    },
+    {
       "path": "tests/webui/publish_progress.test.cjs",
       "sha256": "78b16ba054adc52a07b05baef110a81bd9b1e41f8e8f2b8b2c7e2ec2c99f2bea",
       "size_bytes": 2367,
@@ -5777,14 +6329,26 @@
     },
     {
       "path": "tests/webui/publish_schedule.test.cjs",
-      "sha256": "ae8e4d173c3a7ec23a93b3224e4b9976c57fd2030f9eae431f45538698eb8393",
-      "size_bytes": 9389,
+      "sha256": "d9fa5967c7ab5db8c272c0b136e719388869821fd2243ff5c507957150a603f5",
+      "size_bytes": 7571,
+      "mode": "100644"
+    },
+    {
+      "path": "tests/webui/publish_simple_layout.test.cjs",
+      "sha256": "b0cbf92289636ef20e3cc909fa34023359f2b38bad7202ef637d144374cf1636",
+      "size_bytes": 5009,
       "mode": "100644"
     },
     {
       "path": "tests/webui/publish_video_workspace.test.cjs",
-      "sha256": "911ca7902a0754aa02887525ea1b96b89271223994b97767ad33700b7e0d0933",
-      "size_bytes": 2025,
+      "sha256": "d8646e349aa9e1b265c7ac38a5601e230596d8874dd0491977483ae928877369",
+      "size_bytes": 2124,
+      "mode": "100644"
+    },
+    {
+      "path": "tests/webui/serial_mixing_progress.test.cjs",
+      "sha256": "f153d042d91ff49d7017ff4ec11016ab04aefee4d3f0a9d4354f371dad14c193",
+      "size_bytes": 24297,
       "mode": "100644"
     },
     {
@@ -5801,20 +6365,20 @@
     },
     {
       "path": "tests/webui/support/commerce_view.cjs",
-      "sha256": "dbe7a822557a64fcea1904165ff7a77986dc353877cb9a95b5608bab330e3012",
-      "size_bytes": 8118,
+      "sha256": "014e6ab489d823aea43daa91919b90c5bfb6f1f5f6cfe5b2e6cc47a47731b590",
+      "size_bytes": 8613,
       "mode": "100644"
     },
     {
       "path": "tests/webui/support/mixing_view.cjs",
-      "sha256": "c6fac96acf76c6c02adb1302b51a3e6661cca873c20604c50b04a0fecb203692",
-      "size_bytes": 8685,
+      "sha256": "62866063c306d242b1d0f2f3d5726c80cc59df6174385958a448938ed4e1aaba",
+      "size_bytes": 8716,
       "mode": "100644"
     },
     {
       "path": "tests/webui/support/multi_publish_scope.cjs",
-      "sha256": "0636fb7645f37985f118529cd44bcf7d92c12820a9da7aac835ccbe53bd55dbc",
-      "size_bytes": 5295,
+      "sha256": "3d3ce8a3e203f1509deadb1a4213a6a6cc6e492ebcfed0e4cdf9c58aacfa8130",
+      "size_bytes": 4821,
       "mode": "100644"
     },
     {
@@ -5825,8 +6389,14 @@
     },
     {
       "path": "tests/webui/task_channels_result.test.cjs",
-      "sha256": "921ea4b150a860bc6811a9187a510a27a911dad49e8d1d163ac7c82c05e63772",
-      "size_bytes": 1511,
+      "sha256": "b73da96d23a18c0e082f6abfdf89ada7fc74ce10ab717c29234e34eac2acb1ca",
+      "size_bytes": 2047,
+      "mode": "100644"
+    },
+    {
+      "path": "tests/webui/task_daily_readonly_progress.test.cjs",
+      "sha256": "8aee74df1ef23658a5c8a887968460f2c164ba723427cc9d43398fc0eb2e1940",
+      "size_bytes": 4226,
       "mode": "100644"
     },
     {
@@ -5851,6 +6421,12 @@
       "path": "tests/webui/task_selection.test.cjs",
       "sha256": "7b3b1e14f539e02d7fe6bce6c909da21284f7212a4b5ed39c2db3a05a9d3ad02",
       "size_bytes": 3788,
+      "mode": "100644"
+    },
+    {
+      "path": "tests/webui/task_serial_progress.test.cjs",
+      "sha256": "2a61fbd1a5e8009cc6848fe3ad1ea47c62fcb64daed0f8b8f82f1af83e8e94fa",
+      "size_bytes": 7975,
       "mode": "100644"
     },
     {
@@ -5909,8 +6485,8 @@
     },
     {
       "path": "tools/prepare_public_source.py",
-      "sha256": "e71532b231a2507f478273af86a0a2e22efc35682b6894dfd3c6ab25fa009911",
-      "size_bytes": 16091,
+      "sha256": "d1d5b33871afaac39490654ca82b7ed117247e64a2938c3844204702779da68a",
+      "size_bytes": 16146,
       "mode": "100644"
     },
     {

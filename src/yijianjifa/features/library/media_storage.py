@@ -14,7 +14,8 @@ from yijianjifa.features.library.media_identity import sha256_file
 from yijianjifa.features.library.active_references import ensure_not_referenced
 from yijianjifa.os_integration.paths import AppPaths
 from yijianjifa.storage.db import session_scope
-from yijianjifa.storage.models import CategoryLink, HistoricalIdentity, MediaAsset
+from yijianjifa.storage.models import Category, CategoryLink, HistoricalIdentity, MediaAsset
+from yijianjifa.features.library.copy_service import single_category_ids
 
 _VIDEO_EXTENSIONS = {".mp4", ".mov", ".mkv", ".avi", ".m4v", ".webm"}
 _MUSIC_EXTENSIONS = {".mp3", ".wav", ".m4a", ".aac", ".flac", ".ogg"}
@@ -87,6 +88,7 @@ class MediaStorageService:
             return self._import_media_locked(path, keep_copy=keep_copy, category_ids=category_ids)
 
     def _import_media_locked(self, path, *, keep_copy, category_ids):
+        category_ids = single_category_ids(category_ids)
         source = Path(path).expanduser().resolve()
         if not source.is_file():
             raise FileNotFoundError(source)
@@ -95,6 +97,7 @@ class MediaStorageService:
 
         content_hash = sha256_file(source)
         with session_scope(self.engine) as session:
+            self._validate_categories(session, category_ids)
             asset = session.scalar(
                 select(MediaAsset).where(
                     MediaAsset.kind == self.kind,
@@ -114,11 +117,12 @@ class MediaStorageService:
                 session.add(asset)
                 session.flush()
             else:
-                # Duplicate import only adds categories; it never relinks or migrates.
+                # A duplicate keeps its file identity and its category unless
+                # the caller explicitly chooses a destination category.
                 asset.missing = not Path(asset.managed_path or asset.original_path).exists()
 
             self._remember_identity(session, content_hash)
-            self._append_categories(session, asset.id, category_ids)
+            self._set_categories(session, asset.id, category_ids, preserve_if_empty=True)
             session.flush()
             return self._to_record(asset)
 
@@ -129,18 +133,20 @@ class MediaStorageService:
         opening the transaction. This entry never copies, hashes or probes.
         It is backend-only and deliberately keeps the owned file as original.
         """
+        category_ids = single_category_ids(category_ids)
         if (self.kind != 'video' or not isinstance(connection, Connection) or not connection.in_transaction()
                 or not isinstance(path, Path) or not path.is_absolute() or path.suffix.lower() not in _VIDEO_EXTENSIONS
                 or type(sha256) is not str or not re.fullmatch(r'[a-f0-9]{64}', sha256)):
             raise ValueError('invalid prepared video')
         with Session(bind=connection, expire_on_commit=False) as session:
+            self._validate_categories(session, category_ids)
             asset = session.scalar(select(MediaAsset).where(MediaAsset.kind == 'video', MediaAsset.content_hash == sha256))
             if asset is None:
                 asset = MediaAsset(kind='video', display_name=path.name, original_path=str(path),
                                    managed_path=None, content_hash=sha256, missing=False)
                 session.add(asset); session.flush()
             self._remember_identity(session, sha256)
-            self._append_categories(session, asset.id, category_ids)
+            self._set_categories(session, asset.id, category_ids, preserve_if_empty=True)
             session.flush()
             return self._to_record(asset)
 
@@ -152,6 +158,7 @@ class MediaStorageService:
         keep_copy: bool,
         category_ids: Iterable[str],
     ) -> list[MediaAssetRecord]:
+        category_ids = single_category_ids(category_ids)
         folder = Path(path).expanduser().resolve()
         if not folder.is_dir():
             raise NotADirectoryError(folder)
@@ -180,20 +187,16 @@ class MediaStorageService:
             return set(values)
 
     def append_categories(self, asset_id: str, category_ids: Iterable[str]) -> None:
-        with session_scope(self.engine) as session:
-            if session.get(MediaAsset, asset_id) is None:
-                raise KeyError(asset_id)
-            self._append_categories(session, asset_id, category_ids)
+        # Compatibility for older callers: assigning a category now moves it.
+        self.set_categories(asset_id, category_ids)
 
     def set_categories(self, asset_id: str, category_ids: Iterable[str]) -> None:
+        ids = single_category_ids(category_ids)
         with session_scope(self.engine) as session:
-            if session.get(MediaAsset, asset_id) is None:
+            asset = session.get(MediaAsset, asset_id)
+            if asset is None or asset.kind != self.kind:
                 raise KeyError(asset_id)
-            session.query(CategoryLink).filter(
-                CategoryLink.target_type == self.kind,
-                CategoryLink.target_id == asset_id,
-            ).delete(synchronize_session=False)
-            self._append_categories(session, asset_id, category_ids)
+            self._set_categories(session, asset_id, ids)
 
     def list_assets(
         self,
@@ -293,23 +296,23 @@ class MediaStorageService:
                 )
             )
 
-    def _append_categories(self, session, asset_id: str, category_ids: Iterable[str]) -> None:
-        for category_id in dict.fromkeys(category_ids):
-            found = session.scalar(
-                select(CategoryLink).where(
-                    CategoryLink.category_id == category_id,
-                    CategoryLink.target_type == self.kind,
-                    CategoryLink.target_id == asset_id,
-                )
-            )
-            if found is None:
-                session.add(
-                    CategoryLink(
-                        category_id=category_id,
-                        target_type=self.kind,
-                        target_id=asset_id,
-                    )
-                )
+    def _validate_categories(self, session, ids):
+        kinds = ('music', 'audio') if self.kind == 'music' else (self.kind,)
+        valid = set(session.scalars(select(Category.id).where(Category.kind.in_(kinds))))
+        if not set(ids) <= valid:
+            raise ValueError('分类无效，请重新选择。')
+
+    def _set_categories(self, session, asset_id: str, category_ids: Iterable[str], *, preserve_if_empty=False) -> None:
+        ids = single_category_ids(category_ids)
+        self._validate_categories(session, ids)
+        if not ids and preserve_if_empty:
+            return
+        session.query(CategoryLink).filter(
+            CategoryLink.target_type == self.kind,
+            CategoryLink.target_id == asset_id,
+        ).delete(synchronize_session=False)
+        for category_id in ids:
+            session.add(CategoryLink(category_id=category_id, target_type=self.kind, target_id=asset_id))
 
     @staticmethod
     def _to_record(asset: MediaAsset) -> MediaAssetRecord:

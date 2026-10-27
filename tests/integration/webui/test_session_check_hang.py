@@ -39,6 +39,31 @@ def real_worker(f, monkeypatch, tmp_path, stage='none'):
     monkeypatch.setenv('P011_FAKE_CHECK_TRACE', str(trace))
     return trace
 
+def assert_process_exited(pid):
+    if os.name != 'nt':
+        result = subprocess.run(['ps', '-p', str(pid), '-o', 'stat='], capture_output=True, text=True, timeout=1)
+        assert not result.stdout.strip() or result.stdout.lstrip().startswith('Z')
+        return
+    import ctypes
+    from ctypes import wintypes
+    kernel = ctypes.WinDLL('kernel32', use_last_error=True)
+    kernel.OpenProcess.argtypes = (wintypes.DWORD, wintypes.BOOL, wintypes.DWORD)
+    kernel.OpenProcess.restype = wintypes.HANDLE
+    kernel.WaitForSingleObject.argtypes = (wintypes.HANDLE, wintypes.DWORD)
+    kernel.WaitForSingleObject.restype = wintypes.DWORD
+    kernel.CloseHandle.argtypes = (wintypes.HANDLE,)
+    kernel.CloseHandle.restype = wintypes.BOOL
+    # SYNCHRONIZE 仅查询这个 PID 的退出信号；查询失败不能被当作进程已退出。
+    handle = kernel.OpenProcess(0x00100000, False, pid)
+    if not handle:
+        error = ctypes.get_last_error()
+        assert error == 87, f'无法查询进程 {pid}，Windows 错误 {error}'
+        return
+    try:
+        assert kernel.WaitForSingleObject(handle, 0) == 0, f'进程 {pid} 尚未退出'
+    finally:
+        assert kernel.CloseHandle(handle)
+
 def assert_released(f, trace):
     from yijianjifa.webui.chromium_publish import account_lock
     assert not list(f.store.root.glob('.' + f.platform + '-check-*'))
@@ -49,8 +74,19 @@ def assert_released(f, trace):
     assert f.service.get(f.account.id).session_ref == f.ref
     assert f.service.get(f.account.id).login_state == 'valid'
     for pid in {row['pid'] for row in records(trace)}:
-        result = subprocess.run(['ps', '-p', str(pid), '-o', 'stat='], capture_output=True, text=True, timeout=1)
-        assert not result.stdout.strip() or result.stdout.lstrip().startswith('Z')
+        assert_process_exited(pid)
+
+def test_process_exit_assertion_rejects_live_child_and_accepts_reaped_child():
+    from yijianjifa.os_integration.background_process import hidden_process_options
+    child = subprocess.Popen([sys.executable, '-c', 'import time;time.sleep(30)'],
+        stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+        **hidden_process_options())
+    try:
+        with pytest.raises(AssertionError):
+            assert_process_exited(child.pid)
+    finally:
+        child.terminate(); child.wait(timeout=3)
+    assert_process_exited(child.pid)
 
 @pytest.mark.parametrize('check_fixture', ['douyin'], indirect=True)
 @pytest.mark.parametrize('stuck_stage', ['evaluate', 'close', 'stop'])
@@ -73,11 +109,12 @@ def test_check_deadline_and_cancel_bound_a_stuck_host_sdk_call(check_fixture, mo
 def test_host_deadline_reaps_a_never_returning_sdk_without_marking_expired(check_fixture, monkeypatch, tmp_path):
     from yijianjifa.webui import session_check
     f = check_fixture
-    monkeypatch.setattr(session_check, 'CHECK_SECONDS', .8)
+    # Give the fresh interpreter time to reach the deliberately stuck SDK.
+    monkeypatch.setattr(session_check, 'CHECK_SECONDS', 3)
     trace = real_worker(f, monkeypatch, tmp_path, 'evaluate')
     started = time.monotonic()
     assert check(f) == {'state': 'unavailable', 'reason': 'timeout'}
-    assert time.monotonic() - started < 3
+    assert time.monotonic() - started < 5.2
     assert any(row['event'] == 'evaluate' for row in records(trace))
     assert_released(f, trace)
 
@@ -236,6 +273,41 @@ def test_windows_job_resume_failure_closes_job_and_reaps_suspended_worker(monkey
     with pytest.raises(OSError, match='could not be started'):
         owned._WindowsCheckJob(Process())
     assert events == ['assign', 'resume', 'stop-job', 'close-job', 'kill-worker', 'reap-worker']
+
+
+def test_windows_job_waits_for_member_objects_and_retains_handles_for_retry(monkeypatch):
+    from types import SimpleNamespace
+    from yijianjifa.webui import session_check_process as owned
+    clock=SimpleNamespace(now=0.0);events=[];signaled=[]
+    def query(handle,kind,pointer,size,returned):
+        value=pointer._obj
+        if kind==3:
+            value.assigned=value.listed=2
+            value.pids[0]=101;value.pids[1]=202
+        else:value.active=0
+        return True
+    def belongs(handle,job,pointer):
+        pointer._obj.value=handle==1001
+        return True
+    def close(handle):events.append(('close',handle));return True
+    def sleep(_):clock.now+=owned._CLEANUP_SECONDS
+    kernel=SimpleNamespace(QueryInformationJobObject=query,OpenProcess=lambda access,inherit,pid:pid+900,
+        IsProcessInJob=belongs,WaitForSingleObject=lambda handle,timeout:0 if handle in signaled else 258,
+        CloseHandle=close)
+    job=owned._WindowsCheckJob.__new__(owned._WindowsCheckJob)
+    job.job=SimpleNamespace(handle=123,kernel=kernel,stop=lambda:events.append('terminate-job'),
+        close=lambda:events.append('close-job'))
+    job.process=SimpleNamespace(wait=lambda **kwargs:events.append('reap-worker'))
+    job._member_handles={}
+    monkeypatch.setattr(owned,'time',SimpleNamespace(monotonic=lambda:clock.now,sleep=sleep))
+    # 即使活动计数已归零，原始成员句柄仍未退出时必须保留资源供重试。
+    assert job.stop() is False
+    assert job._member_handles=={101:1001}
+    assert events==[('close',1102),'terminate-job']
+    signaled.append(1001)
+    assert job.stop() is True
+    assert job._member_handles=={}
+    assert events[-4:]==['terminate-job','reap-worker',('close',1001),'close-job']
 
 
 @pytest.mark.skipif(os.name == 'nt', reason='POSIX owned group cleanup')

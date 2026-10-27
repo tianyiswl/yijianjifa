@@ -529,6 +529,7 @@ class DownloadRepository:
         self._auxiliary_schema(connection)
         if type(category_ids) is not tuple or len(category_ids) > 100 or any(type(identity) is not str for identity in category_ids):
             raise DownloadError('input_limit')
+        if len(category_ids)>1:raise DownloadError('single_category_only')
         values = dict(session_id=session_id, candidate_id=candidate_id, model_id=model_id, output_resource_id=output_resource_id,
                       subtitle_original_id=subtitle_original_id, subtitle_draft_id=subtitle_draft_id, subtitle_revision=subtitle_revision,
                       subtitle_origin=subtitle_origin, export_format=export_format, input_grant_id=input_grant_id,

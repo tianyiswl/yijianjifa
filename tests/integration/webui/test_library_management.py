@@ -27,7 +27,7 @@ def test_rename_changes_display_only_and_rejects_wrong_media_kind(db_engine,app_
     api.close(.1)
 
 
-def test_batch_category_append_replace_clear_and_invalid_target_rolls_back(db_engine,app_paths):
+def test_batch_category_moves_with_legacy_append_and_invalid_target_rolls_back(db_engine,app_paths):
     repo=CopyRepository(db_engine);categories=CategoryRepository(db_engine)
     first=categories.create('copy','first');second=categories.create('copy','second');wrong=categories.create('video','wrong')
     for id in ('C1','C2'):repo.create(id=id,title=id,voice='',body='',tags='',full='')
@@ -36,11 +36,13 @@ def test_batch_category_append_replace_clear_and_invalid_target_rolls_back(db_en
     params=dict(kind='copy',ids=['C1','C2'],category_ids=[second.id],mode='append')
     result=call(api,'library.categories',params)
     assert result['ok'],result
-    assert repo.category_ids('C1')=={first.id,second.id}
+    assert repo.category_ids('C1')=={second.id}
     assert repo.category_ids('C2')=={second.id}
+    rejected=call(api,'library.categories',dict(params,category_ids=[first.id,second.id]),'multiple')
+    assert not rejected['ok'] and rejected['error']['code']=='single_category_only'
     assert not call(api,'library.categories',dict(params,category_ids=[wrong.id]),'badcat')['ok']
     assert not call(api,'library.categories',dict(params,ids=['C1','missing'],mode='replace',category_ids=[]),'badid')['ok']
-    assert repo.category_ids('C1')=={first.id,second.id}
+    assert repo.category_ids('C1')=={second.id}
     assert call(api,'library.categories',dict(params,mode='replace',category_ids=[]),'clear')['ok']
     assert repo.category_ids('C1')==repo.category_ids('C2')==set()
     api.close(.1)

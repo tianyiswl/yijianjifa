@@ -136,3 +136,25 @@ test('a late login cancellation acknowledgement cannot touch the next page after
  await view.click(action(view,'登录并继续'));await view.click(view.query('[data-action="close-modal"]'));
  view.dispose();view.document.body.replaceChildren();finish({state:'cancelled'});await view.flush();await view.loginTick();assert.equal(count(view,'mix.daily.continue'),0);
 });
+
+
+test('登录暂停只在右侧显示账号和原批次继续入口，重复轮询不恢复底部重复提示',async()=>{
+ let waiting=true;
+ const view=await mountFromTasks(fixture(op=>{
+  if(op==='mix.daily.status')return waiting?loginStatus:{id:'batch-1',phase:'making',total:10};
+  if(op==='account.login.start')return {id:'login-p',state:'completed',account_id:'a'};
+  if(op==='mix.daily.continue'){waiting=false;return {id:'batch-1',phase:'checking_login'};}
+ }));
+ const notice=view.query('.batch-progress-login');assert.ok(notice);
+ assert.equal(notice.classList.contains('hide'),true);
+ const help=view.query('.mixing-execution-account-help');
+ assert.equal(help.classList.contains('hide'),false);
+ assert.match(help.textContent,/已暂停.*等待账号登录/);
+ assert.match(help.textContent,/抖音.*主号/);
+ assert.match(help.textContent,/进度不会推进/);
+ const button=help.querySelectorAll('button').find(b=>b.textContent==='登录并继续');assert.ok(button);assert.equal(button.disabled,false);
+ await view.tick();assert.equal(notice.classList.contains('hide'),true);assert.equal(help.classList.contains('hide'),false);
+ await view.click(button);await view.flush();await view.tick();
+ assert.equal(count(view,'mix.daily.submit'),0);assert.equal(count(view,'mix.daily.continue'),1);
+ assert.equal(notice.classList.contains('hide'),true);assert.equal(button.classList.contains('hide'),true);view.dispose();
+});

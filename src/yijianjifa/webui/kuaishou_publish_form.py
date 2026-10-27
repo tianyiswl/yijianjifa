@@ -56,7 +56,7 @@ def validate_form(payload, *, query=False, now=None):
         current=now or datetime.now(timezone.utc)
         if not query and not current+timedelta(hours=2.5)<=when<=current+timedelta(days=13):
             raise ValueError('schedule outside verified window')
-        time_text=when.astimezone(timezone(timedelta(hours=8))).strftime('%Y-%m-%d %H:%M:%S')
+        time_text=when.astimezone(timezone(timedelta(hours=8))).strftime('%Y-%m-%d %H:%M')
         publish_ms=int(when.timestamp()*1000)
     return {'text':text,'tags':names,'caption':caption,'time_text':time_text,'publish_ms':publish_ms,
             'mode':'定时发布' if when else '立即发布','declaration':declaration}

@@ -86,6 +86,7 @@ class MixQueue:
         self.global_settings = global_settings
         self._active_ids = set()
         self.on_settled = None
+        self._serial_claim_busy = False
 
     def confirm_batch(self, snapshot: Mapping[str, Any]) -> MixTaskRecord:
         data = dict(snapshot)
@@ -124,9 +125,9 @@ class MixQueue:
             row = session.get(MixTask, task_id)
             if row is None:
                 raise KeyError(task_id)
-            if row.state in {"waiting", "running"}:
+            if row.state in {"waiting", "running", 'waiting_publish'}:
                 row.pause_requested = True
-                if row.state == "waiting":
+                if row.state in {"waiting", 'waiting_publish'}:
                     row.state = "paused"
                     row.pause_requested = False
 
@@ -209,13 +210,53 @@ class MixQueue:
 
     def recover_interrupted(self) -> list[str]:
         recovered: list[str] = []
-        with session_scope(self.engine) as session:
+        from yijianjifa.features.publish.deliveries import write_session
+        with write_session(self.engine) as session:
             rows = list(session.scalars(select(MixTask).where(MixTask.state.in_(
-                ["waiting", "running", "paused", "interrupted", "cancelling", "cancelled"]))))
+                ["waiting", "running", "paused", "interrupted", "waiting_publish", "cancelling", "cancelled"]))))
             for row in rows:
+                from .serial_gate import is_serial, has_flow_marker
+                snapshot = json.loads(row.snapshot_json)
+                serial = has_flow_marker(snapshot)
+                if serial and not is_serial(snapshot):
+                    row.state = 'cancelled' if row.state in {'cancelled', 'cancelling'} else 'paused'
+                    row.auto_resume = row.pause_requested = False
+                    continue
+                if serial and row.state == 'running':
+                    from .serial_claim import SerialMixClaims, claim_key
+                    if not hasattr(self, 'serial_claims'): self.serial_claims = SerialMixClaims()
+                    saved_claim = session.get(Setting, claim_key(row.id, row.current_index))
+                    if saved_claim is not None and not self.serial_claims.owner_stopped(session, row.id, row.current_index):
+                        continue
+                    if saved_claim is not None:
+                        self.serial_claims.recover(session, row.id, row.current_index, controlled_recovery=True)
+                original_state = row.state
+                stop = None
+                if serial:
+                    from .serial_gate import value
+                    stop = value(session, 'mix.daily.status:' + row.id)
                 self._reconcile_success_receipts(session, row)
                 if row.state in {"cancelling", "cancelled"}:
                     row.state = "cancelled"
+                elif serial:
+                    from .serial_gate import can_claim_next
+                    # 旧版可能把已全部收到明确回执的批次误留在重开提醒中。
+                    # 只修正这种结束记账；用户主动暂停/取消仍优先，不再执行任何任务。
+                    if (row.current_index >= row.quantity and can_claim_next(session, row)
+                            and stop.get('reason_code') == 'daily_authorization_required'
+                            and not row.pause_requested and not stop.get('automatic_stopped')):
+                        row.state = 'completed'
+                        self._notify_completed(session, row)
+                    elif (original_state in {'paused', 'interrupted'} or row.pause_requested
+                            or stop.get('automatic_stopped')):
+                        row.state = 'cancelled' if stop.get('reason_code') == 'daily_batch_cancelled' else original_state if original_state in {'paused', 'interrupted'} else 'paused'
+                    elif row.current_index and not can_claim_next(session, row):
+                        row.state = 'waiting_publish'
+                    elif row.current_index >= row.quantity:
+                        row.state = 'completed'
+                        self._notify_completed(session, row)
+                    elif row.state == 'running':
+                        row.state = 'interrupted'
                 elif row.current_index >= row.quantity:
                     row.state = "completed_with_errors" if row.failure_count else "completed"
                     self._notify_completed(session, row)
@@ -282,6 +323,8 @@ class MixQueue:
                 if record.state not in {"waiting", "running"}:
                     break
                 self._run_single_item(task_id)
+                if self._serial_claim_busy:
+                    return processed
                 if self.on_settled is not None:self.on_settled(task_id)
 
     def _run_single_item(self, task_id: str) -> None:
@@ -292,17 +335,35 @@ class MixQueue:
             self.executor.release_voice_reservation(task_id, record.snapshot)
 
     def _run_single_item_inner(self, task_id: str) -> None:
+        self._serial_claim_busy = False
         allowed=getattr(self,'can_start',None)
         if allowed and not allowed():
             with session_scope(self.engine) as session:
                 row=session.get(MixTask,task_id)
                 if row and row.state in {'waiting','running'}:row.state='paused'
             return
-        with session_scope(self.engine) as session:
+        from yijianjifa.features.publish.deliveries import write_session
+        from .serial_gate import has_flow_marker, can_claim_next, render_authorized, value, STATUS
+        claim = None
+        with write_session(self.engine) as session:
             row = session.get(MixTask, task_id)
             if row is None:
                 raise KeyError(task_id)
             if row.state not in {"waiting", "running"}:
+                return
+            snapshot = json.loads(row.snapshot_json)
+            serial = has_flow_marker(snapshot)
+            if serial and not render_authorized(session, row, getattr(self, 'serial_host_session', None)):
+                row.state = 'paused'
+                proof = value(session, STATUS + task_id)
+                saved = session.get(Setting, STATUS + task_id)
+                encoded = json.dumps({**proof, 'auth_phase': 'needs_attention', 'reason_code': 'daily_target_changed',
+                                      'reason': '所选账号身份或会话已改变，请核对后继续；尚未开始下一条。'}, ensure_ascii=False)
+                if saved is None: session.add(Setting(key=STATUS + task_id, value_json=encoded))
+                else: saved.value_json = encoded
+                return
+            if serial and not can_claim_next(session, row):
+                row.state = 'waiting_publish'
                 return
             if row.current_index >= row.quantity:
                 row.state = "completed_with_errors" if row.failure_count else "completed"
@@ -310,7 +371,13 @@ class MixQueue:
                 return
             row.state = "running"
             item_index = row.current_index
-            snapshot = json.loads(row.snapshot_json)
+            if serial:
+                from .serial_claim import SerialMixClaims
+                if not hasattr(self, 'serial_claims'): self.serial_claims = SerialMixClaims()
+                claim = self.serial_claims.claim(session, task_id, item_index, snapshot)
+                if claim is None:
+                    self._serial_claim_busy = True
+                    return
 
         error: str | None = None
         diagnostic = None
@@ -321,8 +388,9 @@ class MixQueue:
             self.executor.render_item(task_id, item_index, snapshot)
         except VoicePaused as exc:
             self._active_ids.discard(task_id)
-            with session_scope(self.engine) as session:
+            with write_session(self.engine) as session:
                 row = session.get(MixTask, task_id)
+                if claim is not None: self.serial_claims.finish(session, claim)
                 row.state = 'cancelled' if row.state in {'cancelling', 'cancelled'} else 'paused'
                 row.pause_requested = False
                 row.auto_resume = False
@@ -339,8 +407,9 @@ class MixQueue:
             discarded = True
         except ItemInterrupted as exc:
             self._active_ids.discard(task_id)
-            with session_scope(self.engine) as session:
+            with write_session(self.engine) as session:
                 row = session.get(MixTask, task_id)
+                if claim is not None: self.serial_claims.finish(session, claim)
                 row.state = 'cancelled' if row.state in {'cancelling', 'cancelled'} else 'interrupted'
                 row.pause_requested = False
                 row.auto_resume = False
@@ -354,10 +423,13 @@ class MixQueue:
             error = f"{type(exc).__name__}: {exc}"
             diagnostic = error_diagnostic(exc)
 
-        with session_scope(self.engine) as session:
+        with write_session(self.engine) as session:
             row = session.get(MixTask, task_id)
             if row is None:
                 raise KeyError(task_id)
+            if claim is not None:
+                if not self.serial_claims.verify(session, claim): return
+                self.serial_claims.finish(session, claim)
             self._active_ids.discard(task_id)
             if discarded:
                 row.state = "cancelled"
@@ -380,7 +452,8 @@ class MixQueue:
                 receipt.value_json = value
             # Cancellation can be requested while one item is executing. That item has
             # already finished/failed, so record its result but never start another.
-            row.current_index += 1
+            if not serial or error is None:
+                row.current_index += 1
             row.completed_count += 1
             if error is None:
                 row.success_count += 1
@@ -393,8 +466,12 @@ class MixQueue:
                 row.state = "cancelled"
                 row.pause_requested = False
                 return
-            if row.pause_requested and row.current_index < row.quantity:
+            if row.pause_requested and (row.current_index < row.quantity or serial):
                 row.state = "paused"
+                row.pause_requested = False
+                return
+            if serial:
+                row.state = 'paused' if error else 'waiting_publish'
                 row.pause_requested = False
                 return
             if row.current_index >= row.quantity:

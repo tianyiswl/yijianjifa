@@ -1,8 +1,26 @@
 """Windows test entry using the current shared interface and command service."""
 import argparse
 import sqlite3
+import sys
+from yijianjifa import APP_VERSION
 import threading
 from pathlib import Path
+
+
+def existing_instance_notice():
+    """明确区分已打开的窗口与本次尚未启动的新解压程序。"""
+    return (f'一剪即发 {APP_VERSION} 尚未启动',
+            '另一个窗口仍在运行，本次打开的程序尚未启动。\n'
+            '请先在已打开的窗口确认任务状态并正常退出，再重新打开本程序。\n'
+            f'本次程序版本：{APP_VERSION}\n程序位置：{Path(sys.executable).resolve()}')
+
+
+def startup_version_receipt(window_title, page_version):
+    """启动验收同时核对真实窗口和页面，避免仅检查源码版本。"""
+    return {'app_version': APP_VERSION, 'page_version': page_version,
+            'window_title': window_title,
+            'version_consistent': page_version == APP_VERSION
+                and window_title == f'一剪即发 {APP_VERSION} · Windows 测试版'}
 
 
 def main():
@@ -18,7 +36,8 @@ def main():
     else:paths=get_app_paths()
     lock=QLockFile(str(paths.data_dir/'.windows-instance.lock'));lock.setStaleLockTime(0)
     if not lock.tryLock(0):
-        QMessageBox.information(None,'一剪即发已经运行','请使用已打开的窗口。');return 0
+        title,message=existing_instance_notice()
+        QMessageBox.information(None,title,message);return 0
     try:return run(paths,app,smoke_check=args.smoke_check,host_lock_held=True)
     except Exception:
         QMessageBox.critical(None,'一剪即发未能运行','请检查应用完整性、数据目录权限和磁盘空间。请勿删除原有资料。');return 1
@@ -107,10 +126,13 @@ def run(paths,app,*,smoke_check=None,host_lock_held=False):
         def checked(value):
             if value:window.page.runJavaScript('typeof qt === "undefined" && typeof window.webkit === "undefined"',0,isolated)
         def isolated(value):
-            if value:
+            if value:window.page.runJavaScript("document.querySelector('.p011-help p')?.textContent?.replace('版本 ', '')",42,version_checked)
+        def version_checked(page_version):
+            identity=startup_version_receipt(window.windowTitle(),page_version)
+            if identity['version_consistent'] and not smoke_result['passed']:
                 smoke_result['passed']=True;timer.stop()
                 smoke_check.parent.mkdir(parents=True,exist_ok=True)
-                smoke_check.write_text(json.dumps({'interface':True,'native_bridge':True,'page_world_isolated':True}),encoding='utf-8')
+                smoke_check.write_text(json.dumps({'interface':True,'native_bridge':True,'page_world_isolated':True,**identity},ensure_ascii=False),encoding='utf-8')
                 window.allowed_close.set();window.close()
         timer=QTimer(window);timer.timeout.connect(check_loaded);timer.start(500)
         def timeout():

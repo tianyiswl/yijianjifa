@@ -6,7 +6,7 @@ from sqlalchemy import select
 from yijianjifa.storage.db import session_scope
 from yijianjifa.storage.models import Setting
 from yijianjifa.features.finished.service import FinishedVideo, FinishedVideoService
-from yijianjifa.features.library.active_references import ensure_not_referenced
+from yijianjifa.features.library.active_references import ensure_not_referenced, cancelled_delivery_owns_copy
 from yijianjifa.features.library.media_identity import sha256_file
 from yijianjifa.features.publish.history import PublishHistoryRow, _ACTIVE_DUPLICATE_BLOCK_STATES
 
@@ -20,11 +20,15 @@ class FinishedDeletion:
     def _guard(session, row):
         if row.task_locked:
             raise RuntimeError('成品正在被任务使用，请先处理任务。')
-        ensure_not_referenced(session,[row.id,row.content_hash,row.original_path,row.stored_path])
-        if session.scalar(select(PublishHistoryRow.id).where(
+        ensure_not_referenced(session,[row.id,row.content_hash,row.original_path,row.stored_path],finished=row)
+        from yijianjifa.features.publish.deliveries import PublishDeliveryRow
+        histories=session.execute(select(PublishHistoryRow,PublishDeliveryRow).outerjoin(
+                PublishDeliveryRow,PublishDeliveryRow.history_id==PublishHistoryRow.id).where(
                 PublishHistoryRow.video_hash==row.content_hash,
-                PublishHistoryRow.state.in_(_ACTIVE_DUPLICATE_BLOCK_STATES)).limit(1)):
-            raise RuntimeError('视频仍有未处理的发布安排，请先处理任务。')
+                PublishHistoryRow.state.in_(_ACTIVE_DUPLICATE_BLOCK_STATES)))
+        for history,delivery in histories:
+            if delivery is None or not cancelled_delivery_owns_copy(session,delivery,row):
+                raise RuntimeError('视频仍有未处理的发布安排，请先处理任务。')
         if row.origin_type=='generated' and row.stored_path:
             target=Path(row.stored_path)
             if target.is_symlink():raise RuntimeError('文件位置已改变，请检查后再删除。')
@@ -109,7 +113,8 @@ class FinishedDeletion:
                     original=Path(row.stored_path) if owned else None
                     staged=original.with_name('.p011-delete-'+pid) if owned else None
                     if staged and staged.exists():raise RuntimeError('存在未处理的删除副本，请先恢复。')
-                    data={'id':pid,'state':'prepared','owned':owned,'original':str(original) if original else None,'staged':str(staged) if staged else None}
+                    data={'id':pid,'state':'prepared','owned':owned,'original':str(original) if original else None,'staged':str(staged) if staged else None,
+                          'display_name':row.display_name,'content_hash':row.content_hash}
                     self._put(session,data)
                 connection.commit()
             try:

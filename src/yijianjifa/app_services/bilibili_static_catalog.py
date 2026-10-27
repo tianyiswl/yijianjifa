@@ -174,7 +174,9 @@ LEGACY_CATEGORIES = (
 STATEMENT_CHOICES = {
     'no_mark': {'name': '不添加声明', 'platform_id': -1},
     'reprint': {'name': '转载', 'platform_id': -2},
-    'ai_generated': {'name': '该视频使用人工智能合成技术', 'platform_names': ('该视频使用人工智能合成技术', '该内容使用人工智能合成技术')},
+    # Match only exact labels observed on the ordinary posting page. The ID
+    # still comes from that page; multiple matching aliases remain ambiguous.
+    'ai_generated': {'name': '该视频使用人工智能合成技术', 'platform_names': ('该视频使用人工智能合成技术', '该内容使用人工智能合成技术', '含AI生成内容')},
     'fiction_entertainment': {'name': '该内容仅供娱乐，请勿过分解读', 'platform_names': ('该内容仅供娱乐，请勿过分解读',)},
 }
 

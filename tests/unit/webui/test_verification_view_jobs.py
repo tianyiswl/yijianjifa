@@ -6,6 +6,8 @@ import pytest
 from yijianjifa.webui.channels_multi_publish import ChannelsMultiPublishAdapter
 from yijianjifa.webui.chromium_publish_session import LiveSession
 from yijianjifa.webui.publish_intervention import InterventionBroker
+from yijianjifa.features.accounts.service import AccountService
+from yijianjifa.features.accounts.session_store import SessionStore
 
 
 @pytest.fixture(scope='module')
@@ -31,9 +33,13 @@ def handoff(offline_browser,db_engine,app_paths,monkeypatch):
             requestAnimationFrame(() => { window.__p011TestPaintReady = true; })));
     }""")
     page.wait_for_function('window.__p011TestPaintReady === true', timeout=10000)
+    accounts=AccountService(db_engine)
+    account=accounts.create('channels','123','合成账号')
+    ref=accounts.attach_session(account.id,SessionStore(app_paths.data_dir/'profiles'),b'synthetic session')
     adapter=ChannelsMultiPublishAdapter(db_engine,app_paths)
     adapter._thread()
-    session=LiveSession({}, {'delivery_id':'delivery'})
+    session=LiveSession({'account_id':account.id,'platform_user_id':'123','platform':'channels'}, {'delivery_id':'delivery'})
+    session.original_ref=ref
     adapter._init_observations(session)
     session.page,session.context=page,context
     session.request_id=session.broker.request('fixture','合成账号','login','请扫码')

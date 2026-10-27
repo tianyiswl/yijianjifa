@@ -1,0 +1,441 @@
+name: Windows client package
+on:
+  workflow_dispatch:
+    inputs:
+      regression_only:
+        description: 'Run complete source regressions; no application build, frozen checks, ZIP or upload'
+        required: false
+        type: boolean
+        default: false
+      trim_qt_for_audio:
+        description: 'Audio probe only: validate the audited Qt removal set'
+        required: false
+        type: boolean
+        default: false
+      trim_probe_only:
+        description: 'Audit slimming on a disposable copy of Windows 0.1.36'
+        required: false
+        type: boolean
+        default: false
+      audio_probe_only:
+        description: 'Run only the native Windows audio regression'
+        required: false
+        type: boolean
+        default: false
+      source_commit:
+        description: 'Recovery only: full source commit already checked by this workflow'
+        required: false
+        type: string
+      verified_run_id:
+        description: 'Recovery only: completed run with successful checks and packages'
+        required: false
+        type: string
+      draft_release_id:
+        description: 'Optional: empty private draft targeting this source instead of Actions artifacts'
+        required: false
+        type: string
+permissions:
+  contents: read
+jobs:
+  audio-playback:
+    if: inputs.audio_probe_only && !inputs.regression_only
+    runs-on: windows-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install application and test dependencies
+        run: python -m pip install '.[dev]'
+      - name: Apply audited Qt candidate in disposable runtime
+        if: inputs.trim_qt_for_audio
+        run: python tools/probe_qt_trim.py docs/validation/2026-10-20-windows-trim-candidates.json
+      - name: Real Qt local audio playback
+        env:
+          PYTHONPATH: src
+          PYTEST_DISABLE_PLUGIN_AUTOLOAD: '1'
+          P011_NATIVE_VIDEO_REPORT: windows-media-validation/native-video-check.json
+          P011_LAYOUT_INLINE_PROOF: '1'
+        run: |
+          python -m pytest -p pytestqt.plugin tests/unit/webui/test_embedded_video.py tests/integration/webui/test_native_video_access.py tests/unit/webui/test_qt_media_access.py tests/integration/webui/test_media_access.py tests/integration/webui/test_voice_access.py tests/unit/mixing/test_voice_catalog.py -q
+          if ($LASTEXITCODE -ne 0) { throw 'Media device checks failed' }
+          node --test tests/webui/*.test.cjs
+          if ($LASTEXITCODE -ne 0) { throw 'Source interface checks failed' }
+          python tools/windows_audio_probe.py
+          if ($LASTEXITCODE -ne 0) { throw 'Audio playback probe failed' }
+          python tools/windows_video_probe.py
+          if ($LASTEXITCODE -ne 0) { throw 'Video diagnosis failed' }
+          python tools/windows_native_video_probe.py
+          if ($LASTEXITCODE -ne 0) { throw 'Embedded native video playback failed' }
+          python tools/windows_embedded_video_probe.py
+          if ($LASTEXITCODE -ne 0) { throw 'Embedded page layout and playback failed' }
+      - uses: actions/upload-artifact@v4
+        continue-on-error: true
+        if: always()
+        with:
+          name: windows-source-media-validation
+          path: windows-media-validation/
+          if-no-files-found: ignore
+  cloud-voice-check:
+    if: inputs.regression_only || (!inputs.audio_probe_only && !inputs.trim_probe_only)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Validate complete source-regression mode
+        if: inputs.regression_only
+        env:
+          P011_AUDIO_PROBE: ${{ inputs.audio_probe_only }}
+          P011_TRIM_PROBE: ${{ inputs.trim_probe_only }}
+          P011_TRIM_QT: ${{ inputs.trim_qt_for_audio }}
+          P011_SOURCE: ${{ inputs.source_commit }}
+          P011_VERIFIED_RUN: ${{ inputs.verified_run_id }}
+          P011_DRAFT: ${{ inputs.draft_release_id }}
+        run: |
+          python3 - <<'PY'
+          import os
+          flags = ('P011_AUDIO_PROBE', 'P011_TRIM_PROBE', 'P011_TRIM_QT')
+          values = ('P011_SOURCE', 'P011_VERIFIED_RUN', 'P011_DRAFT')
+          incompatible = [name for name in flags if os.environ[name].lower() == 'true']
+          incompatible += [name for name in values if os.environ[name].strip()]
+          if incompatible:
+              raise SystemExit('regression_only cannot combine with probe, trim, recovery or draft-delivery inputs: ' + ', '.join(incompatible))
+          print('Complete source regressions only; no application build, frozen-package checks, ZIP or delivery.')
+          PY
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Check isolated cloud voice and operator service
+        run: |
+          python -m pip install './server/cloud_voice[operator]' 'waitress==3.0.2' 'pytest>=8,<10'
+          PYTHONPATH=server/cloud_voice python -m pytest server/cloud_voice/tests -q
+  build:
+    needs: cloud-voice-check
+    if: ${{ !cancelled() && !inputs.audio_probe_only && ((inputs.trim_probe_only && !inputs.regression_only) || needs.cloud-voice-check.result == 'success') }}
+    runs-on: windows-2022
+    timeout-minutes: 65
+    permissions:
+      contents: write
+      actions: read
+    env:
+      PLAYWRIGHT_BROWSERS_PATH: ${{ github.workspace }}\build\playwright-browsers
+    steps:
+      - uses: actions/checkout@v4
+        if: inputs.trim_probe_only
+      - uses: actions/setup-python@v5
+        if: inputs.trim_probe_only
+        with:
+          python-version: '3.12'
+      - name: Validate disposable slim bundle
+        if: inputs.trim_probe_only
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $download = Join-Path $env:RUNNER_TEMP 'p011-trim-download'
+          New-Item -ItemType Directory $download | Out-Null
+          gh release download windows-0.1.36-864eaa7 --repo $env:GITHUB_REPOSITORY --pattern 'YiJianJiFa-Windows-x64-Portable.zip' --dir $download
+          if ($LASTEXITCODE -ne 0) { throw 'Baseline download failed' }
+          $probe = Join-Path $env:RUNNER_TEMP 'p011-trim-probe'
+          python tools/probe_bundle_trim.py (Join-Path $download 'YiJianJiFa-Windows-x64-Portable.zip') docs/validation/2026-10-20-windows-trim-candidates.json $probe
+          if ($LASTEXITCODE -ne 0) { throw 'Frozen candidate validation failed; no official package changed' }
+      - name: Validate optional draft delivery recovery
+        if: ${{ !inputs.trim_probe_only }}
+        id: delivery
+        env:
+          GH_TOKEN: ${{ github.token }}
+          P011_SOURCE_COMMIT: ${{ inputs.source_commit }}
+          P011_VERIFIED_RUN_ID: ${{ inputs.verified_run_id }}
+          P011_DRAFT_RELEASE_ID: ${{ inputs.draft_release_id }}
+        run: |
+          $values = @($env:P011_SOURCE_COMMIT, $env:P011_VERIFIED_RUN_ID, $env:P011_DRAFT_RELEASE_ID)
+          $provided = @($values | Where-Object { -not [string]::IsNullOrWhiteSpace($_) }).Count
+          if ($provided -eq 0) { 'recovery=false' >> $env:GITHUB_OUTPUT; 'draft_delivery=false' >> $env:GITHUB_OUTPUT; exit 0 }
+          $recovery = -not [string]::IsNullOrWhiteSpace($env:P011_SOURCE_COMMIT) -or -not [string]::IsNullOrWhiteSpace($env:P011_VERIFIED_RUN_ID)
+          if ($env:P011_DRAFT_RELEASE_ID -notmatch '^[1-9][0-9]*$') { throw 'Invalid draft delivery identifier' }
+          if ($recovery -and ($provided -ne 3 -or $env:P011_SOURCE_COMMIT -notmatch '^[0-9a-fA-F]{40}$' -or $env:P011_VERIFIED_RUN_ID -notmatch '^[1-9][0-9]*$')) { throw 'Recovery requires all three valid identifiers' }
+          $sourceCommit = if ($recovery) { $env:P011_SOURCE_COMMIT } else { $env:GITHUB_SHA }
+          function Read-GitHub([string]$path) {
+            $raw = & gh api $path
+            if ($LASTEXITCODE -ne 0) { throw 'Recovery API check failed' }
+            return ($raw | ConvertFrom-Json)
+          }
+          $repoPath = "repos/$env:GITHUB_REPOSITORY"
+          $repo = Read-GitHub $repoPath
+          if (-not $repo.private) { throw 'Draft delivery requires a private repository' }
+          if ($recovery) {
+            $current = Read-GitHub "$repoPath/actions/runs/$env:GITHUB_RUN_ID"
+            $prior = Read-GitHub "$repoPath/actions/runs/$env:P011_VERIFIED_RUN_ID"
+            if ($prior.status -ne 'completed' -or $prior.head_sha -ne $sourceCommit -or $prior.workflow_id -ne $current.workflow_id -or $prior.head_repository.full_name -ne $env:GITHUB_REPOSITORY) { throw 'Verified run does not match completed source and workflow' }
+            $jobs = Read-GitHub "$repoPath/actions/runs/$env:P011_VERIFIED_RUN_ID/jobs?filter=latest&per_page=100"
+            $buildJobs = @($jobs.jobs | Where-Object { $_.name -eq 'build' -and $_.status -eq 'completed' })
+            if ($buildJobs.Count -ne 1) { throw 'Verified build job missing or ambiguous' }
+            $required = @('Backend and interface checks','Build current Windows application','Frozen database, media and bundled asset checks','Frozen startup and private bridge smoke check','Record build and stage delivery instructions','Package portable folder and hash deliverables')
+            if ($prior.path -ne '.github/workflows/windows-test.yml') { throw 'Verified run workflow path changed' }
+            $definition = Read-GitHub "$repoPath/contents/.github/workflows/windows-test.yml?ref=$sourceCommit"
+            if ($definition.type -ne 'file' -or $definition.encoding -ne 'base64' -or $definition.path -ne $prior.path) { throw 'Verified workflow source unavailable' }
+            $workflow = [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String($definition.content)).Replace("`r`n", "`n")
+            $backend = [regex]::Matches($workflow, '(?ms)^      - name: Backend and interface checks\n(?<body>.*?)(?=^      - (?:name:|uses:)|\z)')
+            $ui = [regex]::Matches($workflow, '(?ms)^      - name: Complete Windows UI regressions\n(?<body>.*?)(?=^      - (?:name:|uses:)|\z)')
+            if ($backend.Count -ne 1 -or $ui.Count -gt 1) { throw 'Verified workflow test gates are ambiguous' }
+            if ($ui.Count -eq 1) {
+              $required += 'Complete Windows UI regressions'
+              $uiCommand = "          python -m pytest tests/ui -vv -o faulthandler_timeout=60 --durations=10`n          if (`$LASTEXITCODE -ne 0) { throw 'Complete Windows UI regression failed' }"
+              if (-not $ui[0].Groups['body'].Value.Contains($uiCommand)) { throw 'Verified workflow lacks the complete UI command and failure check' }
+              $pythonCommand = 'python -m pytest tests --ignore=tests/ui -q -o faulthandler_timeout=60 --durations=10'
+            } else {
+              # A legacy successful Backend must actually contain the full UI suite.
+              $pythonCommand = 'python -m pytest tests -q --durations=10'
+            }
+            $checks = [ordered]@{
+              'python tools/voice_list_scroll_probe.py --label windows --expect stable --output build/voice-list-scroll-check' = 'Real Windows voice-list scroll regression failed'
+              'node --test tests/webui/*.test.cjs' = 'Interface checks failed'
+            }
+            $checks[$pythonCommand] = 'Full Windows Python regression failed'
+            foreach ($command in $checks.Keys) {
+              $checkedCommand = "          $command`n          if (`$LASTEXITCODE -ne 0) { throw '$($checks[$command])' }"
+              if (-not $backend[0].Groups['body'].Value.Contains($checkedCommand)) { throw 'Verified workflow lacks complete Python/Qt/Node commands or failure checks' }
+            }
+            foreach ($name in $required) {
+              $matched = @($buildJobs[0].steps | Where-Object { $_.name -eq $name -and $_.conclusion -eq 'success' })
+              if ($matched.Count -ne 1) { throw "Verified run lacks successful step: $name" }
+            }
+          }
+          $release = Read-GitHub "$repoPath/releases/$env:P011_DRAFT_RELEASE_ID"
+          if (-not $release.draft -or $release.target_commitish -ne $sourceCommit -or @($release.assets).Count -ne 0) { throw 'Delivery release must be an empty draft targeting the checked source' }
+          ('recovery=' + $recovery.ToString().ToLower()) >> $env:GITHUB_OUTPUT
+          'draft_delivery=true' >> $env:GITHUB_OUTPUT
+          Write-Host "Verified source $sourceCommit, private draft $($release.id), recovery=$recovery"
+      - uses: actions/checkout@v4
+        if: ${{ !inputs.trim_probe_only }}
+        with:
+          ref: ${{ inputs.source_commit || github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        if: ${{ !inputs.trim_probe_only }}
+        with:
+          python-version: '3.12'
+          cache: pip
+      - uses: actions/setup-node@v4
+        if: ${{ !inputs.trim_probe_only }}
+        with:
+          node-version: '22'
+      - name: Install build dependencies
+        if: ${{ !inputs.trim_probe_only }}
+        run: |
+          python -m pip install --upgrade pip
+          python packaging/recognition_bundle.py requirements --platform windows_x64 --requirements-output build-recognition-requirements.txt
+          python -m pip install --require-hashes -r build-recognition-requirements.txt
+          python -m pip install '.[dev,build,publish]'
+          python -m pip check
+          python -m playwright install chromium
+      - name: Prepare locked CPU recognition tools
+        if: ${{ !inputs.trim_probe_only }}
+        run: |
+          $lock = Get-Content packaging/recognition-lock.json -Raw | ConvertFrom-Json
+          $archive = Join-Path $env:RUNNER_TEMP 'whisper-bin-x64.zip'
+          Invoke-WebRequest -Uri $lock.whisper.windows_x64.release_archive.url -OutFile $archive
+          if ((Get-FileHash $archive -Algorithm SHA256).Hash.ToLower() -ne $lock.whisper.windows_x64.release_archive.sha256 -or (Get-Item $archive).Length -ne $lock.whisper.windows_x64.release_archive.size_bytes) { throw 'Whisper release archive identity mismatch' }
+          $expanded = Join-Path $env:RUNNER_TEMP 'whisper-cpu'
+          Expand-Archive $archive -DestinationPath $expanded
+          $whisper = Join-Path $expanded 'Release'
+          "P011_WHISPER_DIR=$whisper" >> $env:GITHUB_ENV
+          $vswhere = Join-Path ${env:ProgramFiles(x86)} 'Microsoft Visual Studio/Installer/vswhere.exe'
+          $visualStudio = & $vswhere -latest -products '*' -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
+          if (-not $visualStudio) { throw 'Visual Studio redistributable inputs missing' }
+          $redistRoot = Join-Path $visualStudio 'VC/Redist/MSVC'
+          $runtimeNames = @('msvcp140.dll','vcruntime140.dll','vcruntime140_1.dll','vcomp140.dll')
+          $redistCandidates = Get-ChildItem $redistRoot -Directory | Where-Object { $_.Name -match '^\d+(\.\d+)+$' -and (Test-Path (Join-Path $_.FullName 'x64') -PathType Container) } | Sort-Object { [version]$_.Name } -Descending
+          $redist = $null
+          $runtimeInputs = @{}
+          foreach ($candidate in $redistCandidates) {
+            $inputs = @{}
+            foreach ($name in $runtimeNames) {
+              $inputFile = Get-ChildItem (Join-Path $candidate.FullName 'x64') -Recurse -File -Filter $name | Select-Object -First 1
+              if ($inputFile) { $inputs[$name] = $inputFile.FullName }
+            }
+            if ($inputs.Count -eq $runtimeNames.Count) { $redist = $candidate; $runtimeInputs = $inputs; break }
+          }
+          if (-not $redist) { Get-ChildItem $redistRoot -Directory | Select-Object Name,FullName | Format-Table; throw 'Complete versioned x64 MSVC/OpenMP redistributable inputs missing' }
+          Write-Host "Using Visual Studio x64 redistributable $($redist.Name)"
+          $runtime = Join-Path $env:RUNNER_TEMP 'recognition-vc-runtime'
+          New-Item -ItemType Directory $runtime | Out-Null
+          foreach ($name in $runtimeNames) {
+            Copy-Item $runtimeInputs[$name] (Join-Path $runtime $name)
+          }
+          "P011_VC_RUNTIME_DIR=$runtime" >> $env:GITHUB_ENV
+          @{source='Visual Studio installed redistributable directory';version=$redist.Name;architecture='x64';files=$runtimeInputs;acceptance='pending device validation'} | ConvertTo-Json | Set-Content (Join-Path $runtime 'source.json') -Encoding utf8
+          python packaging/recognition_bundle.py prepare --platform windows_x64 --source-root $whisper --vc-root $runtime --output-root packaging/resources
+          if ($LASTEXITCODE -ne 0) { throw 'CPU recognition inputs failed validation' }
+      - name: Prepare Windows media tools
+        if: ${{ !inputs.trim_probe_only }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $source = Join-Path $env:RUNNER_TEMP 'p011-retained-media-source'
+          New-Item -ItemType Directory $source | Out-Null
+          gh release download windows-20261014-slim-f75b1aa --repo $env:GITHUB_REPOSITORY --pattern 'YiJianJiFa-Windows-x64-Portable.zip' --dir $source
+          if ($LASTEXITCODE -ne 0) { throw 'Retained media source download failed' }
+          $archive = Join-Path $source 'YiJianJiFa-Windows-x64-Portable.zip'
+          $media = Join-Path $env:RUNNER_TEMP 'p011-locked-media-tools'
+          python packaging/windows/media_inputs.py --archive $archive --output-dir $media
+          if ($LASTEXITCODE -ne 0) { throw 'Locked media source validation failed' }
+          $ffmpeg = Get-Item (Join-Path $media 'ffmpeg.exe')
+          $ffprobe = Get-Item (Join-Path $media 'ffprobe.exe')
+          & $ffmpeg.FullName -version
+          if ($LASTEXITCODE -ne 0) { throw 'Locked FFmpeg startup failed' }
+          & $ffprobe.FullName -version
+          if ($LASTEXITCODE -ne 0) { throw 'Locked FFprobe startup failed' }
+          "P011_FFMPEG=$($ffmpeg.FullName)" >> $env:GITHUB_ENV
+          "P011_FFPROBE=$($ffprobe.FullName)" >> $env:GITHUB_ENV
+          "P011_MEDIA_SOURCE=$(Join-Path $media 'media-source.json')" >> $env:GITHUB_ENV
+          $ffmpeg.DirectoryName >> $env:GITHUB_PATH
+      - name: Complete Windows UI regressions
+        if: ${{ !inputs.trim_probe_only && (steps.delivery.outputs.recovery != 'true') }}
+        timeout-minutes: 5
+        run: |
+          python -m pytest tests/ui -vv -o faulthandler_timeout=60 --durations=10
+          if ($LASTEXITCODE -ne 0) { throw 'Complete Windows UI regression failed' }
+      - name: Backend and interface checks
+        if: ${{ !inputs.trim_probe_only && (steps.delivery.outputs.recovery != 'true') }}
+        run: |
+          python tools/voice_list_scroll_probe.py --label windows --expect stable --output build/voice-list-scroll-check
+          if ($LASTEXITCODE -ne 0) { throw 'Real Windows voice-list scroll regression failed' }
+          # Together with the separate UI process, every Python nodeid runs once.
+          python -m pytest tests --ignore=tests/ui -q -o faulthandler_timeout=60 --durations=10
+          if ($LASTEXITCODE -ne 0) { throw 'Full Windows Python regression failed' }
+          node --test tests/webui/*.test.cjs
+          if ($LASTEXITCODE -ne 0) { throw 'Interface checks failed' }
+      - name: Record complete source-regression result
+        if: inputs.regression_only
+        run: |
+          'Cloud service, both complete Python partitions (UI and remaining tests), all Node and real Qt voice-list regressions passed.' >> $env:GITHUB_STEP_SUMMARY
+          'regression_only: no application build, frozen-package acceptance, ZIP or upload was performed.' >> $env:GITHUB_STEP_SUMMARY
+      - name: Build current Windows application
+        if: ${{ !inputs.trim_probe_only && !inputs.regression_only }}
+        env:
+          # Non-secret setting. Only the owner's workflow inherits the existing
+          # service; a fork without its own variable still builds cloud-off.
+          P011_RELEASE_CLOUD_VOICE_ENDPOINT: ${{ vars.P011_RELEASE_CLOUD_VOICE_ENDPOINT || (github.repository == 'tianyiswl/yijianjifa-desktop' && 'https://39.108.82.213' || '') }}
+          P011_OFFICIAL_DISTRIBUTION: ${{ github.repository == 'tianyiswl/yijianjifa-desktop' }}
+        run: ./packaging/windows/build.ps1 -Official:($env:P011_OFFICIAL_DISTRIBUTION -eq 'true')
+      - name: Frozen database, media and bundled asset checks
+        if: ${{ !inputs.trim_probe_only && !inputs.regression_only }}
+        run: |
+          $report = Join-Path $env:RUNNER_TEMP 'p011-bundle-check.json'
+          $process = Start-Process (Resolve-Path 'dist/一剪即发/一剪即发.exe') -ArgumentList @('--bundle-check', "`"$report`"") -PassThru
+          if (-not $process.WaitForExit(180000)) { $process.Kill(); throw 'Bundle check timed out' }
+          if ($process.ExitCode -ne 0 -or -not (Test-Path $report)) { throw 'Bundled resource check failed' }
+          $photo = (Get-Content $report -Raw | ConvertFrom-Json).image_posts
+          if ($photo.owned_images -ne 4 -or -not $photo.bridge_thumbnails -or -not $photo.client_views) { throw 'Bundled image-post feature check failed' }
+          Copy-Item $report dist/bundle-check.json
+          Get-Content $report
+      - name: Frozen startup and private bridge smoke check
+        if: ${{ !inputs.trim_probe_only && !inputs.regression_only }}
+        run: |
+          $check = Join-Path $env:RUNNER_TEMP 'p011-smoke.json'
+          $data = Join-Path $env:RUNNER_TEMP 'p011-empty-test-data'
+          $exe = Resolve-Path 'dist/一剪即发/一剪即发.exe'
+          $process = Start-Process $exe -ArgumentList @('--data-dir', "`"$data`"", '--smoke-check', "`"$check`"") -PassThru
+          if (-not $process.WaitForExit(60000)) { $process.Kill(); throw 'Startup smoke check timed out' }
+          if ($process.ExitCode -ne 0 -or -not (Test-Path $check)) { throw 'Frozen interface or bridge check failed' }
+          Copy-Item $check dist/startup-check.json
+          Get-Content $check
+      - name: Frozen native video decoding and controls
+        if: ${{ !inputs.trim_probe_only && !inputs.regression_only }}
+        run: |
+          $report = Join-Path $env:RUNNER_TEMP 'p011-native-video.json'
+          $process = Start-Process (Resolve-Path 'dist/一剪即发/一剪即发.exe') -ArgumentList @('--video-check', "`"$report`"") -PassThru
+          if (-not $process.WaitForExit(60000)) { $process.Kill(); throw 'Native video check timed out' }
+          if ($process.ExitCode -ne 0 -or -not (Test-Path $report)) { throw 'Bundled native video playback failed' }
+          $result = Get-Content $report -Raw | ConvertFrom-Json
+          if (-not $result.audio -or -not $result.ended -or -not $result.seeked -or -not $result.device_closed -or $result.frames -lt 1) { throw 'Native video controls incomplete' }
+          Copy-Item $report 'dist/一剪即发/native-video-check.json'
+          Get-Content $report
+      - name: Frozen WAV and official MP3 playback
+        if: ${{ !inputs.trim_probe_only && !inputs.regression_only }}
+        run: |
+          $report = Join-Path $env:RUNNER_TEMP 'p011-audio-check.json'
+          $process = Start-Process (Resolve-Path 'dist/一剪即发/一剪即发.exe') -ArgumentList @('--audio-check', "`"$report`"") -PassThru
+          if (-not $process.WaitForExit(60000)) { $process.Kill(); throw 'Frozen audio check timed out' }
+          if ($process.ExitCode -ne 0 -or -not (Test-Path $report)) { throw 'Frozen WAV/MP3 playback failed' }
+          Copy-Item $report 'dist/一剪即发/audio-check.json'
+          Get-Content $report
+      - name: Record build and stage delivery instructions
+        if: ${{ !inputs.trim_probe_only && !inputs.regression_only }}
+        run: |
+          $sourceCommit = (& git rev-parse HEAD).Trim()
+          if ($LASTEXITCODE -ne 0 -or $sourceCommit -notmatch '^[0-9a-f]{40}$') { throw 'Checked-out source identity missing' }
+          $manifest = [ordered]@{commit=$sourceCommit; platform='Windows x64'; purpose='private test'; windows_device_acceptance='pending'; media_source=(Get-Content $env:P011_MEDIA_SOURCE -Raw | ConvertFrom-Json); recognition=(Get-Content 'dist/一剪即发/_internal/recognition-inventory.json' -Raw | ConvertFrom-Json); recognition_vc_source=(Get-Content (Join-Path $env:P011_VC_RUNTIME_DIR 'source.json') -Raw | ConvertFrom-Json); files=@()}
+          foreach ($path in @('dist/一剪即发/一剪即发.exe',$env:P011_FFMPEG,$env:P011_FFPROBE)) {
+            $manifest.files += @{name=(Split-Path $path -Leaf);sha256=(Get-FileHash $path -Algorithm SHA256).Hash}
+          }
+          $manifest | ConvertTo-Json -Depth 8 | Set-Content dist/build-manifest.json -Encoding utf8
+          Copy-Item packaging/windows/测试说明.md dist/使用说明.md
+          Copy-Item dist/build-manifest.json 'dist/一剪即发/build-manifest.json'
+          Copy-Item packaging/windows/测试说明.md 'dist/一剪即发/使用说明.md'
+      - name: Package portable folder and hash deliverables
+        if: ${{ !inputs.trim_probe_only && !inputs.regression_only }}
+        run: |
+          Compress-Archive -Path 'dist/一剪即发' -DestinationPath dist/一剪即发-Windows-x64-便携版.zip
+          $portable = Get-Item 'dist/一剪即发-Windows-x64-便携版.zip'
+          $deliverables = @($portable)
+          $deliverables | ForEach-Object { @{name=$_.Name;sha256=(Get-FileHash $_.FullName -Algorithm SHA256).Hash;size_bytes=$_.Length} } | ConvertTo-Json | Set-Content dist/package-hashes.json -Encoding utf8
+      - uses: actions/upload-artifact@v4
+        if: ${{ !inputs.trim_probe_only && !inputs.regression_only && (steps.delivery.outputs.draft_delivery != 'true') }}
+        with:
+          name: yijianjifa-windows-x64
+          path: |
+            dist/*便携版.zip
+            dist/build-manifest.json
+            dist/package-hashes.json
+            dist/使用说明.md
+            dist/bundle-check.json
+            dist/startup-check.json
+          retention-days: 14
+      - name: Upload six files to the existing private draft
+        if: ${{ !inputs.trim_probe_only && !inputs.regression_only && (steps.delivery.outputs.draft_delivery == 'true') }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          P011_SOURCE_COMMIT: ${{ inputs.source_commit || github.sha }}
+          P011_DRAFT_RELEASE_ID: ${{ inputs.draft_release_id }}
+        run: |
+          function Read-GitHub([string]$path) {
+            $raw = & gh api $path
+            if ($LASTEXITCODE -ne 0) { throw 'Draft delivery API check failed' }
+            return ($raw | ConvertFrom-Json)
+          }
+          $repoPath = "repos/$env:GITHUB_REPOSITORY"
+          $repo = Read-GitHub $repoPath
+          $release = Read-GitHub "$repoPath/releases/$env:P011_DRAFT_RELEASE_ID"
+          $manifest = Get-Content dist/build-manifest.json -Raw | ConvertFrom-Json
+          if (-not $repo.private -or -not $release.draft -or $release.target_commitish -ne $env:P011_SOURCE_COMMIT -or $manifest.commit -ne $env:P011_SOURCE_COMMIT -or @($release.assets).Count -ne 0) { throw 'Draft or source changed before delivery; no files uploaded' }
+          $uploadRoot = Join-Path $env:RUNNER_TEMP "yijianjifa-draft-$env:GITHUB_RUN_ID"
+          New-Item -ItemType Directory $uploadRoot | Out-Null
+          $sources = [ordered]@{
+            'YiJianJiFa-Windows-x64-Portable.zip' = 'dist/一剪即发-Windows-x64-便携版.zip'
+            'README-Windows.md' = 'dist/使用说明.md'
+            'build-manifest.json' = 'dist/build-manifest.json'
+            'package-hashes.json' = 'dist/package-hashes.json'
+            'bundle-check.json' = 'dist/bundle-check.json'
+            'startup-check.json' = 'dist/startup-check.json'
+          }
+          $files = @()
+          foreach ($name in $sources.Keys) {
+            $file = Get-Item $sources[$name]
+            if ($file.Length -le 0 -or $file.Length -ge 2GB) { throw "Release file missing, empty or too large: $name" }
+            $target = Join-Path $uploadRoot $name
+            Copy-Item $file.FullName $target
+            $files += $target
+          }
+          & gh release upload $release.tag_name @files --repo $env:GITHUB_REPOSITORY
+          if ($LASTEXITCODE -ne 0) { throw 'Draft upload incomplete; existing assets are retained' }
+          $after = Read-GitHub "$repoPath/releases/$env:P011_DRAFT_RELEASE_ID"
+          if (-not $after.draft -or $after.target_commitish -ne $env:P011_SOURCE_COMMIT -or @($after.assets).Count -ne 6) { throw 'Draft delivery state or asset count mismatch' }
+          foreach ($path in $files) {
+            $file = Get-Item $path
+            $assets = @($after.assets | Where-Object { $_.name -ceq $file.Name -and $_.state -eq 'uploaded' -and $_.size -eq $file.Length })
+            if ($assets.Count -ne 1) { throw "Draft delivery asset mismatch: $($file.Name)" }
+            Write-Host "$($file.Name): $($file.Length) bytes, uploaded"
+          }
+          "Private draft delivery complete: $($after.html_url)" >> $env:GITHUB_STEP_SUMMARY
+          "Application source: $($manifest.commit); assets: 6; release remains draft." >> $env:GITHUB_STEP_SUMMARY

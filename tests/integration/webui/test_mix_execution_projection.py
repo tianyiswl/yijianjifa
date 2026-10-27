@@ -50,14 +50,36 @@ def test_only_make_poll_and_detail_share_saved_counts_titles_and_event_times(exe
     value = next(task for task in poll['tasks'] if task['id'] == identity)['execution']
     assert value['making'] == dict(succeeded=1, failed=0, completed=1, total=3)
     assert value['current']['index'] == 2 and value['current']['title'] == '作品2'
-    assert [event['time'] for event in value['events']] == ['2026-10-15T01:00:00+00:00', '2026-10-15T01:01:00+00:00']
+    assert [event['time'] for event in value['events']] == ['2026-10-15T01:01:00+00:00']
     assert all(event['message'] for event in value['events'])
+    assert all(not event.get('title') for event in value['events'])
     assert call(api, 'task.detail', {'id': identity})['execution'] == value
     assert call(api, 'task.poll', {'epoch': poll['epoch'], 'after': poll['revision']})['changed'] is False
     with session_scope(db_engine) as session:
         assert [(row.key, row.value_json) for row in session.scalars(select(Setting).order_by(Setting.key))] == before
         assert session.get(MixTask, identity).current_index == 1
     assert 'private' not in json.dumps(value)
+
+
+def test_login_panel_shows_one_account_result_without_internal_start_finish_pairs(execution,db_engine):
+    api,identity=execution
+    entries=[]
+    for stage in ('before_make','before_publish'):
+        for step,message in [('daily.login_check_started','开始检查登录'),
+            ('daily.login_check_step','关闭检查浏览器：开始（累计 4.72 秒）'),
+            ('daily.login_check_step','关闭检查浏览器：完成（累计 5.186 秒）'),
+            ('daily.login_check_finished','账号登录有效（累计 5.2 秒）')]:
+            entries.append(dict(time='2026-10-15T02:00:00Z',step=step,stage=stage,index=1,accounts=1,
+                account_label='抖音 · 测试账号',message=message))
+    with session_scope(db_engine) as db:
+        db.add(Setting(key='mix.daily.status:'+identity,value_json=json.dumps({'login_log':entries})))
+    projected=call(api,'task.detail',{'id':identity})['execution']
+    login=[e for e in projected['events'] if e['step'].startswith('daily.login')]
+    assert len(login)==1
+    assert login[0]['message']=='账号登录有效'
+    assert login[0]['account_label']=='抖音 · 测试账号'
+    with session_scope(db_engine) as db:
+        assert len(json.loads(db.get(Setting,'mix.daily.status:'+identity).value_json)['login_log'])==8
 
 
 def make_daily(engine, identity, **progress):
@@ -103,9 +125,18 @@ def test_daily_execution_joins_actual_delivery_account_title_and_saved_steps(exe
             {'time': '2026-10-15T02:01:00+00:00', 'step': 'submission.final_check'}])))
     result = call(api, 'mix.daily.status', {'id': identity})['execution']
     assert result['current']['title'] == '真实冻结作品' and '合成账号' in result['current']['account_label']
-    assert result['events'][-1]['step'] == 'submission.final_check'
-    assert result['events'][-1]['time'] == '2026-10-15T02:01:00+00:00'
+    assert result['events'][-1]['step'] == 'execution.start'
+    assert result['events'][-1]['time'] == '2026-10-15T02:00:00+00:00'
+    assert result['events'][-1].get('title','') == ''  # 无制作索引证据时不猜编号，也不展示标题。
     assert str(path) not in json.dumps(result) and 'private' not in json.dumps(result)
+
+    with session_scope(db_engine) as session:
+        session.add(Setting(key=f'mix-success:{identity}:1',value_json=json.dumps({'finished_id':video.id})))
+    numbered=call(api,'mix.daily.status',{'id':identity})['execution']
+    assert numbered['events'][-1]['title']=='第2个视频'
+    assert numbered['publishing']['targets'][0]['title']=='真实冻结作品'
+    with session_scope(db_engine) as session:
+        assert json.loads(session.get(PublishDeliveryRow,delivery.id).snapshot_json)['fields']['title']=='真实冻结作品'
 
     # Browser checks poll repeatedly, including changing timings and state.
     # The user feed shows each real step once, with its first saved timestamp.
@@ -120,9 +151,9 @@ def test_daily_execution_joins_actual_delivery_account_title_and_saved_steps(exe
         saved_log = log.value_json
     first = call(api, 'mix.daily.status', {'id': identity})['execution']
     steps = [event for event in first['events'] if event['stage'] == 'publishing']
-    assert len(steps) == 4
-    assert steps[-2]['message'] == '读取发布表单'
-    assert steps[-2]['time'] == '2026-10-15T02:02:00+00:00'
+    assert len(steps) == 2
+    assert all('表单' not in e['message'] for e in steps)
+    assert steps[0]['time'] == '2026-10-15T02:00:00+00:00'
     assert steps[-1]['step'] == 'execution.result'
     assert call(api, 'mix.daily.status', {'id': identity})['execution'] == first
     with session_scope(db_engine) as session:
@@ -142,7 +173,10 @@ def test_saved_event_feed_is_bounded_and_does_not_fabricate_missing_timestamps(e
             [{'time': f'2026-10-15T01:00:{i % 60:02d}+00:00', 'step': 'mix.failed'} for i in range(150)] +
             [{'step': 'mix.started', 'path': '/private/session/secret'}]})
     result = call(api, 'task.poll', {'epoch': None, 'after': None})['tasks'][0]['execution']
-    assert len(result['events']) == 100 and all('time' in event for event in result['events'])
+    assert len(result['events']) == 1 and all('time' in event for event in result['events'])
+    assert result['events'][0]['time']=='2026-10-15T01:00:29+00:00'
+    with session_scope(db_engine) as session:
+        assert len(json.loads(session.get(Setting,f'mix-result:{identity}:0').value_json)['execution_log'])==151
 
 
 def test_unknown_saved_step_names_cannot_export_private_values(execution, db_engine):
@@ -152,7 +186,7 @@ def test_unknown_saved_step_names_cannot_export_private_values(execution, db_eng
         row.value_json = json.dumps({'state': 'completed', 'execution_log': [
             {'time': '2026-10-15T01:00:00+00:00', 'step': 'private_uid', 'message': 'Cookie=private-session'}]})
     result = call(api, 'task.poll', {'epoch': None, 'after': None})['tasks'][0]['execution']
-    assert result['events'][0]['step'] == 'mix.step'
+    assert result['events'] == []
     assert 'private' not in json.dumps(result) and 'Cookie' not in json.dumps(result)
 
 

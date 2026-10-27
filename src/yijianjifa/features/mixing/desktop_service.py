@@ -72,7 +72,7 @@ class DesktopMixService:
                 self.queue.request_pause(task.id)
             elif task.state == 'cancelled':
                 self.executor.discard_cancelled(task.id)
-        return [t.id for t in self.tasks() if t.state in {'paused', 'interrupted'}]
+        return [t.id for t in self.tasks() if t.state in {'paused', 'interrupted', 'waiting_publish'}]
 
     def submit(self, *, quantity=10, material_categories=(), copy_categories=(),
                total_ms=15000, segment_ms=3000, resolution='720p', aspect_ratio='9:16',
@@ -147,7 +147,7 @@ class DesktopMixService:
                 raise EmptyCopySelection('当前没有可用文案，请选择不使用文案，或添加文案后重试。')
             reserved = set()
             for task in self.tasks():
-                if task.state in {'waiting', 'running', 'paused', 'interrupted'}:
+                if task.state in {'waiting', 'running', 'paused', 'interrupted', 'waiting_publish'}:
                     reserved.update(c['id'] for c in task.snapshot.get('copies', [])[task.current_index:])
             unused = [r for r in copies if not self.progress.is_used('mixing', r.id) and r.id not in reserved]
             # Reserve selection in this batch without advancing successful-use progress.

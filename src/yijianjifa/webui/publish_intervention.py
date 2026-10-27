@@ -30,13 +30,20 @@ class InterventionBroker:
     def __init__(self):
         self._lock=threading.Lock(); self._request=None; self._response=None
 
-    def request(self, account_id, account_name, kind, message, *, reason=None, external_browser=None):
+    def request(self, account_id, account_name, kind, message, *, reason=None, external_browser=None,
+                platform=None, browser_login=None, final_started=None):
         reason = intervention_reason(kind, reason)
+        if platform is not None and platform not in {'douyin','kuaishou','channels','bilibili'}:raise ValueError('无效平台')
+        if browser_login is not None and type(browser_login) is not bool:raise ValueError('无效登录方式')
+        if final_started is not None and type(final_started) is not bool:raise ValueError('无效提交状态')
         with self._lock:
             if self._request is not None:raise ValueError('已有验证正在等待处理')
             token=secrets.token_hex(24)
             self._request=dict(id=token,account_id=account_id,account_name=account_name,kind=kind,reason=reason,message=message,expires_at=time.time()+600)
             if type(external_browser) is bool:self._request['external_browser']=external_browser
+            if platform is not None:self._request['platform']=platform
+            if browser_login is not None:self._request['browser_login']=browser_login
+            if final_started is not None:self._request['final_started']=final_started
             self._response=None
             return token
 
@@ -95,6 +102,21 @@ class InterventionBroker:
     def open_view(self,token):
         with self._lock:
             if self._request and self._request['id']==token:self._request['view_mode']='page'
+
+    def open_browser(self,token):
+        with self._lock:
+            if self._request and self._request['id']==token:
+                self._request.update(view_mode='browser',external_browser=True,browser_login=True,view_state='ready')
+                self._request.setdefault('view_revision',1)
+                self._request.pop('view_error',None)
+                self._request.pop('image',None)
+
+    def browser_failure(self,token,message):
+        with self._lock:
+            if self._request and self._request['id']==token:
+                self._request.update(browser_login=True,external_browser=False,view_state='failed',view_error=message)
+                self._request.setdefault('view_revision',1)
+                self._request.pop('image',None)
 
     def message(self,token,message):
         with self._lock:

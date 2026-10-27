@@ -5,9 +5,9 @@ test('start projects draft fields onto selected videos and retains edits for re-
  assert.deepEqual(result.first.video_ids,['selected-video']);
  assert.deepEqual(result.first.fields_by_video,{});
  assert.deepEqual(result.first.targets[0].fields_by_video,{});
- assert.deepEqual(result.first.targets[0].fields,{content_declaration_choice:'none',channels_original:false});
- assert.equal(result.reselected.fields_by_video['old-video'].title,'保留旧视频公共草稿');
- assert.equal(result.reselected.targets[0].fields_by_video['old-video'].title,'保留旧视频平台草稿');
+ assert.deepEqual(result.first.targets[0].fields,{});
+ assert.equal(result.reselected.fields_by_video['old-video'].title,'保留旧视频草稿');
+ assert.equal(result.reselected.targets[0].fields_by_video['old-video'],undefined);
  assert.equal(result.operations.some(op=>/confirm|execution|upload|login|finished.save/.test(op)),false);
 });
 test('opening an unselected video form does not send its empty draft shell',async()=>{
@@ -15,7 +15,7 @@ test('opening an unselected video form does not send its empty draft shell',asyn
  assert.deepEqual(result.first.fields_by_video,{});
  assert.deepEqual(result.first.targets[0].fields_by_video,{});
  assert.deepEqual(result.reselected.fields_by_video['old-video'],{});
- assert.deepEqual(result.reselected.targets[0].fields_by_video['old-video'],{});
+ assert.equal(result.reselected.targets[0].fields_by_video['old-video'],undefined);
 });
 for(const scenario of ['platform_dropdown','platform_clear','platform_toggle'])test('start projects active platforms while settings retain platform defaults after '+scenario,async()=>{
  const result=await requestAfterSelectionChange({scenario});
@@ -25,8 +25,8 @@ for(const scenario of ['platform_dropdown','platform_clear','platform_toggle'])t
  const saved=result.saved.find(s=>s.targets.length===1);
  assert.ok(saved);assert.deepEqual(saved.schedule_by_platform,{});assert.deepEqual(saved.distribution_by_platform,{});assert.equal(saved.fields_by_platform.bilibili.category_choice,'human:knowledge');
  assert.equal(result.reselected.targets.find(t=>t.platform==='bilibili').account_id,'bili-other-account');
- assert.equal(result.reselected.schedule_by_platform.bilibili.execution_mode,'platform_schedule');
- assert.equal(result.reselected.distribution_by_platform.bilibili,'whole_batch');
- assert.equal(result.reselected.targets.find(t=>t.platform==='bilibili').fields.category_choice,'human:knowledge');
+ assert.deepEqual(result.reselected.schedule_by_platform,{});
+ assert.deepEqual(result.reselected.distribution_by_platform,{});
+ assert.deepEqual(result.reselected.targets.find(t=>t.platform==='bilibili').fields,{});
  assert.equal(result.operations.some(op=>/confirm|execution|upload|login|finished.save/.test(op)),false);
 });

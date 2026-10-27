@@ -86,6 +86,7 @@ class KuaishouMultiPublishAdapter(ChromiumPublishSessionAdapter):
             s.locked=True
         with session_scope(self.engine) as db:
             row=db.get(Setting,'publish.browser_mode');mode=json.loads(row.value_json) if row else 'background'
+        if getattr(s,'browser_login_visible',False):mode='visible'
         s.external_browser = mode == 'visible'
         options=self._inspection_browser_options(browser.browser_options(mode))
         if self.driver is None:
@@ -93,9 +94,11 @@ class KuaishouMultiPublishAdapter(ChromiumPublishSessionAdapter):
             self.driver=acquire_playwright()
         profile=auth.chromium_profile(self.store,a.platform_user_id)
         s.context=self.driver.chromium.launch_persistent_context(str(profile),**options)
+        s.browser_login_context_headed=mode=='visible'
         self._install_publish_guard(s)
         s.context.set_default_timeout(10000)
-        auth.restore_session(s.context,self.store,a,profile)
+        if not getattr(s,'browser_login_preserve_profile',False):
+            auth.restore_session(s.context,self.store,a,profile)
         s.original_ref=a.session_ref
         s.page=s.context.pages[0] if s.context.pages else s.context.new_page()
         self._init_observations(s)
@@ -110,7 +113,7 @@ class KuaishouMultiPublishAdapter(ChromiumPublishSessionAdapter):
 
     def _challenge(self,s):
         for frame in [s.page,self._frame(s)]:
-            kind=browser.challenge_kind(frame.evaluate(browser.CHALLENGE) or {})
+            kind=self._login_challenge(s,lambda:browser.challenge_kind(frame.evaluate(browser.CHALLENGE) or {}))
             if kind:return kind
         return None
 
@@ -125,7 +128,7 @@ class KuaishouMultiPublishAdapter(ChromiumPublishSessionAdapter):
         return matches[0]
 
     def _identity(self,s):
-        return auth.verified_identity(s.page.evaluate(auth.IDENTITY_SCRIPT),s.payload['platform_user_id'])
+        return self._login_read(s,lambda:auth.verified_identity(s.page.evaluate(auth.IDENTITY_SCRIPT),s.payload['platform_user_id']))
 
     def _validate_session(self,s,payload,execution):
         try:return self._validate_session_steps(s,payload,execution)
@@ -213,7 +216,10 @@ class KuaishouMultiPublishAdapter(ChromiumPublishSessionAdapter):
                 if data.get('result')==1:
                     s.submit_ok=True;s.receipt=form_contract.receipt_reference(body)
                     s.schedule_accepted=f['publish_ms']>0
-                else:s.submit_rejected=True
+                else:
+                    s.submit_rejected=True
+                    from .submit_feedback import safe_message
+                    s.platform_message=safe_message(data.get('error_msg') or data.get('message'))
         except Exception:
             # A malformed/changed response is absence of evidence, never success.
             return
@@ -239,14 +245,35 @@ class KuaishouMultiPublishAdapter(ChromiumPublishSessionAdapter):
         s.form_facts=diagnostics.formfacts(raw,form_contract.validate_form(s.payload,query=True))
         return raw
 
+    def failure_diagnostic(self,error):
+        value=getattr(self,'_input_failure',None);self._input_failure=None
+        return dict(value) if value else {}
+
+    def _input_step(self,s,step,label,operation):
+        self._preparation_stage=step;s.stage=label
+        started=time.monotonic();self._trace(s,'kuaishou.'+step,{'state':'started','final_started':bool(s.final)})
+        try:value=operation()
+        except Exception as error:
+            reason=diagnostics.classify_exception(error)['reason']
+            self._input_failure={'error_stage':'schedule_preparation' if step.startswith('schedule_') else 'form_preparation',
+                'error_category':'timeout' if reason=='timeout' else 'page_context_unavailable' if reason in {'execution_context_destroyed','navigation_interrupted'} else 'execution_failed'}
+            self._trace(s,'kuaishou.'+step,{'state':'failed','error_kind':reason,'final_started':bool(s.final),
+                'elapsed_ms':max(0,min(120000,int((time.monotonic()-started)*1000)))})
+            raise
+        self._trace(s,'kuaishou.'+step,{'state':'completed','final_started':bool(s.final),
+            'elapsed_ms':max(0,min(120000,int((time.monotonic()-started)*1000)))})
+        return value
+
     def _prepare_form(self,s,frame,f):
+        self._input_failure=None;self._preparation_stage='form_read'
         raw=self._observed_form(s,frame)
         if not raw.get('upload_complete') or raw.get('editor_count')!=1:return False
         if not s.form_filled:
             s.declaration_binding=self._fill_declaration(frame,raw,f)
             editor=frame.locator(form_contract.EDITOR)
-            editor.click();editor.press('ControlOrMeta+A')
-            s.page.keyboard.insert_text(f['text'])
+            # 标准fill支持可编辑内容，不依赖鼠标落点或页面全局焦点；最终仍完整回读。
+            self._input_step(s,'caption_fill','正在填写快手文案',lambda:editor.fill(f['text'],timeout=20000))
+            self._preparation_stage='topic_input'
             for tag in f['tags']:
                 editor.press('Space')
                 # The creator editor sets topic mode on Shift+Digit3. Typing
@@ -256,17 +283,23 @@ class KuaishouMultiPublishAdapter(ChromiumPublishSessionAdapter):
                 editor.press('Space')
             mode=frame.get_by_text(f['mode'],exact=True)
             if mode.count()!=1:raise ValueError('ambiguous publish mode')
-            mode.click()
+            self._input_step(s,'publish_mode','正在设置快手发布方式',mode.click)
             if f['time_text']:
                 date=frame.locator(form_contract.DATE_INPUT)
                 if date.count()!=1:return False
                 # rc-picker keeps the input read-only until a real click
                 # enters typing mode. Its visible OK control commits value.
-                date.click();date.fill(f['time_text'])
+                self._input_step(s,'schedule_open','正在打开快手定时设置',date.click)
+                self._input_step(s,'schedule_fill','正在填写快手定时时间',lambda:date.fill(f['time_text']))
                 confirm=frame.locator(form_contract.DATE_CONFIRM)
                 if confirm.count()!=1:raise ValueError('date confirmation unavailable')
-                confirm.click()
-                if date.input_value()!=f['time_text']:raise ValueError('schedule input did not commit')
+                self._input_step(s,'schedule_confirm','正在确认快手定时时间',confirm.click)
+                committed=date.input_value()==f['time_text']
+                self._trace(s,'kuaishou.schedule_readback',{'time_matches':committed,'final_started':False})
+                if not committed:
+                    self._preparation_stage='schedule_readback'
+                    self._input_failure={'error_stage':'schedule_preparation','error_category':'form_changed'}
+                    raise ValueError('schedule input did not commit')
             s.form_filled=True
             return False
         return form_contract.verify_form(raw,f,declaration_binding=getattr(s,'declaration_binding',None))
@@ -303,9 +336,12 @@ class KuaishouMultiPublishAdapter(ChromiumPublishSessionAdapter):
                 declaration_binding=getattr(s,'declaration_binding',None)):raise ValueError('final form changed')
         button=frame.locator(form_contract.FINAL_AREA).locator(form_contract.FINAL_CONTROL).filter(has_text=re.compile(r'^发布$'))
         if button.count()!=1:raise ValueError('final button unavailable')
+        from . import submit_feedback
+        s.feedback_surface=frame;submit_feedback.install(frame)
         button.click()
 
     def _advance(self,s,*,before_final=None,query=False):
+        self._input_failure=None;self._preparation_stage='page_preparation'
         try:return self._advance_steps(s,before_final=before_final,query=query)
         except Exception as error:
             self._failure_diagnostic(s,error)
@@ -353,6 +389,14 @@ class KuaishouMultiPublishAdapter(ChromiumPublishSessionAdapter):
                     return self._park(s,'login','暂未读取到所选快手账号，请完成账号验证后继续原目标。')
                 s.stage='正在等待快手页面确认原账号'
                 s.page.wait_for_timeout(200);continue
+            s.browser_login=False
+            if not query and s.final and getattr(s,'feedback_surface',None) is not None:
+                from . import submit_feedback
+                notice=submit_feedback.outcome(s,s.feedback_surface,self.platform_id,self._key(s.payload))
+                if notice and notice.state=='result_unknown':s.platform_message=notice.platform_message
+                elif notice:
+                    if notice.state in {'platform_scheduled','platform_accepted'}:self._refresh_after_receipt(s)
+                    return notice
             if s.phase=='baseline':
                 s.stage='正在检查快手已有作品'
                 if not s.list_seen and time.monotonic()<s.baseline_deadline:
@@ -379,7 +423,8 @@ class KuaishouMultiPublishAdapter(ChromiumPublishSessionAdapter):
                     self._click_final(s,frame)
             else:
                 s.stage='正在核对快手提交结果'
-                if s.submit_rejected:return AdapterOutcome('platform_rejected',error_code='platform_rejected')
+                if s.submit_rejected:return AdapterOutcome('platform_rejected',error_code='platform_rejected',
+                    platform_message=getattr(s,'platform_message',None) or None)
                 verified=form_contract.verified_row(s.list_rows,s.receipt,f)
                 if verified:
                     self._refresh_after_receipt(s)
@@ -394,9 +439,14 @@ class KuaishouMultiPublishAdapter(ChromiumPublishSessionAdapter):
             s.stage='正在核对快手提交结果'
             self._refresh_after_receipt(s)
             return AdapterOutcome('platform_scheduled',scheduled_at=s.payload['scheduled_at'],receipt_reference=s.receipt)
+        # 已绑定当前提交的作品回执同样不能被本地截止时间撤销。
+        if not query and s.final and s.submit_ok and s.receipt and not s.submit_rejected:
+            self._refresh_after_receipt(s)
+            return AdapterOutcome('platform_accepted',receipt_reference=s.receipt)
         self._failure_diagnostic(s,TimeoutError())
         return AdapterOutcome('result_unknown' if s.final else 'pre_submit_failed',context={'handle':s.handle} if s.final else None,
-                              error_code='result_unknown' if s.final else 'timeout')
+                              error_code='result_unknown' if s.final else 'timeout',
+                              platform_message=getattr(s,'platform_message',None) if s.final else None)
 
     def _prepare_result_query(self,s):
         if not self._challenge(s):s.page.goto(form_contract.MANAGE_URL,wait_until='domcontentloaded')
@@ -411,7 +461,8 @@ class KuaishouMultiPublishAdapter(ChromiumPublishSessionAdapter):
 
     def _remember_session(self,s):
         a=self._account(s);uid,name=self._identity(s)
-        self.refreshed[a.id]={'platform_user_id':uid,'nickname':name,'session_blob':self._capture_session_blob(s.context,uid),'original_ref':s.original_ref}
+        self.refreshed[a.id]={'platform_user_id':uid,'nickname':name,'session_blob':self._capture_session_blob(s.context,uid),'original_ref':s.original_ref,
+                            'login_observed_at':self._login_valid_at(s)}
 
     def _capture_session_blob(self,context,uid):return auth.encode_session(context.storage_state(),uid)
 
@@ -422,7 +473,10 @@ class KuaishouMultiPublishAdapter(ChromiumPublishSessionAdapter):
                 db.execute(text('BEGIN IMMEDIATE'))
                 row=db.get(AccountRow,account_id)
                 if (row is not None and row.platform==self.platform_id and row.login_state!='removed'
-                        and row.platform_user_id==value['platform_user_id'] and row.session_ref==value['original_ref']):
+                        and row.platform_user_id==value['platform_user_id'] and row.session_ref==value['original_ref']
+                        and self._can_refresh_login_session(db,row,value.get('login_observed_at'))):
                     row.session_ref=self.store.put(row.id,value['session_blob'],versioned=True)
-                    row.login_state='valid'
+                    if value.get('login_observed_at') is not None:
+                        self.service.record_login_check(db,row,'valid',observed_at=value['login_observed_at'])
+                    else:row.login_state='valid'
             self.refreshed.pop(account_id,None)

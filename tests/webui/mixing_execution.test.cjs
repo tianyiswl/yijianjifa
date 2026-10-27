@@ -20,7 +20,7 @@ test('the idle execution panel stays visible without querying or starting a batc
 
 test('daily progress shows true making counts, current content and account, timed records and precise failure reasons as text',async()=>{
  let status={phase:'making',accepted:0,pending:10,failed:0,total:10,execution:{making:{succeeded:2,failed:1,completed:3,total:10},current:{index:4,total:10,title:'<img src=x onerror=bad()>',account_label:'原账号'},events:[logEvent()]}};
- const view=await mountMixing(fixture(op=>op==='mix.daily.status'?status:undefined));await view.click(view.get('quick-generate'));assert.match(node(view,'making').textContent,/成功 2\/10 条.*失败 1 条/);assert.match(node(view,'current').textContent,/第4\/10条.*<img src=x onerror=bad\(\)>.*原账号/);assert.equal(node(view,'current').querySelectorAll('img').length,0);
+ const view=await mountMixing(fixture(op=>op==='mix.daily.status'?status:undefined));await view.click(view.get('quick-generate'));assert.match(node(view,'making').textContent,/成功 2\/10 条.*失败 1 条/);assert.match(node(view,'current').textContent,/第4\/10条.*原账号/);assert.doesNotMatch(node(view,'current').textContent,/当前内容|<img/);assert.equal(node(view,'current').querySelectorAll('img').length,0);
  assert.match(node(view,'events').textContent,/10月16日12:03:12.*正在制作第一条/);status={...status,phase:'needs_attention',reason:'指定素材无法读取，第二条制作失败。'};await view.tick();assert.match(node(view,'reason').textContent,/指定素材无法读取，第二条制作失败。/);assert.equal(node(view,'reason').attrs.role,'alert');view.dispose();
 });
 
@@ -46,11 +46,11 @@ test('resume and task-detail actions live in the execution panel and keep the ex
 });
 
 test('checking shows only the native batch label, and missing or invalid timestamps do not become historical records',async()=>{
- const view=await mountMixing(fixture(op=>op==='mix.daily.status'?{phase:'checking_login',total:10,execution:{current:{label:'正在检查本批5个账号',total:5},events:[{step:'login.check',message:'没有持久时间'},{time:'invalid',step:'login.check',message:'无效时间'}]}}:undefined));await view.click(view.get('quick-generate'));assert.equal(node(view,'current').textContent,'正在检查本批5个账号');assert.doesNotMatch(node(view,'current').textContent,/账号：|第5/);assert.equal(node(view,'events').querySelectorAll('li').length,0);assert.match(node(view,'events').textContent,/暂无执行记录/);view.dispose();
+ const view=await mountMixing(fixture(op=>op==='mix.daily.status'?{phase:'checking_login',total:10,execution:{current:{label:'正在检查本批5个账号',total:5},events:[{step:'login.check',message:'没有持久时间'},{time:'invalid',step:'login.check',message:'无效时间'}]}}:undefined));await view.click(view.get('quick-generate'));assert.equal(node(view,'phase').textContent,'正在检查本批5个账号');assert.equal(node(view,'current').classList.contains('hide'),true);assert.doesNotMatch(node(view,'current').textContent,/账号：|第5/);assert.equal(node(view,'events').querySelectorAll('li').length,0);assert.match(node(view,'events').textContent,/暂无执行记录/);view.dispose();
 });
 
 test('a poll failure is visible without replacing known counts or inventing a log, and recovery clears it',async()=>{
- let failed=false;const view=await mountMixing(fixture(op=>{if(op==='mix.daily.status'){if(failed)throw Error('网络暂不可用');return {phase:'making',total:10,execution:{making:{succeeded:3,failed:0,completed:3,total:10},events:[logEvent()]}};}}));await view.click(view.get('quick-generate'));const toast=view.get('toast').textContent;failed=true;await view.tick();assert.match(node(view,'reason').textContent,/进度读取失败：网络暂不可用/);assert.match(node(view,'making').textContent,/成功 3\/10 条/);assert.equal(node(view,'events').querySelectorAll('li').length,1);assert.equal(view.get('toast').textContent,toast);failed=false;await view.tick();assert.equal(node(view,'reason').textContent,'');view.dispose();
+ let failed=false;const view=await mountMixing(fixture(op=>{if(op==='mix.daily.status'){if(failed)throw Error('网络暂不可用');return {phase:'making',total:10,execution:{making:{succeeded:3,failed:0,completed:3,total:10},events:[logEvent()]}};}}));await view.click(view.get('quick-generate'));const toast=view.get('toast').textContent;failed=true;await view.tick();assert.match(node(view,'reason').textContent,/等待重新读取进度：网络暂不可用/);assert.match(node(view,'making').textContent,/成功 3\/10 条/);assert.equal(node(view,'events').querySelectorAll('li').length,1);assert.equal(view.get('toast').textContent,toast);failed=false;await view.tick();assert.equal(node(view,'reason').textContent,'');view.dispose();
 });
 
 test('logs initially show the latest entry and follow new entries only while the user stays near the bottom',async()=>{
@@ -129,6 +129,30 @@ test('a late recent-batch poll cannot replace an explicitly started video-only e
 
 function delivery(id,state,extra={}){return {id,account_id:'account-a',platform:'douyin',platform_label:'抖音',account_label:'抖音 · 主号',title:'视频'+id,state,state_label:({platform_scheduled:'平台已接收定时安排',published:'已公开',reviewing:'平台已接收，审核中',waiting:'等待处理',result_unknown:'结果待核对',pre_submit_failed:'提交前未完成'})[state]||'处理中',reason:'',scheduled_at:'2026-10-17T04:00:00Z',...extra};}
 
+test('制作批次的同账号未决队列明确暂缓，其他账号实际运行时说明继续范围',async()=>{
+ let active=false;
+ const waiting=Array.from({length:16},(_,i)=>delivery('waiting'+i,'waiting',{blocked_by:{delivery_id:'unknown',state:'result_unknown'},reason:'同一账号有发布结果尚未确认，本目标暂缓。'}));
+ const view=await mountMixing(fixture(op=>op==='mix.daily.status'?{phase:'needs_attention',total:24,accepted:7,pending:16,failed:1,execution:{making:{total:24,completed:24,succeeded:24,failed:0},timing:{active},publishing:{targets:[...Array.from({length:7},(_,i)=>delivery('accepted'+i,'platform_scheduled')),delivery('unknown','result_unknown'),...waiting,...(active?[delivery('other','running',{account_id:'other',account_label:'抖音 · 另一个账号'})]:[])],complete:true,omitted:0}}}:undefined));
+ await view.click(view.get('quick-generate'));
+ assert.match(node(view,'phase').textContent,/等待核对原结果.*16项暂缓/);
+ assert.match(node(view,'phase').textContent,/自动流程已暂停/);
+ assert.match(view.get('mixing-batch-progress').textContent,/自动流程已暂停/);
+ assert.equal(view.query('.batch-progress-login').classList.contains('hide'),true);
+ assert.equal(node(view,'account-help').classList.contains('hide'),false);
+ assert.match(node(view,'account-help').textContent,/核对发布结果/);
+ assert.match(node(view,'hint').textContent,/核对发布结果/);
+ assert.ok(view.get('daily-progress').querySelectorAll('button').some(b=>b.textContent==='查看待核对任务'));
+ await view.click(view.get('daily-progress').querySelectorAll('button').find(b=>b.textContent==='查看待核对任务'));
+ assert.deepEqual(view.routes.at(-1),['tasks']);
+ assert.equal(view.context.P011Router.pendingTaskId,'batch');
+ assert.doesNotMatch(node(view,'phase').textContent,/运行中|其余目标继续/);
+ active=true;await view.tick();
+ assert.doesNotMatch(node(view,'phase').textContent,/自动流程已暂停/);
+ assert.equal(view.query('.batch-progress-login').classList.contains('hide'),true);
+ assert.match(node(view,'phase').textContent,/运行中.*其余账号正在处理.*16项暂缓待核对/);
+ assert.equal(view.calls.some(c=>/reconcile|resume|publish\.start/.test(c.operation)),false);view.dispose();
+});
+
 test('the compact platform line aggregates five accounts into the four actual platforms without claiming public publication',async()=>{
  const targets=[delivery('b1','platform_scheduled',{platform:'bilibili',platform_label:'B站',account_id:'b1'}),delivery('b2','pre_submit_failed',{platform:'bilibili',platform_label:'B站',account_id:'b2',reason:'提交前超时'}),...['c1','c2'].map(id=>delivery(id,'platform_scheduled',{platform:'channels',platform_label:'视频号',account_id:'c'})),...['d1','d2'].map(id=>delivery(id,'pre_submit_failed',{reason:'提交前超时'})),...['k1','k2'].map(id=>delivery(id,'platform_scheduled',{platform:'kuaishou',platform_label:'快手',account_id:'k'}))];
  const view=await mountMixing(fixture(op=>op==='mix.daily.status'?{phase:'needs_attention',accepted:5,pending:0,failed:3,total:8,execution:{publishing:{targets,complete:true,omitted:0}}}:undefined));await view.click(view.get('quick-generate'));
@@ -169,12 +193,39 @@ test('a standalone execution component without a progress host keeps the compact
  const view=await mountMixing(fixture()),host=view.document.createElement('div'),el=(tag,text,cls)=>{const node=view.document.createElement(tag);if(text!==undefined)node.textContent=text;if(cls)node.className=cls;return node;},button=(text,fn)=>{const node=el('button',text);node.onclick=fn;return node;};const panel=view.context.P011MixExecution({host,el,button,onDetails(){},onContinue(){},async onCopy(){}});panel.render({batch:{id:'standalone'},status:{phase:'accepted',total:1,execution:{publishing:{targets:[delivery('one','platform_scheduled')],complete:true,omitted:0}}}});const results=host.querySelector('.mixing-execution-results');assert.equal(results.classList.contains('hide'),false);assert.match(results.textContent,/已接收 1\/1/);panel.dispose();view.dispose();
 });
 
- test('clearing execution records preserves the batch, ignores old polls and shows new records',async()=>{
- let events=[logEvent('旧记录')];const view=await mountMixing(fixture(op=>op==='mix.daily.status'?{phase:'making',total:10,execution:{events}}:undefined));
- assert.equal(action(view,'清空记录').disabled,true);await view.click(view.get('quick-generate'));
- const calls=view.calls.length;await view.click(action(view,'清空记录'));assert.equal(view.calls.length,calls);assert.equal(node(view,'events').querySelectorAll('li').length,0);assert.equal(action(view,'清空记录').disabled,true);
- await view.tick();assert.equal(node(view,'events').querySelectorAll('li').length,0);assert.match(node(view,'phase').textContent,/正在制作/);
- events=[...events,logEvent('新记录')];await view.tick();assert.equal(node(view,'events').querySelectorAll('li').length,1);assert.match(node(view,'events').textContent,/新记录/);assert.doesNotMatch(node(view,'events').textContent,/旧记录/);
- await view.click(action(view,'清空记录'));await view.tick();assert.equal(node(view,'events').querySelectorAll('li').length,0);
- events=[...events,logEvent('新记录')];await view.tick();assert.equal(node(view,'events').querySelectorAll('li').length,1);view.dispose();
- });
+test('清空整批进度并停止轮询，切页不恢复；没有日志也能清空',async()=>{
+ const view=await mountMixing(fixture(op=>op==='task.delete'?{deleted:true}:op==='mix.daily.status'?{phase:'completed',state:'completed',total:10,execution:{making:{succeeded:10,completed:10,total:10},events:[]}}:undefined));
+ await view.click(view.get('quick-generate'));assert.equal(action(view,'清空记录').disabled,false);
+ await view.click(action(view,'清空记录'));assert.equal(view.calls.filter(c=>c.operation==='task.delete').length,1);
+ assert.equal(node(view,'phase').textContent,'尚未开始');assert.equal(view.get('mixing-batch-progress').dataset.phase,'idle');
+ assert.equal(node(view,'making').textContent,'');assert.equal(node(view,'events').querySelectorAll('li').length,0);
+ assert.equal(view.context.P011Router.executionBatches.mixing,undefined);
+ const polls=view.calls.filter(c=>c.operation==='mix.daily.status').length;await view.tick();assert.equal(view.calls.filter(c=>c.operation==='mix.daily.status').length,polls);view.dispose();
+});
+test('运行中的批次不能清空，清空失败保留整批信息',async()=>{
+ let phase='making';const view=await mountMixing(fixture(op=>{if(op==='task.delete')throw Error('数据库暂不可用');if(op==='mix.daily.status')return {phase,state:phase==='making'?'running':'completed',total:10,execution:{events:[logEvent('应保留')]}};}));
+ await view.click(view.get('quick-generate'));await view.click(action(view,'清空记录'));assert.equal(view.calls.some(c=>c.operation==='task.delete'),false);assert.match(view.get('toast').textContent,/先停止/);
+ phase='completed';await view.tick();await view.click(action(view,'清空记录'));assert.match(view.get('toast').textContent,/清空未完成/);assert.match(node(view,'events').textContent,/应保留/);assert.notEqual(view.context.P011Router.executionBatches.mixing,undefined);view.dispose();
+});
+
+test('已停止的历史批次可清空，迟到的状态响应不能恢复旧进度',async()=>{
+ let release,delayed=false;const status={phase:'needs_attention',state:'waiting_publish',total:10,execution:{events:[logEvent('旧进度')]}};
+ const view=await mountMixing(fixture(op=>{if(op==='mix.daily.read')return {settings:null,accounts:[],capabilities:{},recent_batch:{id:'old',...status}};if(op==='task.delete')return {deleted:true};if(op==='mix.daily.status')return delayed?new Promise(resolve=>release=()=>resolve(status)):status;}));
+ delayed=true;const tick=view.tick();await view.flush();assert.equal(typeof release,'function');await view.click(action(view,'清空记录'));assert.equal(node(view,'phase').textContent,'尚未开始');release();await tick;assert.equal(node(view,'phase').textContent,'尚未开始');assert.equal(view.get('mixing-batch-progress').dataset.phase,'idle');view.dispose();
+});
+
+
+test('未变化的轮询不重写排期文字和进度条数值',async()=>{
+ const view=await mountMixing(fixture(op=>op==='mix.daily.status'?{phase:'making',total:10,accepted:0,execution:{making:{succeeded:1,completed:1,total:10,failed:0}}}:undefined));
+ await view.click(view.get('quick-generate'));const writes=[];
+ for(const id of ['daily-account-select','daily-account-summary','daily-quantity-rule']){
+  const target=view.get(id),descriptor=Object.getOwnPropertyDescriptor(Object.getPrototypeOf(target),'textContent');
+  Object.defineProperty(target,'textContent',{get(){return descriptor.get.call(this);},set(value){writes.push(id);descriptor.set.call(this,value);},configurable:true});
+ }
+ for(const cls of ['batch-progress-making-bar','batch-progress-publishing-bar']){
+  const target=view.get('mixing-batch-progress').querySelector('.'+cls),set=target.setAttribute.bind(target);
+  target.setAttribute=(key,value)=>{if(['max','value'].includes(key))writes.push(cls+':'+key);return set(key,value);};
+ }
+ const counts=view.get('mixing-batch-progress').querySelector('.batch-progress-counts'),remove=counts.classList.remove.bind(counts.classList);counts.classList.remove=(...args)=>{writes.push('summary-classes');return remove(...args);};
+ await view.tick();assert.deepEqual(writes,[]);view.dispose();
+});

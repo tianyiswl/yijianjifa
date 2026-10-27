@@ -467,7 +467,9 @@ return {{route:async()=>{{}},pages:()=>[{{goto:async()=>{{}},url:()=> 'about:bla
 }}}}}};''', encoding='utf-8')
     try:
         with pytest.raises(RuntimeError,match='browser.*'+('media_failed' if unexpected else 'timeout')):
-            build._run_owned_smoke(node,('-e',build.SMOKE_JS,str(package),str(profile),str(browser_root)),profile,timeout=1)
+            # 此处验证自有进程清理，须先允许合成Python浏览器完成启动。
+            # 本机原生解释器冷启动可超过1秒；仍保持有界超时及下面全部归属断言。
+            build._run_owned_smoke(node,('-e',build.SMOKE_JS,str(package),str(profile),str(browser_root)),profile,timeout=4)
         assert not profile.exists()
         if unexpected:assert not pid_file.exists()
         else:

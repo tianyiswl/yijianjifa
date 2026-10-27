@@ -26,6 +26,7 @@ from .library_queries import CommandRejected, InvalidRequest
 
 TERMINAL={'inspection_complete','failed','cancelled'}
 ERRORS={
+    'bilibili_tag_requires_topic':'B站有标签只能通过话题入口添加，请移除或通过话题入口选择后再发布。本次未发表。',
     'account_mismatch':'检测到账号身份或登录资料已变更，请重新选择账号后检查。',
     'permission_missing':'当前账号尚不满足此平台的发布要求。',
     'configuration_required':'此平台发布资料尚未设置完整，请补齐后再检查。',

@@ -45,10 +45,12 @@ def test_real_safe_diagnostic_has_specific_reason_and_persisted_truthful_steps(f
     assert '完成' in steps[1]['message'] and '累计' in steps[1]['message']
     assert message in saved['login_current']['message']
     events = [row for row in result['execution']['events'] if row['step'] == 'daily.login_check_step']
-    assert len(events) == 4 and '超时' in events[-1]['message']
+    assert events == []
+    assert any('超时' in event['message'] for event in result['execution']['events'])
     detail = call(api, 'task.detail', {'id': identity})
     assert detail['ok'], detail
-    assert any(row['step'] == 'daily.login_check_step' for row in detail['data']['execution']['events'])
+    assert not any(row['step'] == 'daily.login_check_step' for row in detail['data']['execution']['events'])
+    assert any('超时' in row['message'] for row in detail['data']['execution']['events'])
     center = call(api, 'task.center.detail', {'id': identity})
     assert center['ok'] and message in center['data']['daily_publish']['reason']
     copied = TaskCenterAccess(api._engine).execution_log_text(identity)
@@ -66,10 +68,10 @@ def test_one_timeout_with_diagnostic_still_checks_remaining_accounts(flow):
     params['publishing']['targets'].append({'account_id': second.id, 'platform': 'douyin'})
     provider.results[first.id] = {'state': 'unavailable', 'reason': 'timeout', 'diagnostic': diagnostic()}
     identity = submit(flow)
-    result = phase(api, identity, 'needs_attention')
+    result = phase(api, identity, 'making')
     assert provider.calls == [first.id, second.id]
-    assert '打开抖音后台超时' in result['reason']
-    assert result['execution']['events'][-1]['message'] == '第2/2个账号：检查通过'
+    assert any('打开抖音后台超时' in row['message'] for row in result['execution']['events'])
+    assert result['execution']['events'][-1]['message'] == '检查通过'
     assert api._mix.executor.renderer.index == 0
 
 
@@ -135,8 +137,9 @@ def test_successful_finite_diagnostic_can_pass_the_existing_gate_without_fabrica
     result = phase(api, identity, 'making')
     assert api._mix.queue.get(identity).state == 'waiting'
     steps = [event for event in result['execution']['events'] if event['step'] == 'daily.login_check_step']
-    assert len(steps) == 4 and all('检查通过' not in event['message'] for event in steps)
-    assert sum(event['step'] == 'daily.login_verified' for event in result['execution']['events']) == 1
+    assert steps == []
+    assert sum(event['step']=='daily.login_check_finished' for event in result['execution']['events'])==1
+    assert sum(event['step'] == 'daily.login_verified' for event in result['execution']['events']) == 0
     assert api._mix.executor.renderer.index == 0 and result['publish_task_ids'] == []
 
 
@@ -155,7 +158,7 @@ def test_first_failure_summary_survives_four_later_full_step_logs_and_is_cleared
             {'stage': 'identity_second', 'state': 'completed', 'elapsed_ms': i} for i in range(32)]}
         provider.results[account.id] = {'state': 'valid', 'platform_user_id': account.platform_user_id, 'diagnostic': success}
     identity = submit(flow)
-    phase(api, identity, 'needs_attention')
+    phase(api, identity, 'making')
     with session_scope(api._engine) as session:
         saved = json.loads(session.get(Setting, 'mix.daily.status:' + identity).value_json)
     assert len(saved['login_log']) == 100

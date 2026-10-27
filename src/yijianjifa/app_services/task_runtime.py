@@ -58,13 +58,16 @@ class TaskRuntime:
 
     def _run(self):
         while True:
-            self._wake.wait()
+            signaled = self._wake.wait(.5)
             self._wake.clear()
             with self._lock:
                 if self._closed:
                     return
             try:
-                self._service.queue.run_once_until_idle()
+                if signaled:
+                    self._service.queue.run_once_until_idle()
+                if self.daily_handoff is not None:
+                    self.daily_handoff.recheck_serial()
             except Exception:
                 # Never emit renderer stderr, filesystem paths or credentials to JS.
                 with self._lock:
@@ -90,14 +93,15 @@ class TaskRuntime:
 
     def recovery(self):
         """Describe held work from this startup; reading never starts the worker."""
+        from yijianjifa.features.mixing.serial_gate import has_flow_marker
         with self._lock:
             return {'tasks': [dict(id=t.id, state=t.state, quantity=t.quantity,
                                    completed=t.completed_count, succeeded=t.success_count,
                                    failed=t.failure_count)
                               for t in self._service.tasks()
                               if t.id in self._startup_task_ids
-                              and t.state in {'paused', 'interrupted'}
-                              and t.completed_count < t.quantity]}
+                              and (t.state == 'waiting_publish' or t.state in {'paused', 'interrupted'}
+                                   and (t.completed_count < t.quantity or has_flow_marker(t.snapshot)))]}
 
     def close(self, timeout=0):
         """Stop future work, finish the active item, and report whether exit is safe.
@@ -109,7 +113,7 @@ class TaskRuntime:
             self._closed = True
             self._wake.set()
             for task in self._service.tasks():
-                if task.state in {'waiting', 'running'}:
+                if task.state in {'waiting', 'running', 'waiting_publish'}:
                     self._service.queue.request_pause(task.id)
             thread = self._thread
         if thread:

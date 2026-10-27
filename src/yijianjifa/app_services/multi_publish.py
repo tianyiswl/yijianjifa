@@ -98,8 +98,9 @@ class PublishScheduleConflict(ValueError):
 
 
 class MultiPublishService:
-    def __init__(self, engine, paths, *, catalog=None, workers=None):
+    def __init__(self, engine, paths, *, catalog=None, workers=None, read_only=False):
         self.engine,self.paths=engine,paths
+        self.read_only=read_only
         self.catalog=catalog or PlatformCatalog()
         self.deliveries=PublishDeliveries(engine,workers=workers)
         self._drafts={}
@@ -176,8 +177,10 @@ class MultiPublishService:
         return 'waiting', None
 
     def prepare(self, *, request_id, video_ids, targets, common_fields, execution_mode, scheduled_at=None,
-                scheduled_times=None, schedule_by_platform=None, distribution_by_platform=None, fields_by_video=None, now=None,allow_new_request=False):
+                scheduled_times=None, schedule_by_platform=None, distribution_by_platform=None, fields_by_video=None, now=None,allow_new_request=False,
+                inherit_account_settings=True):
         if type(allow_new_request) is not bool:raise ValueError('invalid publication intent')
+        if type(inherit_account_settings) is not bool:raise ValueError('invalid account defaults inheritance')
         identifier(request_id,'request_id')
         now=now or datetime.now(timezone.utc)
         if now.tzinfo is None:raise ValueError('timezone required')
@@ -220,6 +223,9 @@ class MultiPublishService:
             if distribution not in {'split','whole_batch'}:raise ValueError('invalid platform distribution')
         accounts=[]
         normalized=[]
+        from .account_publish_settings import AccountPublishSettings
+        configured=getattr(self,'account_publish_settings',None)
+        account_defaults=configured.for_engine(self.engine) if configured is not None else AccountPublishSettings(self.engine,catalog=self.catalog)
         for target in targets:
             if type(target) is not dict or set(target)-{'account_id','platform','fields','fields_by_video'}:raise ValueError('invalid target fields')
             aid=identifier(target.get('account_id'),'account_id')
@@ -232,7 +238,9 @@ class MultiPublishService:
             capture=getattr(self,'capture_account',None)
             if callable(capture):captured.update(capture(account))
             accounts.append(captured)
-            normalized.append({'account_id':aid,'platform':account.platform,'fields':fields(target.get('fields',{})),'fields_by_video':video_fields(target.get('fields_by_video'))})
+            normalized.append({'account_id':aid,'platform':account.platform,'fields':fields(target.get('fields',{})),
+                'account_defaults':account_defaults.resolve_fields(aid,video_ids=video_ids) if inherit_account_settings else {},
+                'fields_by_video':video_fields(target.get('fields_by_video'))})
         # Shared Task1 parser validates stable identities, including re-added accounts.
         PublishHistoryRepository(self.engine).states_for_targets([a['id'] for a in accounts])
         videos=[]
@@ -270,6 +278,7 @@ class MultiPublishService:
                     if time and (account['id'],time) in used_slots:raise ValueError('same account videos need distinct times')
                     if time:used_slots.add((account['id'],time))
                     base_metadata={key:copy.deepcopy(video[key]) for key in ('title','body','tags','cover')}
+                    base_metadata=merge_fields(base_metadata,target['account_defaults'])
                     base_metadata=merge_fields(merge_fields(base_metadata,common),public_video_fields.get(video['id'],{}))
                     if platform=='bilibili':
                         try:target_schema=self.catalog.transport_for(platform).public_field_schema
@@ -469,6 +478,7 @@ class MultiPublishService:
             raise
 
     def get_task(self, task_id):
+        from yijianjifa.features.publish.outcomes import COMPLETED_DELIVERY_STATES
         with session_scope(self.engine) as s:
             task=s.get(PublishTaskRow,task_id)
             if task is None:raise KeyError(task_id)
@@ -482,15 +492,20 @@ class MultiPublishService:
                 p=json.loads(row.snapshot_json)
                 attempt=s.scalar(select(DeliveryAttemptRow).where(DeliveryAttemptRow.delivery_id==row.id,DeliveryAttemptRow.number==row.attempt))
                 reason=None if item.state=='waiting' else item.state
-                if item.state in {'waiting_adapter','waiting_configuration'}:
+                if item.state in {'waiting_adapter','waiting_configuration'} and not self.read_only:
                     _,reason=self._hold(p)
                     reason=reason or 'reprepare_required'
                 if reason is None and center.state=='paused':reason='batch_paused'
                 if reason is None and row.cancel_requested:reason='cancel_requested'
+                blocker=None
+                if reason is None:
+                    from yijianjifa.features.publish.deliveries import account_blocker, account_blocker_reason
+                    blocker=account_blocker(s,row)
+                    if blocker:reason=account_blocker_reason(blocker)
                 current=s.get(AccountRow,row.account_id)
                 if reason is None and (current is None or current.login_state!='valid' or (current.platform,current.platform_user_id)!=(row.platform,row.platform_user_id)):
                     reason='account_verification_required'
-                if reason is None:
+                if reason is None and not self.read_only:
                     hold,hold_reason=self._hold(p)
                     if hold!='waiting':reason=hold_reason
                 if reason is None and row.execution_mode=='software_schedule':
@@ -502,27 +517,32 @@ class MultiPublishService:
                         PublishHistoryRepository.assert_no_other_content_history(s,row.content_type,row.content_hash,row.account_id,
                             history_id=row.history_id,identity=(row.platform,row.platform_user_id),allow_new_request=p.get('allow_new_request') is True)
                     except ValueError:reason='existing_target_unresolved'
-                if reason is None:
-                    for other in s.scalars(select(PublishDeliveryRow).where(PublishDeliveryRow.platform==row.platform,PublishDeliveryRow.platform_user_id==row.platform_user_id,PublishDeliveryRow.id!=row.id)):
-                        if s.get(TaskItemRow,other.item_id).state in ({'running','paused_auth'} if p.get('allow_new_request') is True else {'running','paused_auth','result_unknown','interrupted'}):
-                            reason='account_parked_or_unresolved';break
+                if reason is None and self.read_only:
+                    # 空目录只能读取持久状态，不能据此断言当前客户端未接入通道。
+                    reason='readiness_not_checked'
                 result=json.loads(attempt.result_json) if attempt and attempt.result_json else {}
                 children.append({'id':row.id,'item_id':row.item_id,'history_id':row.history_id,'platform':row.platform,'account_id':row.account_id,
                     'video_id':row.video_id,'content_type':row.content_type,'content_id':row.content_id,'title':p['fields']['title'],'state':item.state,'execution_mode':row.execution_mode,
                     'scheduled_at':row.scheduled_at,'attempt':row.attempt,'hidden':row.hidden,'cancel_requested':row.cancel_requested,
                     'final_started':bool(attempt and attempt.final_json),
                     'can_submit':reason is None,'readiness_reason':reason,
+                    **({'blocked_by':blocker} if blocker else {}),
                     'error_code':result.get('error_code'),
                     'receipt_summary':{'state':result.get('state'),'reference':result.get('receipt_reference',{})}})
-            successful={'published','platform_scheduled'}
-            if frozen.get('content_type')=='image_post':
-                successful|={'platform_accepted','processing','reviewing'}
-            completed=sum(d['state'] in successful for d in children)
-            result={'id':task_id,'version':2,'state':center.state,'paused':center.state=='paused','quantity':len(children),'completed':completed,'deliveries':children,'submitted':any(d['final_started'] for d in children)}
-            if frozen.get('content_type')=='image_post' and center.state=='completed':
+            completed=sum(d['state'] in COMPLETED_DELIVERY_STATES for d in children)
+            state=center.state
+            if state=='action_required' and children and completed==len(children):
+                # Older hosts omitted accepted/processing/reviewing from the
+                # parent completion. Project that display without rewriting
+                # history, changing any child, or resuming an explicit pause.
+                state='completed'
+            result={'id':task_id,'version':2,'state':state,'paused':center.state=='paused','quantity':len(children),'completed':completed,'deliveries':children,'submitted':any(d['final_started'] for d in children)}
+            if state=='completed':
                 states={d['state'] for d in children}
                 result['status_label']=('平台审核中' if 'reviewing' in states else '平台处理中' if 'processing' in states
                     else '平台已接收定时' if states=={'platform_scheduled'} else '已公开' if states=={'published'} else '平台已接收')
+            elif state=='completed_with_errors':
+                result['status_label']='发布结束，有未完成项'
             return result
 
     def delivery_state(self, delivery_id):
@@ -647,7 +667,7 @@ class MultiPublishService:
         registry with externally verified stopped-process evidence, but no
         client-supplied boolean can authorize this path.
         """
-        from yijianjifa.features.publish.coordinator import AdapterOutcome, outcome_evidence
+        from yijianjifa.features.publish.coordinator import AdapterOutcome, outcome_evidence, has_channels_immediate_ack
         with session_scope(self.engine) as s:
             row,item,history,attempt,*_=self.deliveries.load(s,delivery_id)
             if not attempt.owner_hash or not self.deliveries.workers.stopped(attempt.owner_hash):
@@ -677,7 +697,10 @@ class MultiPublishService:
                 accepted={'platform_accepted','processing','reviewing'}
                 state=outcome.state if outcome.state in {'published','platform_scheduled','platform_rejected'}|accepted else 'result_unknown'
                 if not normalized['receipt_reference']:normalized['receipt_reference']=previous_result.get('receipt_reference',{})
-                if state in accepted and not normalized['receipt_reference']:state='result_unknown'
+                ack_confirmed=has_channels_immediate_ack(normalized,platform=row.platform,execution_mode=row.execution_mode,
+                    request_digest=row.request_digest,final_started=
+                    json.loads(attempt.final_json).get('request_digest')==row.request_digest)
+                if state in accepted and not normalized['receipt_reference'] and not ack_confirmed:state='result_unknown'
                 if state=='platform_scheduled' and (row.execution_mode!='platform_schedule' or outcome.scheduled_at!=row.scheduled_at):
                     state='result_unknown'
             evidence={**normalized,'state':state}
@@ -690,11 +713,16 @@ class MultiPublishService:
             # Revalidate that receipt on this exact frozen attempt and journal;
             # unknown/protocol-invalid records never gain confirmation here.
             retained=False
-            if state=='result_unknown' and attempt.final_json and old_result and not old_result.get('protocol_violation') and old_result.get('state')==item.state:
+            if (state=='result_unknown' and attempt.final_json and old_result and not old_result.get('protocol_violation')
+                    and old_result.get('state')==item.state and old_result.get('request_digest')==row.request_digest):
                 try:
                     prior=outcome_evidence(AdapterOutcome(old_result['state'],scheduled_at=old_result.get('scheduled_at'),
-                        receipt_reference=old_result.get('receipt_reference'),error_code=old_result.get('error_code')),row.request_digest)
-                    retained=(item.state in {'platform_accepted','processing','reviewing'} and bool(prior['receipt_reference']) or
+                        receipt_reference=old_result.get('receipt_reference'),error_code=old_result.get('error_code'),
+                        submission_ack=old_result.get('submission_ack')),row.request_digest)
+                    ack_confirmed=has_channels_immediate_ack(prior,platform=row.platform,execution_mode=row.execution_mode,
+                        request_digest=row.request_digest,final_started=
+                        json.loads(attempt.final_json).get('request_digest')==row.request_digest)
+                    retained=(item.state in {'platform_accepted','processing','reviewing'} and (bool(prior['receipt_reference']) or ack_confirmed) or
                         item.state=='platform_scheduled' and row.execution_mode=='platform_schedule' and type(row.scheduled_at) is str and bool(row.scheduled_at) and prior['scheduled_at']==row.scheduled_at)
                 except ValueError:pass
             event={'old_attempt':row.attempt,'old_owner_hash':attempt.owner_hash,'old_result':old_result,

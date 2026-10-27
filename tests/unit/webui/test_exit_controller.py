@@ -26,6 +26,8 @@ def test_qt_window_close_requests_native_cleanup_even_if_editor_hook_would_block
     from PySide6.QtGui import QCloseEvent
     from yijianjifa.webui.qt_runtime import Window,Scheduler
     window=Window(Scheduler());requests=[];scripts=[]
+    from yijianjifa import APP_VERSION
+    assert APP_VERSION in window.windowTitle()
     window.request_exit=lambda:requests.append('exit')
     window.page.runJavaScript=lambda *args:scripts.append(args)
     event=QCloseEvent();window.closeEvent(event)

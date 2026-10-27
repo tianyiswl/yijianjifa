@@ -51,6 +51,10 @@ class Editor:
     def __init__(self, creator):
         self.creator = creator
 
+    def fill(self, value, **kwargs):
+        c=self.creator;c.caption=value;c.tags.clear();c.topic_type=False
+        c.events.append(('editor_fill',value))
+
     def click(self):
         self.creator.events.append(('editor_click', None))
 
@@ -194,3 +198,36 @@ def test_topic_type_is_set_by_shift_digit3_before_each_chinese_topic(monkeypatch
         assert frame.events[at - 1] == ('editor_press', 'Shift+Digit3')
         assert frame.events[at + 1] == ('editor_press', 'Space')
     assert not any(event[0].startswith('date_') for event in frame.events)
+
+
+def test_caption_uses_normal_fill_without_pointer_click_or_global_keyboard(monkeypatch):
+    session, adapter, frame = session_and_adapter(monkeypatch)
+    def click_blocked():
+        raise PlaywrightTimeoutError('synthetic overlay intercepts pointer')
+    def fill(value, **kwargs):
+        frame.caption=value
+        frame.events.append(('editor_fill', value))
+    monkeypatch.setattr(frame.editor, 'click', click_blocked)
+    monkeypatch.setattr(frame.editor, 'fill', fill, raising=False)
+    form={'text':'合成标题\n合成正文','caption':'合成标题\n合成正文','tags':[],
+          'mode':'立即发布','time_text':'','declaration':{'choice':'none','name':'','source':None}}
+    assert adapter._prepare_form(session, frame, form) is False
+    assert adapter._prepare_form(session, frame, form) is True
+    assert frame.caption==form['text'] and session.final is False
+    assert ('editor_fill',form['text']) in frame.events
+    assert not any(event[0]=='insert_text' for event in frame.events)
+
+
+def test_caption_failure_keeps_pre_submit_boundary_and_precise_step(monkeypatch):
+    session, adapter, frame = session_and_adapter(monkeypatch)
+    events=[];monkeypatch.setattr(adapter,'_trace',lambda s,step,checks:events.append((step,checks)))
+    def failed_fill(value,**kwargs):raise PlaywrightTimeoutError('synthetic private detail')
+    monkeypatch.setattr(frame.editor,'fill',failed_fill)
+    form={'text':'合成标题','caption':'合成标题','tags':[],'mode':'立即发布','time_text':'',
+          'declaration':{'choice':'none','name':'','source':None}}
+    with pytest.raises(PlaywrightTimeoutError):adapter._prepare_form(session,frame,form)
+    assert adapter._preparation_stage=='caption_fill'
+    assert adapter.failure_diagnostic(None)=={'error_stage':'form_preparation','error_category':'timeout'}
+    assert not session.form_filled and session.final is False
+    assert events[-1][0]=='kuaishou.caption_fill' and events[-1][1]['state']=='failed'
+    assert 'synthetic private detail' not in str(events)

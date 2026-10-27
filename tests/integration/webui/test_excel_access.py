@@ -38,12 +38,18 @@ def test_stale_preview_cannot_overwrite_concurrent_change(db_engine,tmp_path):
     assert repo.get('old').title=='new edit'
 
 
-def test_categories_preserved_and_added_for_duplicate(db_engine,tmp_path):
+def test_duplicate_import_preserves_category_until_a_destination_is_chosen(db_engine,tmp_path):
     repo=CopyRepository(db_engine);repo.create(id='old',title='same',voice='',body='',tags='',full='')
     cats=CategoryRepository(db_engine);a=cats.create('copy','A');b=cats.create('copy','B');repo.set_categories('old',[a.id])
     api=access(db_engine);p=api.preview(book(tmp_path,[['old','same','','','','']]))
+    api.apply(p['token'],[],[])
+    assert repo.category_ids('old')=={a.id}
+    p=api.preview(book(tmp_path,[['old','same','','','','']]))
+    with pytest.raises(ValueError,match='只能选择一个分类'):
+        api.apply(p['token'],[],[a.id,b.id])
+    assert repo.category_ids('old')=={a.id}
     api.apply(p['token'],[],[b.id])
-    assert repo.category_ids('old')=={a.id,b.id}
+    assert repo.category_ids('old')=={b.id}
 
 
 def test_preview_token_not_path_and_invalid_approval_denied(db_engine,tmp_path):

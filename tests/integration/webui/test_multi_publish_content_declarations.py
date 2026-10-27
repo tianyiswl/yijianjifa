@@ -103,13 +103,20 @@ def test_reopen_presets_video_override_clear_and_target_inherit_without_upload(d
         assert children['channels']['effective_fields']['channels_original'] is False
         assert 'channels_original' not in children['kuaishou']['effective_fields']
         channel=children['channels']
+        # Updating today's account defaults must not change the already frozen
+        # batch or what its explicit "restore inherited settings" action means.
+        from yijianjifa.app_services.account_publish_settings import AccountPublishSettings
+        current_defaults=AccountPublishSettings(db_engine)
+        owner=next(a for a in accounts if a.platform=='channels')
+        current_defaults.save(owner.id,{'content_declaration_choice':'none','channels_original':False})
         call(reopened,'target.reprepare',{'delivery_id':channel['delivery_id'],
             'fields':{},'reset_fields':['content_declaration_choice','channels_original']})
         after=call(reopened,'detail',{'id':saved['id']})['deliveries']
         effective=next(d for d in after if d['platform']=='channels')['effective_fields']
-        # Reset removes the flattened platform overrides and restores the
-        # frozen common metadata, which did not declare either setting.
-        assert 'content_declaration_choice' not in effective and 'channels_original' not in effective
+        # Reset removes the flattened per-target overrides and restores the
+        # account defaults captured at preparation, not today's mutable values.
+        assert effective['content_declaration_choice']=='ai_generated' and effective['channels_original'] is True
+        assert current_defaults.read(owner.id)['fields']=={'content_declaration_choice':'none','channels_original':False}
         assert all(not d['final_started'] for d in after)
         assert next(d for d in after if d['platform']=='kuaishou')['effective_fields']['content_declaration_choice']=='none'
         assert all(not adapter.calls for adapter in adapters.values())

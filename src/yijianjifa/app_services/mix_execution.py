@@ -7,13 +7,14 @@ from sqlalchemy import case, func, select
 
 from yijianjifa.features.accounts.service import AccountRow
 from yijianjifa.features.mixing.queue import MixTask
-from yijianjifa.features.publish.deliveries import DeliveryAttemptRow, PublishDeliveryRow
+from yijianjifa.features.publish.deliveries import (DeliveryAttemptRow, PublishDeliveryRow,
+    account_blocker, account_blocker_reason)
 from yijianjifa.features.publish.coordinator import ERROR_CODES, ERROR_STAGES, ERROR_CATEGORIES
 from yijianjifa.features.tasks.diagnostics import _redact_text
 from yijianjifa.features.tasks.service import TaskCenterRow, TaskItemRow
 from yijianjifa.storage.db import session_scope
 from yijianjifa.storage.models import Setting
-from .multi_publish_dto import STAGES, REASONS, FAILURE_STAGES, FAILURE_CATEGORIES
+from .multi_publish_dto import STAGES, REASONS, FAILURE_STAGES, FAILURE_CATEGORIES, observed_account_wait_blocker
 
 
 _PLATFORMS = {'douyin': '抖音', 'kuaishou': '快手', 'bilibili': 'B站', 'channels': '视频号'}
@@ -44,6 +45,16 @@ _MIX_STEPS = {'mix.started': '开始制作', 'mix.completed': '制作成功', 'm
 _RESULT_STAGES = {**STAGES, 'platform_rejected': '平台已拒绝'}
 _SETTLED = {'published', 'platform_scheduled', 'platform_accepted', 'processing', 'reviewing',
             'platform_rejected', 'pre_submit_failed', 'cancelled', 'missed_schedule'}
+
+
+def _visible_publish_step(step):
+    if step in {'execution.start','account.wait','sms.cooldown'}:return step
+    if step in {'execution.result','execution.error'}:return 'result'
+    if step=='submission.authorized':return 'submit'
+    match=re.fullmatch(r'(?:douyin|kuaishou|channels|bilibili)\.([a-z_]+)',step)
+    if not match:return None
+    return {'upload':'upload','final_click':'submit','timeout':'result','preparation_timeout':'result',
+            'login_expired':'login','cancelled':'result'}.get(match[1])
 
 
 def _object(raw):
@@ -109,6 +120,9 @@ def _publish_reason(state, attempt, *, needs_verification=False):
     if needs_verification:
         return ('需完成平台验证；验证通过后再核对原发布结果，请勿重复投稿。' if final else
                 '需完成平台验证，通过后继续本条任务。')
+    from yijianjifa.features.publish.platform_feedback import failure_message
+    platform_reason = failure_message(evidence, state)
+    if platform_reason: return platform_reason
     if state in {'result_unknown', 'interrupted'}: return REASONS[state]
     if state == 'unknown': return '状态尚未确认，请核对原结果，勿重复投稿。'
     code = evidence.get('error_code')
@@ -126,6 +140,8 @@ def _publish_reason(state, attempt, *, needs_verification=False):
         return FAILURE_STAGES[phase] + '失败：' + FAILURE_CATEGORIES[category] + impact
     if state in {'published', 'platform_scheduled', 'platform_accepted', 'processing', 'reviewing'}:
         return ''
+    if code in {'douyin_daily_post_limit','platform_daily_post_limit','posting_limit_skipped'}:
+        return REASONS[code]
     if state == 'platform_rejected': return '平台未通过本目标，请核对平台原结果。'
     # A final boundary always wins over a contradictory pre-submit label/code.
     if final: return '已进入提交阶段，原结果仍待核对，请勿重复投稿。'
@@ -186,15 +202,18 @@ def read_execution(engine, task_id, *, task=None):
                 short_reason = _text(diagnostic.get('reason') if type(diagnostic) is dict else '') or _text(result.get('error'))
                 if short_reason: failure_reason = short_reason
             saved = result.get('execution_log', [])
+            making_event=None
             for entry in (saved[-500:] if type(saved) is list else []):
                 step = entry.get('step') if type(entry) is dict else None
                 if type(step) is not str: continue
                 label = _MIX_STEPS.get(step, '制作步骤已记录')
                 if step == 'mix.failed' and short_reason: label += '：' + short_reason
                 event = _event(entry, f'第{index + 1}条{label}', public_step=step if step in _MIX_STEPS else 'mix.step',
-                               title=title(index), stage='making')
-                if event: events.append(event)
+                               stage='making')
+                if event and step in _MIX_STEPS:making_event=event
+            if making_event:events.append(making_event)
         login_log = progress.get('login_log', [])
+        login_events={};verified_events={}
         for entry in (login_log[-100:] if type(login_log) is list else []):
             if type(entry) is not dict or entry.get('step') not in {'daily.login_verified', 'daily.login_check_started', 'daily.login_check_step', 'daily.login_check_finished'}: continue
             stage = entry.get('stage')
@@ -202,16 +221,38 @@ def read_execution(engine, task_id, *, task=None):
             label = '制作前' if stage == 'before_make' else '制作后、提交前'
             if entry['step'] == 'daily.login_verified':
                 event = _event(entry, label + '账号登录检查已通过', stage=stage)
+                if event:verified_events[stage]=event
             else:
+                if entry['step']=='daily.login_check_step':continue
                 index, total = entry.get('index'), entry.get('accounts')
                 if type(index) is not int or type(total) is not int or not 1 <= index <= total <= 200: continue
-                message = f'第{index}/{total}个账号：' + _text(entry.get('message'))
+                message = re.sub(r'（(?:累计|耗时)[^（）]{0,40}）$','',_text(entry.get('message'))).strip()
                 event = _event(entry, message, stage=stage, account_label=_text(entry.get('account_label')))
+                if event:login_events[index]=event
+        events.extend(login_events.values() if login_events else verified_events.values())
+        diagnostic = session.get(Setting, 'mix.daily.diagnostics:' + task_id)
+        try: saved_diagnostics = json.loads(diagnostic.value_json) if diagnostic else []
+        except (TypeError, ValueError): saved_diagnostics = []
+        diagnostic_labels = {'daily.serial_recheck_failed': '逐条发布进度检查异常',
+            'daily.serial_dispatch_failed': '当前条发布安排异常', 'daily.serial_runtime_failed': '逐条发布运行异常'}
+        for entry in saved_diagnostics[-20:] if type(saved_diagnostics) is list else []:
+            if type(entry) is not dict or type(entry.get('step')) is not str or entry['step'] not in diagnostic_labels: continue
+            error_type = entry.get('error_type')
+            suffix = '（' + error_type + '）' if type(error_type) is str and re.fullmatch(r'[A-Za-z][A-Za-z0-9_]{0,63}', error_type) else ''
+            event = _event(entry, diagnostic_labels[entry['step']] + suffix + '，后续制作已停止。', stage='publishing')
             if event: events.append(event)
         publish_ids, complete = _owned_publish_ids(session, task_id, progress, frozen)
         publishing = {'targets': [], 'complete': complete, 'omitted': 0}
         publish_active = False
         if publish_ids:
+            # 同一成品发给多个账号仍用同一个制作序号，不按发布目标位置编号。
+            video_labels = {}
+            receipt_prefix = 'mix-success:' + task_id + ':'
+            for receipt in session.scalars(select(Setting).where(Setting.key.startswith(receipt_prefix))):
+                suffix = receipt.key[len(receipt_prefix):]
+                finished_id = _object(receipt.value_json).get('finished_id')
+                if suffix.isdigit() and 0 <= int(suffix) < task.quantity and type(finished_id) is str:
+                    video_labels[finished_id] = f'第{int(suffix) + 1}个视频'
             totals = {identity: (count, visible) for identity, count, visible in session.execute(select(
                 PublishDeliveryRow.task_id, func.count(), func.sum(case((PublishDeliveryRow.hidden.is_(False), 1), else_=0))).where(
                 PublishDeliveryRow.task_id.in_(publish_ids)).group_by(PublishDeliveryRow.task_id))}
@@ -230,23 +271,28 @@ def read_execution(engine, task_id, *, task=None):
             accounts = {a.id: a for a in session.scalars(select(AccountRow).where(
                 AccountRow.id.in_({row.account_id for row, _, _ in deliveries})))}
             log_context = {}
-            grants = {}
             for row, item, attempt in deliveries:
-                if item.state == 'running':
+                final_reading = bool(item.state == 'result_unknown' and attempt.owner_hash
+                                     and attempt.final_json and not attempt.result_json)
+                if final_reading:
+                    owner = session.get(Setting, 'multi_publish.owner:' + attempt.owner_hash)
+                    final_reading = not (owner and _object(owner.value_json).get('stopped') is True)
+                execution_active = item.state == 'running' or final_reading
+                if execution_active:
                     publish_active = True
-                elif item.state == 'waiting' and not row.cancel_requested:
-                    center = session.get(TaskCenterRow, row.task_id)
-                    if center is not None and center.state != 'paused' and session.get(Setting, 'multi_publish.target_pause:' + row.id) is None:
-                        # Exact-attempt native authority only; no runtime calls.
-                        from .multi_publish_runtime import authorized_targets
-                        if row.task_id not in grants:
-                            grants[row.task_id] = authorized_targets(session, row.task_id)
-                        publish_active = publish_active or row.id in grants[row.task_id]
+                # 保存的执行授权只说明已排队，不能证明浏览器正在处理本目标。
+                center = session.get(TaskCenterRow, row.task_id)
+                queueable = (item.state == 'waiting' and not row.cancel_requested and center is not None
+                             and center.state != 'paused' and session.get(Setting, 'multi_publish.target_pause:' + row.id) is None)
+                blocker = account_blocker(session, row) if queueable else None
+                observed_blocker = observed_account_wait_blocker(session,row,attempt) if queueable and not blocker else None
+                blocker = blocker or observed_blocker
                 account = accounts.get(row.account_id)
                 nickname = account.nickname.replace(account.platform_user_id, '[账号]') if account and account.platform_user_id else '所选账号'
                 label = _PLATFORMS.get(row.platform, '平台') + ' · ' + (_text(nickname) or '所选账号')
                 fields = _object(row.snapshot_json).get('fields', {})
                 public_title = _text(fields.get('title')) if type(fields) is dict else ''
+                video_label = video_labels.get(row.video_id, '')
                 state = item.state if item.state in _RESULT_STAGES else 'unknown'
                 # Historical contradictions cannot make a final-started target
                 # look safe to submit again. This is a read-only display guard.
@@ -257,16 +303,22 @@ def read_execution(engine, task_id, *, task=None):
                     and not row.cancel_requested
                     and _object(attempt.result_json).get('error_code') == 'verification_required')
                 scheduled = _stamp(row.scheduled_at)
+                from yijianjifa.features.publish.posting_limits import verified_limit
+                skipped=verified_limit(row,attempt,state)
                 publishing['targets'].append(dict(id=row.id, account_id=row.account_id,
                     platform=row.platform if row.platform in _PLATFORMS else 'unknown',
                     platform_label=_PLATFORMS.get(row.platform, '平台'), account_label=label,
-                    title=public_title, state=state, state_label=_RESULT_STAGES.get(state, '状态待核对'),
+                    title=public_title, state=state, state_label='投稿上限，已跳过' if skipped else _RESULT_STAGES.get(state, '状态待核对'),
+                    skipped=skipped,
                     needs_verification=needs_verification,
-                    reason=_publish_reason(state, attempt, needs_verification=needs_verification),
+                    execution_active=execution_active,
+                    reason=(REASONS['observed_account_result_unresolved'] if observed_blocker else REASONS[account_blocker_reason(blocker)]) if blocker else _publish_reason(state, attempt, needs_verification=needs_verification),
+                    **({'blocked_by': blocker} if blocker else {}),
                     scheduled_at=scheduled.isoformat() if scheduled else None))
-                log_context[f'publish.execution:{row.id}:{row.attempt}'] = dict(account_label=label, title=public_title, stage='publishing')
-                if item.state in {'running', 'paused_auth'} and 'account_label' not in current:
-                    current = dict(label=STAGES.get(item.state, '发布处理中'), account_label=label,
+                log_context[f'publish.execution:{row.id}:{row.attempt}'] = dict(account_label=label, title=video_label, stage='publishing')
+                if (execution_active or item.state == 'paused_auth') and ('account_label' not in current or execution_active and not current.get('execution_active')):
+                    current = dict(label='正在核对提交结果' if final_reading else STAGES.get(item.state, '发布处理中'), account_label=label,
+                                   execution_active=execution_active,
                                    title=public_title, index=row.position + 1, total=len(deliveries))
             logs = session.scalars(select(Setting).where(Setting.key.in_(log_context)).order_by(
                 Setting.updated_at.desc(), Setting.key).limit(20))
@@ -277,11 +329,14 @@ def read_execution(engine, task_id, *, task=None):
                 for entry in (saved[-500:] if type(saved) is list else []):
                     step = entry.get('step') if type(entry) is dict else None
                     if type(step) is not str: continue
+                    group=_visible_publish_step(step)
+                    if group is None:continue
                     # Adapter observations can repeat every polling cycle. This
                     # panel lists steps once per target/attempt; the original
                     # diagnostic log remains intact, including changed checks.
-                    if step in step_events and step != 'execution.result': continue
+                    if group in step_events and group!='result':continue
                     message = _PUBLISH_STEPS.get(step, '发布步骤已记录')
+                    if group=='submit':message='提交发布'
                     if step == 'execution.result':
                         checks = entry.get('checks', {})
                         state = checks.get('state') if type(checks) is dict else None
@@ -291,7 +346,7 @@ def read_execution(engine, task_id, *, task=None):
                     if event:
                         # Reconciliation may update the final result within the
                         # same attempt. Keep its newest saved result in one row.
-                        step_events[step] = event
+                        step_events[group] = event
                 events.extend(step_events.values())
             if (publishing['targets'] and not publish_active and not progress.get('auth_phase')
                     and task.state in {'completed', 'completed_with_errors'}):
@@ -300,13 +355,33 @@ def read_execution(engine, task_id, *, task=None):
                     'published', 'platform_scheduled', 'platform_accepted', 'processing', 'reviewing', 'cancelled'}]
                 if (publishing['complete'] and unresolved and all(target['needs_verification'] for target in unresolved)
                         and not task.failure_count and not progress.get('automatic_stopped')):
-                    current = {'label': '待完成平台验证'}
+                    current = {'label': '等待完成平台验证'}
                 elif states & {'result_unknown', 'interrupted', 'unknown'}:
-                    current = {'label': '发布结果待核对'}
+                    deferred = sum(target.get('blocked_by', {}).get('state') in {'result_unknown', 'interrupted'}
+                                   for target in publishing['targets'])
+                    current = {'label': f'等待核对原结果，{deferred}项暂缓' if deferred else '等待核对原结果'}
                 elif publishing['complete'] and states <= _SETTLED:
                     current = {'label': '发布处理结束'}
                 elif not states & {'running', 'paused_auth'}:
                     current = {'label': '等待发布处理'}
+        from .daily_serial_flow import read_serial_progress
+        serial = read_serial_progress(session, task)
+        if serial is not None:
+            serial = {**serial, 'item_title': _text(serial.get('item_title')), 'reason': _text(serial.get('reason'))}
+            if progress.get('auth_phase') != 'checking_login':
+                waits = {'dispatch': '等待提交当前视频', 'account': '等待账号空闲',
+                    'receipt': '等待平台确认接收', 'schedule': '等待定时时间',
+                    'verification': '等待完成平台验证', 'result': '等待核对原结果',
+                    'authorization': '等待确认后继续', 'configuration': '等待完善发布设置'}
+                label = ('本条处理遇到错误，后续等待处理' if serial['error_count']>serial.get('skipped_count',0) and serial['stage'] in {'paused','needs_attention'} else
+                    '已暂停，等待继续' if serial['stage'] == 'paused' else
+                    f"本批处理完成，{serial['needs_action_count']}项待处理" if serial['stage']=='completed' and serial['needs_action_count'] else
+                    f"本批处理完成，{serial['skipped_count']}项因投稿上限已跳过" if serial['stage']=='completed' and serial.get('skipped_count') else
+                    '本批全部视频已被平台接收' if serial['stage'] == 'completed' else
+                    '正在制作' if serial['stage'] == 'making' else
+                    waits.get(serial['waiting_reason'], '等待平台确认接收'))
+                current = dict(label=label, index=serial['item_number'], total=serial['quantity'],
+                    title=serial['item_title'])
         events.sort(key=lambda event: _stamp(event['time']))
         auth_phase = progress.get('auth_phase')
         if task.state == 'cancelled' or progress.get('automatic_stopped'):
@@ -316,14 +391,26 @@ def read_execution(engine, task_id, *, task=None):
         elif task.state in {'paused', 'interrupted'}:
             active = False
         else:
-            active = publish_active if publish_ids else task.state in {'waiting', 'running', 'cancelling'}
+            active = (publish_active or serial['stage'] == 'making' and task.state == 'running'
+                if serial is not None else publish_active if publish_ids else task.state in {'waiting', 'running', 'cancelling'})
         started = _task_stamp(getattr(task, 'created_at', None))
-        activity = [_task_stamp(getattr(task, 'updated_at', None)), *(_stamp(event['time']) for event in events)]
+        activity = [_stamp(event['time']) for event in events]
+        # 已全部结算的逐条批次以真实执行回执计时，重开后的记账不算继续执行。
+        if serial is None or serial['stage'] != 'completed' or not activity:
+            activity.append(_task_stamp(getattr(task, 'updated_at', None)))
         last_activity = max((value for value in activity if value is not None), default=None)
         # Elapsed batch time includes queue/login waits. Setting.updated_at is
         # not work evidence: startup may rewrite SOURCE/authorization records.
         timing = {'started_at': started.isoformat() if started else None,
                   'last_activity_at': last_activity.isoformat() if last_activity else None, 'active': active}
         result = {'current': current, 'events': events[-100:], 'making': making, 'timing': timing, 'publishing': publishing}
+        if serial is not None: result['serial'] = serial
+        if serial is not None:
+            from .mix_publish_report import build_report
+            result['report'] = build_report(session,task,serial)
+            if (task.state in {'completed','completed_with_errors'} and not active
+                    and serial['stage']!='completed' and result['report'].get('ready')):
+                # 已关闭批次的历史回执用于展示；不让本地隐藏记录重新授予执行权限。
+                result.update(closed_report=True,serial=None,current={})
         if failure_reason: result['reason'] = failure_reason
         return result

@@ -107,6 +107,11 @@ const P011CloudVoice=(()=>{
     await useSystem();
     await api('voice.cloud.mode.save',{mode:'hosted'});await updated();
    }
+   const current=await refresh();
+   if(!current?.enabled){notice('云配音暂未开放，请先使用系统配音。');return;}
+   if(!current.authenticated){notice('请先登录配音账号，再设置默认配音。');auth();return;}
+   if(current.balance_current!==true||!Number.isInteger(current.available_words)||current.available_words<0){notice('配音字数暂未更新，请检查网络后重试。默认配音未更改。');return;}
+   if(current.available_words===0){notice('配音字数不足，请充值后再设为默认配音。');return;}
    await select();
   });
   if($('cloudPolicySeen'))$('cloudPolicySeen').onclick=guarded(async()=>{await api('voice.cloud.policy.seen',{});await refresh();});

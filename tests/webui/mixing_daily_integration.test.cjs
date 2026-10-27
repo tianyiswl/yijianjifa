@@ -186,3 +186,17 @@ for(const via of ['active_batch','router'])test(`continuing via ${via} keeps its
  const mix=form.params(form.defaults(),[],[]);const view=await mountMixing((op,p)=>{if(op==='mix.daily.read')return {settings:{mix,publishing:{targets:[{account_id:'a',platform:'douyin'}],mode:'platform_schedule',start_date:'2026-10-28',time:'07:43',interval_hours:2.5,days:2,per_day:2}},accounts,capabilities,has_saved_settings:true,active_batch:via==='active_batch'?{id:'original',phase:'needs_login'}:null};if(op==='mix.daily.status')return {id:'original',phase:'needs_login',can_continue:true,login_accounts:[{id:'a',platform:'douyin',nickname:'主号'}]};return response(op,p);},null,via==='router'?{dailyBatchId:'original'}:{},{now:'2026-10-21T20:30:00Z'});
  assert.equal(view.get('daily-publish-day').value,'2026-10-28');assert.equal(view.get('daily-publish-time').value,'07:43');assert.equal(view.get('daily-publish-hour')?.value,'07');assert.equal(view.get('daily-publish-minute')?.value,'43');await view.tick();await view.save();assert.equal(view.get('daily-publish-day').value,'2026-10-28');assert.equal(view.calls.some(c=>['mix.daily.save','mix.daily.submit','mix.submit','mix.daily.continue'].includes(c.operation)),false);view.dispose();
 });
+
+
+test('混剪全选账号一次保存，取消全选后保留空选择而不自动发布',async()=>{
+ const rows=[...accounts,{id:'b',platform:'douyin',nickname:'副号',login_state:'expired'}];
+ const v=await mountMixing((op,p)=>op==='mix.daily.read'?{settings:null,accounts:rows,capabilities,has_saved_settings:false}:response(op,p));
+ const all=()=>v.get('daily-accounts').querySelectorAll('input').find(n=>n.dataset.accountAll==='true');
+ assert.equal(all().indeterminate,true);const before=v.calls.filter(c=>c.operation==='mix.daily.save').length;
+ all().checked=true;await all().onchange({isTrusted:true});await v.save();
+ const saves=v.calls.filter(c=>c.operation==='mix.daily.save');assert.equal(saves.length,before+1);
+ assert.deepEqual(saves.at(-1).params.publishing.targets.map(t=>t.account_id).sort(),['a','b']);
+ all().checked=false;await all().onchange({isTrusted:true});await v.save();
+ assert.deepEqual(v.calls.filter(c=>c.operation==='mix.daily.save').at(-1).params.publishing.targets,[]);
+ assert.equal(v.get('quick-generate').disabled,true);assert.equal(v.calls.some(c=>/mix.daily.submit|login.start/.test(c.operation)),false);v.dispose();
+});

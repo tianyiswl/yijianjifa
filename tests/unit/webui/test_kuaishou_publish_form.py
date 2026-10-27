@@ -22,7 +22,7 @@ def test_frozen_caption_and_schedule_preserve_fields():
     assert f['text']=='测试标题\n测试说明'
     assert f['tags']==['功能测试','剪辑测试']
     assert f['caption']=='测试标题\n测试说明 #功能测试 #剪辑测试'
-    assert f['time_text'].endswith(':00')
+    assert f['time_text']==datetime.fromisoformat(p['scheduled_at']).astimezone(timezone(timedelta(hours=8))).strftime('%Y-%m-%d %H:%M')
     assert f['publish_ms']==int(datetime.fromisoformat(p['scheduled_at']).timestamp()*1000)
 
 
@@ -66,3 +66,11 @@ def test_form_readback_rejects_plain_hashtag_and_changed_schedule():
     assert m.verify_form(raw,f)
     assert not m.verify_form({**raw,'tags':[]},f)
     assert not m.verify_form({**raw,'time_text':'2020-01-01 12:00:00'},f)
+
+
+def test_schedule_text_matches_current_native_minute_picker_without_changing_timestamp():
+    m=form_module();p=payload();f=m.validate_form(p)
+    local=datetime.fromisoformat(p['scheduled_at']).astimezone(timezone(timedelta(hours=8)))
+    assert f['time_text']==local.strftime('%Y-%m-%d %H:%M')
+    assert len(f['time_text'])==16
+    assert f['publish_ms']==int(local.timestamp()*1000)

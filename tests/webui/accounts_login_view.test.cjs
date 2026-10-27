@@ -2,6 +2,19 @@ const test=require('node:test'),assert=require('node:assert/strict');
 const {mount}=require('./support/commerce_view.cjs');
 const account={id:'a',nickname:'测试账号',remark:'',group_name:'',login_state:'valid',is_default:false,capabilities:{ordinary:'pending',commerce:'pending',location_scope:'pending'}};
 
+test('a transient check timeout does not replace a saved login with a login failure',async()=>{
+ const row={...account,platform:'douyin',login_check:{state:'unavailable',reason:'timeout',checked_at:'2026-10-27T12:10:29Z'}};
+ const v=await mount(op=>{if(op==='account.login.availability')return {available:false};if(op==='account.list')return {items:[row],total:1,groups:[]};if(op==='account.get')return row;throw Error(op);},'accounts');
+ const text=n=>[n.textContent,...n.children.map(text)].join('');
+ const cells=v.getId('rows').children[0].children;
+ assert.match(text(cells[4]),/^已保存登录/);
+ assert.equal(text(cells[6]),'发布前检查');
+ assert.match(text(cells[4]),/最近检查：检查超时/);
+ v.getId('rows').children[0].onclick({target:{}});await v.flush();
+ assert(v.find(n=>n.textContent==='登录状态：已保存登录'));
+ assert.throws(()=>v.find(n=>n.textContent==='登录状态：检查超时'));v.dispose();
+});
+
 function groupedAccounts(extraGroups=['门店A']){
  const rows=[{...account},{...account,id:'b',platform:'bilibili',nickname:'账号二'}],writes=[];
  const handler=(op,p)=>{
@@ -58,7 +71,7 @@ test('account login stays disabled when native provider is unavailable',async()=
  assert.equal(view.getId('addAccount').disabled,true);
  view.getId('addAccount').onclick({isTrusted:true});await view.flush();assert.ok(!calls.includes('account.login.start'));view.dispose();
 });
-test('configured login makes ordinary publishing available without rewriting observed capabilities',async()=>{
+test('configured login saves credentials without claiming a current live session or rewriting observed capabilities',async()=>{
  let logged=false;const calls=[];
  const view=await mount(async(op,p)=>{calls.push([op,p]);if(op==='account.login.availability')return {available:true};if(op==='account.list')return {items:logged?[account]:[],total:logged?1:0,groups:[]};if(op==='account.login.start'){logged=true;return {id:'j',state:'completed',account_id:'a'};}if(op==='account.get')return account;throw Error(op);},'accounts',null,{commerceEnabled:true});
  assert.equal(view.getId('addAccount').disabled,false);
@@ -66,12 +79,12 @@ test('configured login makes ordinary publishing available without rewriting obs
  assert.ok(!calls.some(([op])=>op==='account.login.start'));
  await view.click('抖音');await view.flush();
  assert.deepEqual(calls.find(([op])=>op==='account.login.start')[1],{account_id:null,platform:'douyin'});
- assert.match(view.getId('toast').textContent,/普通发布可用/);
+ assert.match(view.getId('toast').textContent,/资料已保存.*发布前.*检查/);
  assert.equal(account.capabilities.ordinary,'pending');
  assert.equal(view.getId('detailSub').textContent,'抖音账号');assert.equal(view.getId('modal').style.display,'none');view.dispose();
 });
 
-test('ordinary availability follows login state in both list and detail across platforms',async()=>{
+test('ordinary readiness requires a publish-time check instead of treating saved login as a current live session',async()=>{
  const rows=[
   {...account,id:'d',platform:'douyin'},
   {...account,id:'k',platform:'kuaishou',capabilities:{...account.capabilities,ordinary:'not_found'}},
@@ -84,14 +97,31 @@ test('ordinary availability follows login state in both list and detail across p
  const v=await mount((op,p)=>{calls.push(op);if(op==='account.login.availability')return {available:true,platforms:['douyin','kuaishou','channels','bilibili']};if(op==='multi_publish.catalog')return {items:[{platform:'douyin',ordinary_ready:true},{platform:'kuaishou',ordinary_ready:false},{platform:'channels',ordinary_ready:false},{platform:'bilibili',ordinary_ready:false}]};if(op==='account.list')return {items:rows,total:rows.length,groups:[]};if(op==='account.get')return rows.find(r=>r.id===p.id);throw Error(op);},'accounts');
  const text=n=>[n.textContent,...n.children.map(text)].join('');
  for(let i=0;i<rows.length;i++){
-  const expected=i<4?'可用':i===4?'需重新登录':'待检查';
+  const expected=i<4?'发布前检查':i===4?'需重新登录':'待检查';
   assert.equal(text(v.getId('rows').children[i].children[6]),expected);
   v.getId('rows').children[i].onclick({target:{}});await v.flush();
-  assert.ok(v.find(n=>n.tag==='p'&&text(n)==='普通发布：'+expected));
+  assert.ok(v.find(n=>n.tag==='p'&&text(n)==='视频发布：'+expected));
  }
  assert.equal(JSON.stringify(rows),before);
  assert.equal(calls.some(op=>op==='account.save'||op.startsWith('account.capabilities.')),false);
  v.dispose();
+});
+
+for(const [state,label] of [['valid','已登录'],['login_required','需要重新登录'],['identity_mismatch','账号不一致'],['unavailable','暂时无法确认']])test('account list and detail show '+state+' with its recorded check time without another network check',async()=>{
+ const calls=[],row={...account,platform:'channels',login_check:{checked_at:'2026-10-23T06:00:00+00:00',state}};
+ const v=await mount((op,p)=>{calls.push(op);if(op==='account.login.availability')return {available:false};if(op==='account.list')return {items:[row],total:1,groups:[]};if(op==='account.get')return row;throw Error(op);},'accounts');
+ const text=n=>[n.textContent,...n.children.map(text)].join('');
+ assert.match(text(v.getId('rows').children[0]),new RegExp('最近检查.*'+label+'.*2026'));
+ v.getId('rows').children[0].onclick({target:{}});await v.flush();
+ assert(v.find(n=>n.tag==='p'&&n.textContent.includes('最近检查')&&n.textContent.includes(label)&&n.textContent.includes('2026')));
+ assert.equal(calls.some(op=>/session\.check|check_session|account\.check|capabilities/.test(op)),false);v.dispose();
+});
+
+test('an account with only saved credentials is labelled untested rather than currently available',async()=>{
+ const row={...account,platform:'channels',login_check:null};
+ const v=await mount((op)=>{if(op==='account.login.availability')return {available:false};if(op==='account.list')return {items:[row],total:1,groups:[]};if(op==='account.get')return row;throw Error(op);},'accounts');
+ const text=n=>[n.textContent,...n.children.map(text)].join('');assert.match(text(v.getId('rows').children[0]),/已保存登录.*最近检查：尚未检查/);
+ assert.doesNotMatch(text(v.getId('rows').children[0]),/当前可用|实时可用/);v.dispose();
 });
 
 test('cancelling platform choice never starts a login',async()=>{
@@ -190,7 +220,7 @@ test('adding a configured Kuaishou account saves the right platform without clai
 test('Kuaishou relogin passes account identity and leaves only capability probes unavailable',async()=>{
  const calls=[],row={...account,id:'k',platform:'kuaishou',nickname:'快手测试账号'};
  const v=await mount((op,p)=>{calls.push({op,p});if(op==='account.login.availability')return {available:true,platforms:['kuaishou']};if(op==='multi_publish.catalog')return {items:[{platform:'kuaishou',login_ready:true,ordinary_ready:false}]};if(op==='account.list')return {items:[row],total:1,groups:[]};if(op==='account.get')return row;if(op==='account.login.start')return {id:'k-login',state:'completed',account_id:'k',platform:'kuaishou'};throw Error(op);},'accounts',null,{commerceEnabled:true});
- v.getId('rows').children[0].onclick({target:{}});await v.flush();const checkbox=v.find(n=>n.attrs['aria-label']==='选择账号 '+row.nickname);checkbox.checked=true;checkbox.onchange();assert.equal(v.getId('checkSelected').disabled,true);
+ v.getId('rows').children[0].onclick({target:{}});await v.flush();const checkbox=v.find(n=>n.attrs['aria-label']==='选择账号 '+row.nickname);checkbox.checked=true;checkbox.onchange();assert.equal(v.getId('checkSelected').disabled,false);
  const backend=v.find(n=>n.tag==='button'&&n.textContent==='打开后台');assert.equal(backend.disabled,false);
  v.getId('rows').children[0].oncontextmenu({preventDefault(){},clientX:20,clientY:20});assert.equal(v.getId('ctx').children[1].disabled,false);assert.equal(v.getId('ctx').children[2].disabled,false);
  await v.click('重新登录');assert.deepEqual(calls.find(c=>c.op==='account.login.start').p,{account_id:'k',platform:'kuaishou'});

@@ -20,6 +20,52 @@ VIDEO_FILE='.video-entrance .upload-wrp .upload input[type="file"]'
 COVER_FILE='.cover-editor .cover-upload input[type="file"]'
 COVER_OPEN='.cover-content .cover-module-main .cover-slot'
 COVER_DONE='.cover-editor .cover-editor-button .button.submit:not(.submit-disabled)'
+COVER_ASPECT_TITLE='.cover-editor .cover-editor-panel-canvas-title .text'
+COVER_SYNC_CANCEL=r'text=/^不同步[，,]\s*手动编辑$/ >> visible=true'
+# 仅读取原生编辑器的就绪标记，不调用组件方法，也不改平台状态。
+READ_COVER_EDITOR=r'''() => {
+ const roots=[document];for(let i=0;i<roots.length&&i<20;i++)for(const e of roots[i].querySelectorAll('micro-app'))if(e.shadowRoot)roots.push(e.shadowRoot);
+ const visible=e=>{
+  if(!(e instanceof Element)||!e.isConnected||!Array.from(e.getClientRects()).some(r=>r.width>0&&r.height>0))return false;
+  for(let n=e;n;n=n.parentElement||(n.getRootNode() instanceof ShadowRoot?n.getRootNode().host:null)){
+   const c=getComputedStyle(n);
+   if(c.display==='none'||c.visibility==='hidden'||c.visibility==='collapse'||Number(c.opacity)<=0||n.getAttribute('aria-hidden')==='true'||n.hasAttribute('inert'))return false;
+  }
+  return true;
+ };
+ const allEditors=roots.flatMap(r=>Array.from(r.querySelectorAll('.cover-editor'))),editors=allEditors.filter(visible);
+ if(editors.length!==1&&allEditors.length!==1)return {editor_count:editors.length};
+ const editor=editors[0]||allEditors[0];
+ const choices=roots.flatMap(r=>Array.from(r.querySelectorAll('button,[role="button"],[class*="button"],[class*="btn"]')))
+  .filter(e=>visible(e)&&/^不同步[，,]\s*手动编辑$/.test((e.innerText||'').trim()));
+ const cancel=choices.filter(e=>!choices.some(other=>other!==e&&e.contains(other)));
+ const syncPrompt=cancel.length===1&&(()=>{
+  for(let e=cancel[0].parentElement,depth=0;e&&depth<8;e=e.parentElement,depth++){
+   if(e.getAttribute('role')!=='dialog'&&!/dialog|modal/.test(typeof e.className==='string'?e.className:''))continue;
+   const text=(e.innerText||'').replace(/\s+/g,'');
+   if(/检测到16[:：]9封面未修改/.test(text)&&text.includes('确认同步'))return true;
+  }
+  return false;
+ })();
+ let vm=editor.__vue__;
+ for(let i=0;vm&&i<15;i++,vm=vm.$parent){
+  if(!vm.coverForEditor||typeof vm.isOverseas!=='boolean')continue;
+  const c=vm.coverForEditor,config=vm.$taskConfig;
+  const done=Array.from(editor.querySelectorAll('.cover-editor-button .button.submit:not(.submit-disabled)')).filter(visible);
+  const owned=!!config&&vm.id!==undefined&&vm.id===config.currentTaskId;
+  const prompt=syncPrompt&&owned&&vm.coverIndex===0&&vm.hasShownSyncConfirm===true;
+  if(editors.length!==1&&!prompt)return {editor_count:editors.length};
+  return {editor_count:editors.length,observed:true,main_slot:vm.coverIndex===0,
+   task_matches:owned,sync_prompt:prompt,
+   needs_four_three:!vm.isOverseas,
+   active_ratio:vm.activeEditor==='editor_4_3'?'four_three':vm.activeEditor==='editor_16_9'?'sixteen_nine':'unknown',
+   four_three_ready:!!(c.origin_4_3||c.edited_4_3)&&vm.isCoverEditorReady_4_3===true&&!!vm.imageEditor_4_3,
+   sixteen_nine_ready:!!(c.origin_16_9||c.edited_16_9)&&vm.isCoverEditorReady_16_9===true&&!!vm.imageEditor_16_9,
+   submit_enabled:editors.length===1&&vm.submitDisabled===false&&done.length===1&&!done[0].hasAttribute('disabled')&&done[0].getAttribute('aria-disabled')!=='true'};
+ }
+ return {editor_count:1,observed:false};
+}'''
+
 SCHEDULE_CONTAINER='.video-basic .form .time-container:not(.time-release-dialog .time-container):not(.batch-fill .time-container):not(.batch-dialog .time-container):not(.bcc-dialog__wrap .time-container)'
 
 
@@ -133,6 +179,12 @@ READ_FORM=r'''() => {
  const vis=e=>!!(e&&e.getClientRects().length&&getComputedStyle(e).visibility!=='hidden');
  const one=q=>{const es=all(q).filter(vis);return es.length===1?es[0]:null;};
  const title=one('.video-title input'),body=one('.desc-container .archive-info-editor .ql-editor[contenteditable="true"]');
+ // Quill stores each source line in one P, using a lone BR for an empty
+ // line. Whole-editor innerText adds browser paragraph spacing to that text.
+ const bodyLines=body?Array.from(body.childNodes):[];
+ const bodyText=bodyLines.length&&bodyLines.every(n=>n.nodeType===1&&n.tagName==='P')?
+  bodyLines.map(p=>p.childNodes.length===1&&p.firstChild.nodeName==='BR'?'':p.innerText).join('\n'):
+  body?.innerText?.replace(/\n$/,'')||'';
  const element=one('.creation-statement-container'),entrance=one('.video-entrance');
  const uploader=one('.video-entrance .upload-wrp .upload'),entranceVm=entrance?.__vue__,uploaderVm=uploader?.__vue__;
  const uploadEnabledKnown=typeof entranceVm?.uploadDisabled==='boolean'&&typeof uploaderVm?.disabled==='boolean';
@@ -177,7 +229,7 @@ READ_FORM=r'''() => {
  let releaseVm=timeVm;
  for(let i=0;releaseVm&&i<15;i++,releaseVm=releaseVm.$parent){if(releaseVm.$options?.name==='TimeRelease')break;}
  const observedDtime=releaseVm?.$options?.name==='TimeRelease'?releaseVm.dtime:state?.dtime??archive.dtime;
- return {title:title?.value||'',title_count:all('.video-title input').filter(vis).length,body:body?.innerText?.replace(/\n$/,'')||'',body_count:all('.desc-container .archive-info-editor .ql-editor[contenteditable="true"]').filter(vis).length,
+ return {title:title?.value||'',title_count:all('.video-title input').filter(vis).length,body:bodyText,body_count:all('.desc-container .archive-info-editor .ql-editor[contenteditable="true"]').filter(vis).length,
   tags:all('#tag-container .tag-pre-wrp .label-item-v2-content').map(e=>e.innerText.trim()),
   category_id:mode==='human'?state?.human_type2:archive.tid,category_mode:mode,category_text:category?.innerText?.trim()||'',
   creation_statement_id:state?.creationStatementId,copyright:state?.copyright,source:source?.value||'',

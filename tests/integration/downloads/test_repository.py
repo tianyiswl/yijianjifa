@@ -58,7 +58,7 @@ def test_upgrade_preserves_existing_records(tmp_path):
         assert history['content_hash'] == history['video_hash'] == 'oldhash'
         assert history['content_id'] is None  # Old unmatched history has no fabricated video ID.
         assert connection.exec_driver_sql('PRAGMA foreign_key_check').all() == []
-        assert connection.execute(text('SELECT version_num FROM alembic_version')).scalar_one() == '0018_image_post_deliveries'
+        assert connection.execute(text('SELECT version_num FROM alembic_version')).scalar_one() == '0019_single_category'
     engine.dispose()
 
 
@@ -751,3 +751,26 @@ def test_auxiliary_inputs_are_immutable_and_new_references_have_real_fks(auxilia
             connection.execute(text("INSERT INTO download_auxiliary_jobs(id,kind,state,completion,subtitle_draft_id,subtitle_revision,created_at,updated_at) VALUES ('missing-revision','subtitle_export','waiting','partial',:draft,99,'2026-10-05','2026-10-05')"), {'draft': params['subtitle_export']['subtitle_draft_id']})
         assert connection.exec_driver_sql('PRAGMA foreign_key_check').all() == []
         connection.commit()
+
+
+def test_new_import_jobs_are_single_category_while_legacy_snapshots_remain_readable(auxiliary):
+    from sqlalchemy import insert, select
+    from yijianjifa.storage.models import DownloadAuxiliaryJobRow
+    repo, c, engine, params, _, _ = auxiliary
+    with engine.begin() as connection:
+        connection.execute(text("INSERT INTO categories(id,kind,name,created_at) VALUES ('second-video','video','second','2026-10-05')"))
+        with pytest.raises(c.DownloadError) as error:
+            repo.create_auxiliary_job(connection, kind='resource_import', output_resource_id='video-input',
+                                      category_ids=('video-category', 'second-video'))
+        assert error.value.code == 'single_category_only'
+        job = repo.create_auxiliary_job(connection, kind='resource_import', **params['resource_import'])
+        row = dict(connection.execute(select(DownloadAuxiliaryJobRow.__table__).where(DownloadAuxiliaryJobRow.id == job)).mappings().one())
+        # Seed an old immutable snapshot as a separate historical row.
+        row.update(id='legacy-multi-category', category_ids_json='["video-category","second-video"]')
+        connection.execute(insert(DownloadAuxiliaryJobRow).values(**row))
+    assert repo.get_auxiliary_job('legacy-multi-category')['category_ids'] == ('video-category', 'second-video')
+    with engine.begin() as connection:
+        repo.record_auxiliary_job(connection, 'legacy-multi-category', state='failed', error_code='single_category_only')
+    legacy = repo.get_auxiliary_job('legacy-multi-category')
+    assert legacy['state'] == 'failed' and legacy['error_code'] == 'single_category_only'
+    assert legacy['category_ids'] == ('video-category', 'second-video')
